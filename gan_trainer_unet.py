@@ -20,7 +20,7 @@ import params
 import windows_loss_calc
 import time
 import hdr_image_utils
-from torchsummary import summary
+# from torchsummary import summary
 import Unet
 
 
@@ -564,14 +564,14 @@ if __name__ == '__main__':
     net_G = create_net("G", device, isCheckpoint)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (3, 256, 256))
-    print()
+    # summary(net_G, (3, 256, 256))
+    # print()
 
     net_D = create_net("D", device, isCheckpoint)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (3, 256, 256))
-    print()
+    # summary(net_D, (3, 256, 256))
+    # print()
 
     # Setup Adam optimizers for both G and D
     optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
