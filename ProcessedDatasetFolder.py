@@ -3,7 +3,7 @@ from torchvision.datasets import DatasetFolder
 import params
 import numpy as np
 
-IMG_EXTENSIONS_local = ['.npy']
+IMG_EXTENSIONS_local = ('.npy')
 
 
 def npy_loader(path):

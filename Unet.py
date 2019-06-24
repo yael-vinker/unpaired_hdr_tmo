@@ -15,6 +15,7 @@ class UNet(nn.Module):
         # batch_norm=False,
         batch_norm=True,
         up_mode='upsample',
+        # up_mode='upsample',
     ):
         """
         Implementation of
