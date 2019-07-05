@@ -46,10 +46,20 @@ class UNet(nn.Module):
         prev_channels = in_channels
         self.down_path = nn.ModuleList()
         for i in range(depth):
-            self.down_path.append(
-                UNetConvBlock(prev_channels, 2 ** (wf + i), padding, batch_norm)
-            )
-            prev_channels = 2 ** (wf + i)
+            if i != 0:
+                self.down_path.append(
+                    UNetConvBlock(prev_channels, 2 ** (wf + i), padding, batch_norm, stride=2)
+                )
+                prev_channels = 2 ** (wf + i)
+            else:
+                self.down_path.append(
+                    UNetConvBlock(prev_channels, 2 ** (wf + i), padding, batch_norm, stride=1)
+                )
+                prev_channels = 2 ** (wf + i)
+        # self.down_path.append(
+        #     UNetConvBlock(prev_channels, prev_channels, padding, batch_norm, stride=1)
+        # )
+        # prev_channels = 2 ** (wf + depth - 1)
 
         self.up_path = nn.ModuleList()
         for i in reversed(range(depth - 1)):
@@ -59,7 +69,7 @@ class UNet(nn.Module):
             prev_channels = 2 ** (wf + i)
 
         self.last = nn.Conv2d(prev_channels, n_classes, kernel_size=1)
-        self.last_sig = nn.Sigmoid()
+        self.last_sig = nn.Tanh()
 
     def forward(self, x):
         blocks = []
@@ -67,7 +77,7 @@ class UNet(nn.Module):
             x = down(x)
             if i != len(self.down_path) - 1:
                 blocks.append(x)
-                x = F.max_pool2d(x, 2)
+                # x = F.max_pool2d(x, 2)
 
         for i, up in enumerate(self.up_path):
             x = up(x, blocks[-i - 1])
@@ -76,13 +86,14 @@ class UNet(nn.Module):
 
 
 class UNetConvBlock(nn.Module):
-    def __init__(self, in_size, out_size, padding, batch_norm):
+    def __init__(self, in_size, out_size, padding, batch_norm, stride):
         super(UNetConvBlock, self).__init__()
         block = []
-        block.append(nn.Conv2d(in_size, out_size, kernel_size=3, stride=1, padding=int(padding), bias=False))
+        block.append(nn.Conv2d(in_size, out_size, kernel_size=3, stride=stride, padding=int(padding), bias=False))
         if batch_norm:
             block.append(nn.BatchNorm2d(out_size))
         block.append(nn.ReLU())
+        # block.append(nn.LeakyReLU(0.2, inplace=True))
 
         # block.append(nn.Conv2d(out_size, out_size, kernel_size=3, stride=1, padding=int(padding), bias=False))
         # if batch_norm:
@@ -108,7 +119,7 @@ class UNetUpBlock(nn.Module):
                 nn.Conv2d(in_size, out_size, kernel_size=1),
             )
 
-        self.conv_block = UNetConvBlock(in_size, out_size, padding, batch_norm)
+        self.conv_block = UNetConvBlock(in_size, out_size, padding, batch_norm, stride=1)
 
     def center_crop(self, layer, target_size):
         _, _, layer_height, layer_width = layer.size()

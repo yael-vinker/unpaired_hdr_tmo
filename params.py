@@ -9,7 +9,7 @@ test_data_hdr = "transfer_to_ldr/processed_data"
 # dataroot_output = "transfer_to_ldr/processed_data"
 
 dataroot_npy = "data/npy_data"
-dataroot_ldr = "data/ldr_data"
+dataroot_ldr = "data/ldr_data2"
 test_dataroot_npy = "data/test_npy_data"
 test_dataroot_ldr = "data/test_ldr_data"
 test_dataroot_red_wind_ldr = "data/red_hdr_wind_data"

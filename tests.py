@@ -5,16 +5,60 @@ import gan_trainer_unet
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
+import tranforms as transforms_
+import torchvision.transforms as transforms
+import torchvision.transforms.functional as F
+from PIL import Image
 
-def verify_G_output_range(fake_results):
+
+def print_im_details(im, title, disply=False):
+    print(title)
+    print("max = ", np.max(im), "min = ", np.min(im), "mean = ", np.mean(im), "dtype = ", im.dtype)
+    if disply:
+        plt.imshow(im)
+        plt.show()
+
+
+def print_batch_details(batch, title, disply=False):
+    print(title)
+    b_size = batch.shape[0]
+    for i in range(b_size):
+        im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        print_im_details(im, i)
+
+def compare_tensors(b1, b2):
+    b_size = b1.shape[0]
+    for i in range(b_size):
+        im1 = b1[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        im2 = b2[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        print(np.array_equal(im1, im2))
+
+
+def test_normalize_transform(batch, device):
+    print_batch_details(batch, "before")
+    before_batch = batch.clone()
+    normalize = transforms_.NormalizeForDisplay((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), device)
+    new_batch = normalize(batch)
+    print_batch_details(new_batch, "after")
+    to_pil = transforms.ToPILImage()
+    b_size = batch.shape[0]
+    for i in range(b_size):
+        new_batch[i] = to_pil(new_batch[i])
+    batch_origin = F.normalize(new_batch, (0.5, 0.5, 0.5), (0.5, 0.5, 0.5), False)
+    # normalize_back = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    # batch_origin = normalize_back(new_batch)
+    compare_tensors(before_batch, batch_origin)
+
+
+
+def verify_G_output_range(fake_results, min, max):
     b_size = fake_results.shape[0]
     for i in range(b_size):
         fake_copy = fake_results[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        # print("shape = ", fake_copy.shape, "  min = ", np.min(fake_copy), "  max = ", np.max(fake_copy), "  mean = ", np.mean(fake_copy),)
-        if np.min(fake_copy) < 0:
-            print("Error in G output, min value is smaller than zero")
-        if np.max(fake_copy) > 1:
-            print("Error in G output, min value is smaller than zero")
+        if np.min(fake_copy) < min:
+            print("Error in G output, min value is smaller than ", min)
+        if np.max(fake_copy) > max:
+            print("Error in G output, max value is larger than ", max)
         # print(fake_copy)
         # gray_num = (fake_copy == 0.5).sum()
         # print("Percentage of 0.5 pixels = ",gray_num / (fake_copy.shape[0] * fake_copy.shape[1]), "%")
@@ -104,6 +148,32 @@ def load_data_test():
     plot_npy_data(test_npy_dataloader, device, "Test npy")
     plot_data(test_ldr_dataloader, device, "test ldr")
 
-
 if __name__ == '__main__':
-    load_data_test()
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+
+    # path = "S1200_CC.npy"
+    # data = np.load(path)
+    # im_hdr = data[()][params.image_key]
+    # # im_hdr = transform(im_hdr)
+    # # im_hdr = im_hdr / 1000
+    # im_hdr = np.asarray(im_hdr)
+    # print_im_details(im_hdr, "hdr", True)
+    #
+    # ldr_path = "im_99.png"
+    # with open(ldr_path, 'rb') as f:
+    #     img = Image.open(f)
+    #     im_ldr = img.convert('RGB')
+    #     # im_ldr = transform(im_ldr)
+    #     im_ldr = np.asarray(im_ldr)
+    # print_im_details(im_ldr, "ldr")
+
+    tone_map_path = "im_99.png"
+    with open(tone_map_path, 'rb') as f:
+        img = Image.open(f)
+        im_ldr = img.convert('RGB')
+        # im_ldr = transform(im_ldr)
+        im_ldr = np.asarray(im_ldr)
+    print_im_details(im_ldr, "ldr tone map", True)

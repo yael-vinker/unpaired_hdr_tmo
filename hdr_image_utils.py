@@ -63,7 +63,7 @@ def read_hdr_img_rgb(path_name):
     path = pathlib.Path(path_name)
     im = imageio.imread(path, format='HDR-FI')
     im = skimage.exposure.rescale_intensity(im, out_range=(0, 1000))
-    im = im / 1000
+    # im = im / 1000
     return im
 
 

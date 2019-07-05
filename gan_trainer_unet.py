@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 # import Unet_2
+from PIL import Image
 from torch import autograd
 import ProcessedDatasetFolder
 import os
@@ -22,18 +23,9 @@ import time
 import hdr_image_utils
 from torchsummary import summary
 import Unet
-
-
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
-
-    def __call__(self, sample):
-        image, binary_wind = sample[params.image_key], sample[params.window_image_key]
-        image = image.transpose((2, 0, 1))
-        # There is no need to permute "window_image" channels since it has 1 channel
-        return {params.image_key: torch.from_numpy(image),
-                params.window_image_key: torch.from_numpy(binary_wind)}
-
+import tranforms as tranforms_
+import tests
+import LdrDatasetFolder
 
 # TODO ask about init BatchNorm weights
 def weights_init(m):
@@ -60,16 +52,17 @@ def parse_arguments():
     parser.add_argument("--test_data_root_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--test_red_wind", type=str, default=params.test_dataroot_red_wind_ldr)
     parser.add_argument("--apply_windows_loss", type=str, default="no")
+    parser.add_argument("--G_opt_for_single_D", type=int, default=1)
     args = parser.parse_args()
     return args.batch, args.epochs, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), os.path.join(args.data_root_ldr), \
             args.checkpoint, os.path.join(args.test_data_root_npy), os.path.join(args.test_data_root_ldr),\
-                os.path.join(args.test_red_wind), args.apply_windows_loss
+                os.path.join(args.test_red_wind), args.apply_windows_loss, args.G_opt_for_single_D
 
 
 def create_net(net, device_, is_checkpoint):
     if net == "G":
         # Create the Generator (UNet architecture)
-    # new_net = Unet_2.UNet_2().to(device_)
+        # new_net = Unet_2.UNet().to(device_)
         new_net = Unet.UNet().to(device_)
     elif net == "D":
         # Create the Discriminator
@@ -146,7 +139,7 @@ class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
                  train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
                  test_red_wind_data, t_isCheckpoint, t_netG, t_netD,
-                 t_optimizerG, t_optimizerD, apply_G_windows_loss):
+                 t_optimizerG, t_optimizerD, apply_G_windows_loss, t_g_opt_for_single_d):
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
         self.device = t_device
@@ -167,12 +160,14 @@ class GanTrainer:
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr, \
             self.test_data_loader_red_wind = self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy,
-                                                       test_dataroot_ldr, test_red_wind_data)
+                                                       test_dataroot_ldr, test_red_wind_data, testMode=True)
         self.window_height, self.window_width = hdr_image_utils.get_window_size(params.image_size, params.image_size)
         self.half_window_height, self.half_window_width, self.quarter_height, self.quarter_width = \
             hdr_image_utils.get_half_windw_size(self.window_height, self.window_width)
         self.criterion = nn.BCELoss()
         self.mse_loss = torch.nn.MSELoss(reduction='sum')
+        self.g_opt_for_single_d = t_g_opt_for_single_d
+        self.normalize_for_display = tranforms_.NormalizeForDisplay((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), self.device)
 
     def windows_loss(self, fake_images, real_hdr_images, windows_im):
         """
@@ -215,23 +210,79 @@ class GanTrainer:
     def load_npy_data(self, npy_data_root, shuffle, batch_size):
         npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root,
                                                                     transform=transforms.Compose([
-                                                                        ToTensor(),
+                                                                        tranforms_.ToTensor(),
+                                                                        # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                                                                     ]))
         dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
                                                  shuffle=shuffle, num_workers=params.workers)
         return dataloader
 
+    # def load_ldr_data(self, ldr_data_root, shuffle, batch_size):
+    #     ldr_dataset = dset.ImageFolder(root=ldr_data_root,
+    #                                    transform=transforms.Compose([
+    #                                        transforms.ToTensor(),
+    #                                        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    #                                    ]))
+    #
+    #     ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
+    #                                                  shuffle=shuffle, num_workers=params.workers)
+    #     return ldr_dataloader
+
     def load_ldr_data(self, ldr_data_root, shuffle, batch_size):
-        ldr_dataset = dset.ImageFolder(root=ldr_data_root,
+        ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root,
                                        transform=transforms.Compose([
                                            transforms.ToTensor(),
+                                           # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                                        ]))
 
         ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
                                                      shuffle=shuffle, num_workers=params.workers)
         return ldr_dataloader
 
-    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr):
+
+    def get_single_ldr_im(self, ldr_data_root):
+        x = next(os.walk(ldr_data_root))[1][0]
+        dir_path = os.path.join(ldr_data_root, x)
+        im_path = os.path.join(dir_path, os.listdir(dir_path)[0])
+        with open(im_path, 'rb') as f:
+            img = Image.open(f)
+            return np.asarray(img.convert('RGB'))
+
+    def get_single_hdr_im(self, hdr_data_root):
+        x = next(os.walk(hdr_data_root))[1][0]
+        dir_path = os.path.join(hdr_data_root, x)
+        im_path = os.path.join(dir_path, os.listdir(dir_path)[0])
+        data = np.load(im_path)
+        im_hdr = data[()][params.image_key]
+        return np.asarray(im_hdr)
+
+    def load_data_test_mode(self, train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader):
+        train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
+        train_hdr_loader_single = np.asarray(train_hdr_loader[0])
+        print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
+               train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
+
+        train_ldr_loader = next(iter(train_ldr_dataloader))[0]
+        train_ldr_loader_single = np.asarray(train_ldr_loader[0])
+        print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
+               train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
+
+        test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
+        test_hdr_loader_single = np.asarray(test_hdr_loader[0])
+        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
+               test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
+
+        test_ldr_loader = next(iter(test_ldr_dataloader))[0]
+        test_ldr_loader_single = np.asarray(test_ldr_loader[0])
+        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
+               test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
+
+
+    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr, testMode=False):
         """
         :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
         :param dir_root: path to wanted directory
@@ -239,16 +290,35 @@ class GanTrainer:
         :return: DataLoader object of images in "dir_root"
         """
         train_npy_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size)
+        hdr_train_sample = self.get_single_hdr_im(train_root_npy)
+
         test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24)
+        hdr_test_sample = self.get_single_hdr_im(test_root_npy)
+
         train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, self.batch_size)
+        ldr_train_sample = self.get_single_ldr_im(train_root_ldr)
+
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24)
+        ldr_test_sample = self.get_single_ldr_im(test_root_ldr)
         test_ldr_red_wind_data = self.load_ldr_data(test_root_red_wind_ldr, False, 24)
 
-        print("[%d] images in train_npy_dataset" % len(train_npy_dataloader.dataset))
-        print("[%d] images in test_npy_dataset" % len(test_npy_dataloader.dataset))
-        print("[%d] images in train_ldr_dataloader" % len(train_ldr_dataloader.dataset))
-        print("[%d] images in test_npy_dset" % len(test_ldr_dataloader.dataset))
-        print("[%d] images in test_red_wind" % len(test_ldr_red_wind_data.dataset))
+        print("train_npy_dataset     [%d] images --- max[%.4f]  min[%.4f]  dtype[%s]" %
+              (len(train_npy_dataloader.dataset), float(np.max(hdr_train_sample)), float(np.min(hdr_train_sample)),
+               hdr_train_sample.dtype))
+        print("test_npy_dataset      [%d] images --- max[%.4f]  min[%.4f]  dtype[%s]" %
+              (len(test_npy_dataloader.dataset), float(np.max(hdr_test_sample)), float(np.min(hdr_test_sample)),
+               hdr_test_sample.dtype))
+
+        print("train_ldr_dataloader  [%d] images --- max[%.4f]  min[%.4f]  dtype[%s]" %
+              (len(train_ldr_dataloader.dataset) , float(np.max(ldr_train_sample)), float(np.min(ldr_train_sample)),
+               ldr_train_sample.dtype))
+
+        print("test_ldr_dset         [%d] images --- max[%.4f]  min[%.4f]  dtype[%s]" %
+              (len(test_ldr_dataloader.dataset), float(np.max(ldr_test_sample)), float(np.min(ldr_test_sample)), ldr_test_sample.dtype))
+        print("test_red_wind         [%d] images" % len(test_ldr_red_wind_data.dataset))
+
+        if testMode:
+            self.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
 
         return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader, test_ldr_red_wind_data
 
@@ -294,13 +364,15 @@ class GanTrainer:
         :param fake: (Tensor) result of G on hdr_data
         :param real_hdr_cpu: HDR images as input to windows_loss
         """
-        self.netG.zero_grad()
-        label.fill_(self.real_label)  # fake labels are real for generator cost
-        # Since we just updated D, perform another forward pass of all-fake batch through D
-        output_on_fake = self.netD(fake).view(-1)
-        self.errG = self.criterion(output_on_fake, label)
-        self.errG.backward()
-        self.optimizerG.step()
+        for step in range(self.g_opt_for_single_d):
+            self.netG.zero_grad()
+            label.fill_(self.real_label)  # fake labels are real for generator cost
+            # Since we just updated D, perform another forward pass of all-fake batch through D
+            output_on_fake = self.netD(fake).view(-1)
+            self.errG = self.criterion(output_on_fake, label)
+            self.errG.backward()
+            self.optimizerG.step()
+            fake = self.netG(real_hdr_cpu)
         self.G_losses.append(self.errG.item())
 
 
@@ -396,34 +468,15 @@ class GanTrainer:
                 self.save_loss_plot(epoch)
 
     def save_groups_images(self, first_b_tonemap, fake, red_wind, new_out_dir):
-        # for i in range(6):
-        #     plt.figure(figsize=(15, 15))
-        #     plt.subplot(3, 1, 1)
-        #     plt.axis("off")
-        #     plt.title("Real Images")
-        #     plt.imshow(
-        #         np.transpose(vutils.make_grid(first_b_tonemap[i * 4: (i + 1) * 4], padding=5).cpu(), (1, 2, 0)))
-        #
-        #     img_list1 = [vutils.make_grid(red_wind[i * 4: (i + 1) * 4], padding=5)]
-        #     plt.subplot(3, 1, 2)
-        #     plt.axis("off")
-        #     plt.title("Processed Images")
-        #     plt.imshow(np.transpose(img_list1[-1].cpu(), (1, 2, 0)))
-        #
-        #     img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5)]
-        #     plt.subplot(3, 1, 3)
-        #     plt.axis("off")
-        #     plt.title("Fake Images")
-        #     plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
-        #     plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
-        #     plt.close()
-        for i in range(6):
+        b_size = first_b_tonemap.shape[0]
+        output_len = int(b_size / 4)
+        for i in range(output_len):
             plt.figure(figsize=(15, 15))
             plt.subplot(2, 1, 1)
             plt.axis("off")
-            plt.title("Real Images")
+            plt.title("Real images")
             plt.imshow(
-                np.transpose(vutils.make_grid(first_b_tonemap[i * 4: (i + 1) * 4], padding=5).cpu(), (1, 2, 0)))
+                np.transpose(vutils.make_grid(first_b_tonemap[i * 4: (i + 1) * 4], padding=5, normalize=True).cpu(), (1, 2, 0)))
 
             # img_list1 = [vutils.make_grid(red_wind[i * 4: (i + 1) * 4], padding=5)]
             # plt.subplot(3, 1, 2)
@@ -431,13 +484,15 @@ class GanTrainer:
             # plt.title("Processed Images")
             # plt.imshow(np.transpose(img_list1[-1].cpu(), (1, 2, 0)))
 
-            img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5)]
+            img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5, normalize=True)]
             plt.subplot(2, 1, 2)
             plt.axis("off")
             plt.title("Fake Images")
             plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
             plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
             plt.close()
+
+
 
     def update_test_loss(self, b_size, first_b_tonemap, fake, epoch, test_hdr_image, test_windows_im):
         with torch.no_grad():
@@ -480,7 +535,6 @@ class GanTrainer:
                                 self.test_num_iter,
                                 params.loss_path)
 
-
     def get_fake_test_images(self, first_b_hdr):
         with torch.no_grad():
             fake = self.netG(first_b_hdr)
@@ -498,19 +552,6 @@ class GanTrainer:
         test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
         test_first_b_red_wind = test_red_wind_batch[0].to(device)
 
-        plt.figure(figsize=(15, 15))
-        plt.subplot(2, 2, 1)
-        plt.axis("off")
-        plt.title("Real Images")
-        plt.imshow(
-            np.transpose(vutils.make_grid(test_first_b_tonemap[:25], padding=5).cpu(), (1, 2, 0)))
-
-        plt.subplot(2, 2, 2)
-        plt.axis("off")
-        plt.title("Real Images")
-        plt.imshow(
-            np.transpose(vutils.make_grid(test_first_b_tonemap[:2], padding=5).cpu(), (1, 2, 0)))
-
         test_real_batch_hdr = next(iter(self.test_data_loader_npy))
         test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
 
@@ -519,9 +560,21 @@ class GanTrainer:
         test_windows_im = test_real_batch_hdr[params.window_image_key].to(self.device)
         self.update_test_loss(b_size, test_first_b_tonemap, fake, epoch, test_hdr_image, test_windows_im)
 
-        fake = fake.detach().cpu()
-        img_list1 = [vutils.make_grid(fake[:25], padding=5)]
-        img_list2 = [vutils.make_grid(fake[:2], padding=5)]
+        plt.figure(figsize=(15, 15))
+        plt.subplot(2, 2, 1)
+        plt.axis("off")
+        plt.title("Real Images")
+        plt.imshow(
+            np.transpose(vutils.make_grid(test_first_b_tonemap[:25], padding=5, normalize=True).cpu(), (1, 2, 0)))
+
+        plt.subplot(2, 2, 2)
+        plt.axis("off")
+        plt.title("Real Images")
+        plt.imshow(
+            np.transpose(vutils.make_grid(test_first_b_tonemap[:2], padding=5, normalize=True).cpu(), (1, 2, 0)))
+
+        img_list1 = [vutils.make_grid(fake[:25], padding=5, normalize=True)]
+        img_list2 = [vutils.make_grid(fake[:2], padding=5, normalize=True)]
         plt.subplot(2, 2, 3)
         plt.axis("off")
         plt.title("Fake Images")
@@ -533,13 +586,33 @@ class GanTrainer:
         plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
         plt.savefig(os.path.join(new_out_dir, "ALL epoch = " + str(epoch)))
         plt.close()
-        # self.save_groups_images(test_first_b_tonemap, fake, test_first_b_red_wind, new_out_dir)
+        self.save_groups_images(test_first_b_tonemap, fake, test_first_b_red_wind, new_out_dir)
 
+
+    def test(self):
+        # test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
+        # test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
+        # tests.test_normalize_transform(test_first_b_tonemap, self.device)
+        #
+        # test_real_batch_hdr = next(iter(self.test_data_loader_npy))
+        # test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
+        # tests.test_normalize_transform(test_hdr_image, self.device)
+        #
+        test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
+        test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
+
+        test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
+        test_first_b_red_wind = test_red_wind_batch[0].to(device)
+
+        test_real_batch_hdr = next(iter(self.test_data_loader_npy))
+        test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
+        new_out_dir = os.path.join(params.results_path, "images_epoch=" + str(1))
+        self.save_groups_images(test_first_b_tonemap, test_hdr_image, test_first_b_red_wind, new_out_dir)
 
 
 if __name__ == '__main__':
     batch_size, num_epochs, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
-        test_data_root_npy, test_data_root_ldr, test_red_wind_data, apply_windows_loss_str = parse_arguments()
+        test_data_root_npy, test_data_root_ldr, test_red_wind_data, apply_windows_loss_str, g_opt_for_single_d = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
 
@@ -558,6 +631,7 @@ if __name__ == '__main__':
     print("D LR: ", D_lr)
     print("CHECK POINT:", isCheckpoint)
     print("APPLY WINDOWS LOSS:", apply_windows_loss)
+    print("TRAIN G [%d] TIMES FOR EACH D STEP" % g_opt_for_single_d)
     print("DEVICE:", device)
     print("=====================\n")
 
@@ -581,6 +655,7 @@ if __name__ == '__main__':
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss)
+                             net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d)
 
-    gan_trainer.train()
+    # gan_trainer.train()
+    # gan_trainer.test()
