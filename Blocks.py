@@ -1,4 +1,5 @@
 from torch import nn
+import torch.tensor as tensor
 
 
 class Conv2dBlock(nn.Module):
@@ -22,11 +23,12 @@ class Conv2dBlock(nn.Module):
             assert 0, "Unsupported activation: {}".format(activation)
 
     def forward(self, x):
-        x = self.conv(x)
+        y = x.float()
+        out = self.conv(y)
         # if self.norm:
         #     x = self.norm(x)
-        x = self.activation(x)
-        return x
+        out1 = self.activation(out)
+        return out1
 
 
 class ConvTranspose2dBlock(nn.Module):

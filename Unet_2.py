@@ -50,27 +50,32 @@ class UNet(nn.Module):
                 UNetUpBlock(prev_channels, int(prev_channels / 2))
             )
             prev_channels = int(prev_channels / 2)
+        self.up_path.append(
+            UNetUpBlock(prev_channels, in_channels)
+        )
         self.last_sig = nn.Sigmoid()
 
     def forward(self, x):
+        y = x.float()
         for i, down in enumerate(self.down_path):
-            x = down(x)
+            y = down(y)
 
         for i, up in enumerate(self.up_path):
-            x = up(x)
+            y = up(y)
 
-        return self.last_sig(x)
+        return self.last_sig(y)
 
 
 class UNetConvBlock(nn.Module):
     def __init__(self, in_size, out_size):
         super(UNetConvBlock, self).__init__()
         block = []
-        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, bias=True))
+        block.append(nn.Conv2d(in_size, out_size, kernel_size=4, stride=2, padding=1, bias=True))
         block.append(nn.ReLU())
         self.block = nn.Sequential(*block)
 
     def forward(self, x):
+
         out = self.block(x)
         return out
 
@@ -79,7 +84,7 @@ class UNetUpBlock(nn.Module):
     def __init__(self, in_size, out_size):
         super(UNetUpBlock, self).__init__()
         block = []
-        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, bias=True))
+        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1, bias=True))
         block.append(nn.ReLU())
         self.up = nn.Sequential(*block)
 

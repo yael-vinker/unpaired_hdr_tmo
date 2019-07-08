@@ -24,7 +24,7 @@ def hdr_loader(path):
     im_origin = imageio.imread(path, format='HDR-FI')
     max_origin = np.nanmax(im_origin)
     im = (im_origin / max_origin) * IMAGE_SCALE
-    return cv2.resize(np.log(im + 1), (128, 128))
+    return cv2.resize(np.log(im + 1), (128, 128)).astype('float')
 
 
 class HdrImageFolder(DatasetFolder):
@@ -49,8 +49,8 @@ class HdrImageFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        image = self.loader(path)
-        binary_window = np.zeros(image.shape)
+        image = self.loader(path).astype('float')
+        binary_window = np.zeros(image.shape).astype('float')
         sample = {params.image_key: image, params.window_image_key: binary_window}
         if self.transform:
             sample = self.transform(sample)

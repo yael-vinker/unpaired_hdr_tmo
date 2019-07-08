@@ -364,6 +364,7 @@ class GanTrainer:
         # Train with all-real batch
         self.netD.zero_grad()
         # Forward pass real batch through D
+        print(real_hdr_cpu.dtype)
         output_on_real = self.netD(real_ldr_cpu).view(-1)
         # print(output_on_real.shape)
         # print(output_on_real > 0.5)
@@ -375,6 +376,7 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         fake = self.netG(real_hdr_cpu)
+        print(fake.shape)
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
@@ -649,6 +651,7 @@ if __name__ == '__main__':
         test_data_root_npy, test_data_root_ldr, test_red_wind_data, apply_windows_loss_str, g_opt_for_single_d = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # device = torch.device("cpu")
 
     isCheckpoint = True
     if isCheckpoint_str == 'no':
