@@ -124,6 +124,20 @@ def plot_general_losses(loss_G, loss_D_fake, loss_D_real, title, iters_n, path):
     plt.savefig(os.path.join(path, title + ".png"))  # should before show method
     plt.close()
 
+def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
+    plt.figure()
+    plt.plot(range(iters_n), acc_D_fake, '-r', label='acc D fake')
+    plt.plot(range(iters_n), acc_D_real, '-b', label='acc D real')
+    # plt.plot(range(iters_n), acc_G, '-g', label='acc G')
+
+    plt.xlabel("n iteration")
+    plt.legend(loc='upper left')
+    plt.title(title)
+
+    # save image
+    plt.savefig(os.path.join(path, title + ".png"))  # should before show method
+    plt.close()
+
 
 def create_dir(model_path, loss_graph_path, result_path):
     if not os.path.exists(os.path.dirname(model_path)):
@@ -156,6 +170,8 @@ class GanTrainer:
         self.checkpoint = None
         self.errD_real, self.errD_fake, self.errG = None, None, None
         self.errGwin, self.errGd, self.errD = None, None, None
+        self.accG, self.accDreal, self.accDfake = None, None, None
+        self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
         self.G_losses, self.G_loss_window, self.G_loss_d = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
         self.test_G_losses, self.test_G_loss_window, self.test_G_loss_d = [], [], []
@@ -170,6 +186,8 @@ class GanTrainer:
         self.mse_loss = torch.nn.MSELoss(reduction='sum')
         self.g_opt_for_single_d = t_g_opt_for_single_d
         self.normalize_for_display = tranforms_.NormalizeForDisplay((0.5, 0.5, 0.5), (0.5, 0.5, 0.5), self.device)
+
+
 
     def windows_loss(self, fake_images, real_hdr_images, windows_im):
         """
@@ -350,8 +368,15 @@ class GanTrainer:
 
         if testMode:
             self.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
-
         return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader, test_ldr_red_wind_data
+
+
+
+    def custom_loss(self, output, target):
+        b_size = target.shape[0]
+        loss = ((output - target)**2).sum() / b_size
+        return loss
+
 
     def train_D(self, real_hdr_cpu, real_ldr_cpu, label):
         """
@@ -361,27 +386,32 @@ class GanTrainer:
         :param label: Tensor contains real labels for first loss
         :return: fake (Tensor) result of G on hdr_data, for G train
         """
+        b_size = label.shape[0]
         # Train with all-real batch
         self.netD.zero_grad()
         # Forward pass real batch through D
-        print(real_hdr_cpu.dtype)
         output_on_real = self.netD(real_ldr_cpu).view(-1)
-        # print(output_on_real.shape)
-        # print(output_on_real > 0.5)
+        # Real label = 1, so we count the samples on which D was right
+        self.accDreal = (output_on_real > 0.5).sum() / b_size
+        self.D_accuracy_real.append(self.accDreal.item())
 
         # Calculate loss on all-real batch
-        self.errD_real = self.criterion(output_on_real, label)
+        # self.errD_real = self.criterion(output_on_real, label)
+        self.errD_real = self.custom_loss(output_on_real, label)
         self.errD_real.backward()
 
         # Train with all-fake batch
         # Generate fake image batch with G
         fake = self.netG(real_hdr_cpu)
-        print(fake.shape)
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
+        # Fake label = 0, so we count the samples on which D was right
+        self.accDfake = (output_on_fake < 0.5).sum() / b_size
+        self.D_accuracy_fake.append(self.accDfake.item())
         # Calculate D's loss on the all-fake batch
-        self.errD_fake = self.criterion(output_on_fake, label)
+        self.errD_fake = self.custom_loss(output_on_fake, label)
+        # self.errD_fake = self.criterion(output_on_fake, label)
         # Calculate the gradients for this batch
         self.errD_fake.backward()
         # Add the gradients from the all-real and all-fake batches
@@ -400,12 +430,17 @@ class GanTrainer:
         :param fake: (Tensor) result of G on hdr_data
         :param real_hdr_cpu: HDR images as input to windows_loss
         """
+        b_size = label.shape[0]
         for step in range(self.g_opt_for_single_d):
             self.netG.zero_grad()
             label.fill_(self.real_label)  # fake labels are real for generator cost
             # Since we just updated D, perform another forward pass of all-fake batch through D
             output_on_fake = self.netD(fake).view(-1)
-            self.errG = self.criterion(output_on_fake, label)
+            # Real label = 1, so wo count number of samples on which G tricked D
+            self.accG = (output_on_fake > 0.5).sum() / b_size
+            self.G_accuracy.append(self.accG.item())
+            # self.errG = self.criterion(output_on_fake, label)
+            self.errG = self.custom_loss(output_on_fake, label)
             self.errG.backward()
             self.optimizerG.step()
             fake = self.netG(real_hdr_cpu)
@@ -451,7 +486,7 @@ class GanTrainer:
                 else:
                     self.train_G(label, fake, real_hdr_cpu, windows_im)
             batch_end_time = time.time()
-            print("Single [batch] iteration took [%.4f] seconds" % (batch_end_time - batch_start_time))
+            # print("Single [batch] iteration took [%.4f] seconds" % (batch_end_time - batch_start_time))
 
     def print_cuda_details(self):
         if (self.device.type == 'cuda') and (torch.cuda.device_count() > 1):
@@ -468,8 +503,10 @@ class GanTrainer:
             print()
 
     def print_epoch_losses_summary(self, epoch):
+        print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f'
+              % (epoch, self.num_epochs, self.accDreal.item(), self.accDfake.item(), self.accG.item()))
+
         if self.apply_windows_loss:
-            # print("self.apply_windows_loss:", self.apply_windows_loss)
             print('[%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tLoss_G_window: %.4f\tLoss_G_d_factorized: %.4f \tLoss_G_d: %.4f'
               % (epoch, self.num_epochs, self.errD.item(), self.errG.item(), self.errGwin.item(),
                  self.errGd.item() * params.g_d_loss_factor, self.errGd.item()))
@@ -481,6 +518,11 @@ class GanTrainer:
         plot_general_losses(self.G_losses, self.D_loss_fake, self.D_loss_real, "summary epoch_=_" + str(epoch),
                             self.num_iter,
                             params.loss_path)
+        print(self.D_accuracy_real)
+        print(self.D_accuracy_fake)
+        plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real, "accuracy epoch = "+ str(epoch),
+                              self.num_iter,
+                              params.loss_path)
         if self.apply_windows_loss:
             plot_specific_losses(self.G_loss_window, self.G_loss_d, self.D_loss_fake, self.D_loss_real,
                              "detailed loss, epoch = " + str(epoch), self.num_iter, params.loss_path)
@@ -500,7 +542,7 @@ class GanTrainer:
             if epoch % 5 == 0:
                 self.save_results_plot(epoch, params.results_path)
 
-            if epoch % 20 == 0:
+            if epoch % 5 == 0:
                 self.save_loss_plot(epoch)
 
     def save_groups_images(self, first_b_tonemap, fake, red_wind, new_out_dir):
@@ -576,6 +618,41 @@ class GanTrainer:
             fake = self.netG(first_b_hdr)
             return fake
 
+
+    def normalize_batch_for_display(self, batch):
+        print(batch.shape)
+        IMAGE_SCALE = 100
+        IMAGE_MAX_VALUE = 255
+        b_size = batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+            norm_im = (((np.exp(cur_im) - 1) / IMAGE_SCALE) * IMAGE_MAX_VALUE).astype("uint8")
+            plt.imshow(norm_im)
+            plt.show()
+            hdr_image_utils.print_image_details(norm_im, i)
+            output.append(norm_im)
+        print(torch.from_numpy(np.asarray(output)).shape)
+        return torch.from_numpy(np.asarray(output))
+
+    def display_batch_as_grid(self, batch):
+        nmaps = tensor.size(0)
+        xmaps = min(nrow, nmaps)
+        ymaps = int(math.ceil(float(nmaps) / xmaps))
+        height, width = int(tensor.size(2) + padding), int(tensor.size(3) + padding)
+        grid = tensor.new_full((3, height * ymaps + padding, width * xmaps + padding), pad_value)
+        k = 0
+        for y in irange(ymaps):
+            for x in irange(xmaps):
+            if k >= nmaps:
+                break
+            grid.narrow(1, y * height + padding, height - padding) \
+                .narrow(2, x * width + padding, width - padding) \
+                .copy_(tensor[k])
+            k = k + 1
+    return grid
+
+
     def save_results_plot(self, epoch, out_dir):
         new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
         if not os.path.exists(new_out_dir):
@@ -584,6 +661,8 @@ class GanTrainer:
         self.test_num_iter += 1
         test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
         test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
+
+        norm_batch = self.normalize_batch_for_display(test_first_b_tonemap)
 
         test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
         test_first_b_red_wind = test_red_wind_batch[0].to(device)
@@ -601,15 +680,22 @@ class GanTrainer:
         plt.axis("off")
         plt.title("Real Images")
         plt.imshow(
-            np.transpose(vutils.make_grid(test_first_b_tonemap[:25], padding=5, normalize=True).cpu(), (1, 2, 0)))
-
+            np.transpose(vutils.make_grid(test_first_b_tonemap[:self.batch_size], padding=5).cpu(), (1, 2, 0)))
         plt.subplot(2, 2, 2)
         plt.axis("off")
         plt.title("Real Images")
         plt.imshow(
-            np.transpose(vutils.make_grid(test_first_b_tonemap[:2], padding=5, normalize=True).cpu(), (1, 2, 0)))
+            np.transpose(vutils.make_grid(norm_batch[:self.batch_size], padding=5).cpu(), (1, 2, 0)))
+        plt.show()
 
-        img_list1 = [vutils.make_grid(fake[:25], padding=5, normalize=True)]
+
+        # plt.subplot(2, 2, 2)
+        # plt.axis("off")
+        # plt.title("Real Images")
+        # plt.imshow(
+        #     np.transpose(vutils.make_grid(test_first_b_tonemap[:2], padding=5, normalize=True).cpu(), (1, 2, 0)))
+
+        img_list1 = [vutils.make_grid(fake[:self.batch_size], padding=5, normalize=True)]
         img_list2 = [vutils.make_grid(fake[:2], padding=5, normalize=True)]
         plt.subplot(2, 2, 3)
         plt.axis("off")

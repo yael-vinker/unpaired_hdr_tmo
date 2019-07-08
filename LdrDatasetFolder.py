@@ -4,6 +4,8 @@ import numpy as np
 import pathlib
 import imageio
 import cv2
+import random
+import matplotlib.pyplot as plt
 
 IMG_EXTENSIONS_local = ('.png', '.bmp')
 IMAGE_MAX_VALUE = 255
@@ -18,9 +20,13 @@ def ldr_loader(path):
     path = pathlib.Path(path)
     im_origin = imageio.imread(path)
     im = (im_origin / IMAGE_MAX_VALUE) * IMAGE_SCALE
-    im = cv2.resize(np.log(im + 1), (128, 128))
-    print(im.dtype)
-    return im
+    height = im.shape[0] - 128
+    width = im.shape[1] - 128
+    rand_x = random.randint(0, width)
+    rand_y = random.randint(0, height)
+    window = im[rand_y: rand_y + 128, rand_x: rand_x + 128]
+    # im = cv2.resize(np.log(im + 1), (128, 128))
+    return window
 
 
 class LdrDatasetFolder(DatasetFolder):
