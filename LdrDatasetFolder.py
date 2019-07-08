@@ -18,7 +18,7 @@ def ldr_loader(path):
     path = pathlib.Path(path)
     im_origin = imageio.imread(path)
     im = (im_origin / IMAGE_MAX_VALUE) * IMAGE_SCALE
-    return cv2.resize(np.log(im + 1), (500, 500))
+    return cv2.resize(np.log(im + 1), (128, 128))
 
 
 class LdrDatasetFolder(DatasetFolder):

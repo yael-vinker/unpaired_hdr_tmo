@@ -1,6 +1,7 @@
 from __future__ import print_function
 
-# import Unet_2
+import Unet_2
+import imageio
 from PIL import Image
 from torch import autograd
 import ProcessedDatasetFolder
@@ -14,7 +15,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import Discriminator
 import params
@@ -26,6 +27,7 @@ import Unet
 import tranforms as tranforms_
 import tests
 import LdrDatasetFolder
+import HdrImageFolder
 
 # TODO ask about init BatchNorm weights
 def weights_init(m):
@@ -62,8 +64,8 @@ def parse_arguments():
 def create_net(net, device_, is_checkpoint):
     if net == "G":
         # Create the Generator (UNet architecture)
-        # new_net = Unet_2.UNet().to(device_)
-        new_net = Unet.UNet().to(device_)
+        new_net = Unet_2.UNet().to(device_)
+        # new_net = Unet.UNet().to(device_)
     elif net == "D":
         # Create the Discriminator
         new_net = Discriminator.Discriminator(params.n_downsamples_d, params.input_dim, params.dim,
@@ -160,7 +162,7 @@ class GanTrainer:
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr, \
             self.test_data_loader_red_wind = self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy,
-                                                       test_dataroot_ldr, test_red_wind_data, testMode=True)
+                                                       test_dataroot_ldr, test_red_wind_data)
         self.window_height, self.window_width = hdr_image_utils.get_window_size(params.image_size, params.image_size)
         self.half_window_height, self.half_window_width, self.quarter_height, self.quarter_width = \
             hdr_image_utils.get_half_windw_size(self.window_height, self.window_width)
@@ -207,12 +209,22 @@ class GanTrainer:
             self.netD.train()
             self.netG.train()
 
+
+    # def load_npy_data(self, npy_data_root, shuffle, batch_size):
+    #     npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root,
+    #                                                                 transform=transforms.Compose([
+    #                                                                     tranforms_.ToTensor(),
+    #                                                                     # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    #                                                                 ]))
+    #     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
+    #                                              shuffle=shuffle, num_workers=params.workers)
+    #     return dataloader
     def load_npy_data(self, npy_data_root, shuffle, batch_size):
-        npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root,
-                                                                    transform=transforms.Compose([
-                                                                        tranforms_.ToTensor(),
-                                                                        # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                                                                    ]))
+        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root,
+                                                            transform=transforms.Compose([
+                                                            tranforms_.ToTensor(),
+                                                            # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                                                    ]))
         dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
                                                  shuffle=shuffle, num_workers=params.workers)
         return dataloader
@@ -248,13 +260,20 @@ class GanTrainer:
             img = Image.open(f)
             return np.asarray(img.convert('RGB'))
 
-    def get_single_hdr_im(self, hdr_data_root):
+    def get_single_hdr_im(self, hdr_data_root, isNpy=False):
+        if isNpy:
+            x = next(os.walk(hdr_data_root))[1][0]
+            dir_path = os.path.join(hdr_data_root, x)
+            im_path = os.path.join(dir_path, os.listdir(dir_path)[0])
+            data = np.load(im_path)
+            im_hdr = data[()][params.image_key]
+            return np.asarray(im_hdr)
         x = next(os.walk(hdr_data_root))[1][0]
         dir_path = os.path.join(hdr_data_root, x)
         im_path = os.path.join(dir_path, os.listdir(dir_path)[0])
-        data = np.load(im_path)
-        im_hdr = data[()][params.image_key]
-        return np.asarray(im_hdr)
+        im_origin = imageio.imread(im_path, format='HDR-FI')
+        return im_origin
+
 
     def load_data_test_mode(self, train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader):
         train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
@@ -262,24 +281,36 @@ class GanTrainer:
         print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
                train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
+        # im_display = (((np.exp(train_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
+        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+        # plt.show()
 
         train_ldr_loader = next(iter(train_ldr_dataloader))[0]
         train_ldr_loader_single = np.asarray(train_ldr_loader[0])
         print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
                train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
+        # im_display = (((np.exp(train_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
+        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+        # plt.show()
 
         test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
         test_hdr_loader_single = np.asarray(test_hdr_loader[0])
         print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
                test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
+        # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
+        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+        # plt.show()
 
         test_ldr_loader = next(iter(test_ldr_dataloader))[0]
         test_ldr_loader_single = np.asarray(test_ldr_loader[0])
         print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
                test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
+        # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
+        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+        # plt.show()
 
 
     def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr, testMode=False):
@@ -334,6 +365,9 @@ class GanTrainer:
         self.netD.zero_grad()
         # Forward pass real batch through D
         output_on_real = self.netD(real_ldr_cpu).view(-1)
+        # print(output_on_real.shape)
+        # print(output_on_real > 0.5)
+
         # Calculate loss on all-real batch
         self.errD_real = self.criterion(output_on_real, label)
         self.errD_real.backward()
@@ -638,13 +672,13 @@ if __name__ == '__main__':
     net_G = create_net("G", device, isCheckpoint)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (3, 256, 256))
+    summary(net_G, (3, 128, 128))
     print()
 
     net_D = create_net("D", device, isCheckpoint)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (3, 256, 256))
+    summary(net_D, (3, 128, 128))
     print()
 
     # Setup Adam optimizers for both G and D
@@ -657,5 +691,5 @@ if __name__ == '__main__':
                              test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
                              net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d)
 
-    # gan_trainer.train()
+    gan_trainer.train()
     # gan_trainer.test()

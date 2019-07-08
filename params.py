@@ -8,9 +8,11 @@ test_data_hdr_tonemap = "transfer_to_ldr/hdr_images_small_wrap"
 test_data_hdr = "transfer_to_ldr/processed_data"
 # dataroot_output = "transfer_to_ldr/processed_data"
 
-dataroot_npy = "data/npy_data"
+# dataroot_npy = "data/npy_data"
+dataroot_npy = "data/hdr_data"
 dataroot_ldr = "data/ldr_data2"
-test_dataroot_npy = "data/test_npy_data"
+# test_dataroot_npy = "data/test_npy_data"
+test_dataroot_npy = "data/hdr_data"
 test_dataroot_ldr = "data/test_ldr_data"
 test_dataroot_red_wind_ldr = "data/red_hdr_wind_data"
 apply_windows_loss = False
@@ -32,7 +34,7 @@ loss_path = os.path.join("loss_plot")
 results_path = os.path.join("result_images")
 
 n_downsample = 2
-n_downsamples_d = 5
+n_downsamples_d = 4
 # n_downsamples_d = 3
 input_dim = 3
 dim = 6
