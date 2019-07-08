@@ -6,7 +6,6 @@ import skimage
 import params
 import cv2
 from scipy import ndimage
-import hdr_image_utils as utils
 import numpy as np
 import random
 
@@ -15,7 +14,7 @@ IMAGE_SCALE = 100
 MAX_AXIS = 600
 
 
-def hdr_loader(path):
+def hdr_loader(path, trainMode):
     """
     Loader for .hdr image
     :param path: image path
@@ -24,21 +23,26 @@ def hdr_loader(path):
     """
     path = pathlib.Path(path)
     im_origin = imageio.imread(path, format='HDR-FI')
-    max_origin = np.nanmax(im_origin)
-    im = (im_origin / max_origin) * IMAGE_SCALE
-    height = im.shape[0]
-    width = im.shape[1]
-    max_axis = height if height > width else width
-    value = max_axis / MAX_AXIS
-    new_height = int(height / value)
-    new_width = int(width / value)
-    im = cv2.resize(np.log(im + 1), (new_width, new_height))
-    height = im.shape[0] - 128
-    width = im.shape[1] - 128
-    rand_x = random.randint(0, width)
-    rand_y = random.randint(0, height)
-    window = im[rand_y: rand_y + 128, rand_x: rand_x + 128]
-    return window
+    if trainMode:
+        height = im_origin.shape[0]
+        width = im_origin.shape[1]
+        max_axis = height if height > width else width
+        value = max_axis / MAX_AXIS
+        new_height = int(height / value)
+        new_width = int(width / value)
+        im = cv2.resize(im_origin, (new_width, new_height))
+        height = im.shape[0] - 128
+        width = im.shape[1] - 128
+        rand_x = random.randint(0, width)
+        rand_y = random.randint(0, height)
+        im = im[rand_y: rand_y + 128, rand_x: rand_x + 128]
+    else:
+        im = cv2.resize(im_origin, (128, 128))
+    max_origin = np.nanmax(im)
+    im100 = (im / max_origin) * IMAGE_SCALE
+    im_log = np.log(im100 + 1)
+    return im_log
+
 
 
 class HdrImageFolder(DatasetFolder):
@@ -46,12 +50,13 @@ class HdrImageFolder(DatasetFolder):
     A customized data loader, to load .hdr file
     """
 
-    def __init__(self, root, transform=None, target_transform=None,
+    def __init__(self, root, trainMode, transform=None, target_transform=None,
                  loader=hdr_loader):
         super(HdrImageFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                              transform=transform,
                                              target_transform=target_transform)
         self.imgs = self.samples
+        self.trainMode = trainMode
 
 
     def __getitem__(self, index):
@@ -63,7 +68,7 @@ class HdrImageFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        image = self.loader(path)
+        image = self.loader(path, self.trainMode)
         binary_window = np.zeros(image.shape)
         sample = {params.image_key: image, params.window_image_key: binary_window}
         if self.transform:
