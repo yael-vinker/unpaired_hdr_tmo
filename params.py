@@ -49,7 +49,7 @@ batch_size = 28
 image_size = 256
 
 # Number of training epochs
-num_epochs = 4
+num_epochs = 10
 
 # Learning rate for optimizers
 lr = 0.0002

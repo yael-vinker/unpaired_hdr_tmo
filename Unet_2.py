@@ -62,8 +62,9 @@ class UNet(nn.Module):
 
         for i, up in enumerate(self.up_path):
             y = up(y)
-
-        return self.last_sig(y)
+        
+        return y
+        #return self.last_sig(y)
 
 
 class UNetConvBlock(nn.Module):

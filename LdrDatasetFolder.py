@@ -20,6 +20,10 @@ def ldr_loader(path, trainMode):
     """
     path = pathlib.Path(path)
     im_origin = imageio.imread(path)
+    if im_origin.shape[0] < 128:
+        print(path)
+    if im_origin.shape[1] < 128:
+        print(path)
     if trainMode:
         height = im_origin.shape[0] - 128
         width = im_origin.shape[1] - 128
