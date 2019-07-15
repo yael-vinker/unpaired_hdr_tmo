@@ -4,6 +4,7 @@ import cv2
 import math
 
 import Unet_2
+import UnetSkipConnection
 import imageio
 from PIL import Image
 from torch import autograd
@@ -46,7 +47,7 @@ def weights_init(m):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--batch", type=int, default=5)
+    parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
     parser.add_argument("--model", type=str, default="VAE")
     parser.add_argument("--G_lr", type=float, default=params.lr)
@@ -67,10 +68,11 @@ def parse_arguments():
 
 
 def create_net(net, device_, is_checkpoint):
-    if net == "G":
+    if net == "G_VAE":
         # Create the Generator (UNet architecture)
         new_net = Unet_2.UNet().to(device_)
-        # new_net = Unet.UNet().to(device_)
+    elif net == "G_skip_connection":
+        new_net = UnetSkipConnection.UNetSkipConnection().to(device_)
     elif net == "D":
         # Create the Discriminator
         new_net = Discriminator.Discriminator(params.n_downsamples_d, params.input_dim, params.dim,
@@ -262,7 +264,7 @@ class GanTrainer:
     #                                              shuffle=shuffle, num_workers=params.workers)
     #     return dataloader
     def load_npy_data(self, npy_data_root, shuffle, batch_size, trainMode):
-        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, trainMode=trainMode,
+        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, device=self.device,
                                                             transform=transforms.Compose([
                                                             tranforms_.ToTensor(),
                                                             # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -520,24 +522,27 @@ class GanTrainer:
         len_ldr_train_dset = len(self.train_data_loader_ldr.dataset)
         len_ldr_test_dset = len(self.test_data_loader_ldr.dataset)
 
+        test_smaller_len = len_hdr_test_dset if len_hdr_test_dset < len_ldr_test_dset else len_ldr_test_dset
+        train_smaller_len = len_hdr_train_dset if len_hdr_train_dset < len_ldr_train_dset else len_ldr_train_dset
+
         if isTest:
-            self.accG_test = self.accG_counter / len_hdr_test_dset
-            self.accDreal_test = self.accDreal_counter / len_ldr_test_dset
-            self.accDfake_test = self.accDfake_counter / len_hdr_test_dset
+            self.accG_test = self.accG_counter / test_smaller_len
+            self.accDreal_test = self.accDreal_counter / test_smaller_len
+            self.accDfake_test = self.accDfake_counter / test_smaller_len
             self.G_accuracy_test.append(self.accG_test)
             self.D_accuracy_real_test.append(self.accDreal_test)
             self.D_accuracy_fake_test.append(self.accDfake_test)
         else:
-            self.accG = self.accG_counter / len_hdr_train_dset
-            self.accDreal = self.accDreal_counter / len_ldr_train_dset
-            self.accDfake = self.accDfake_counter / len_hdr_train_dset
+            self.accG = self.accG_counter / train_smaller_len
+            self.accDreal = self.accDreal_counter / train_smaller_len
+            self.accDfake = self.accDfake_counter / train_smaller_len
             self.G_accuracy.append(self.accG)
             self.D_accuracy_real.append(self.accDreal)
             self.D_accuracy_fake.append(self.accDfake)
 
 
     def train_epoch(self):
-        self.accG_counter, self.accDreal_counter, accDfake_counter = 0, 0, 0
+        self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         for (h, data_hdr), (l, data_ldr) in zip(enumerate(self.train_data_loader_npy, 0),
                                                 enumerate(self.train_data_loader_ldr, 0)):
             start = time.time()
@@ -555,9 +560,7 @@ class GanTrainer:
                 else:
                     self.train_G(label, fake, real_hdr_cpu, windows_im)
             print("Single [batch] iteration took [%.4f] seconds" % (time.time() - start))
-        start = time.time()
         self.update_accuracy()
-        print("time took to update acc = ", (time.time() - start))
 
 
 
@@ -646,7 +649,6 @@ class GanTrainer:
             plt.axis("off")
             plt.title("Processed Images")
             plt.imshow(test_hdr_display)
-            plt.imshow(test_hdr_display)
 
             img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5, normalize=True)]
             plt.subplot(3, 1, 3)
@@ -658,7 +660,7 @@ class GanTrainer:
 
 
     def update_test_loss(self, b_size, first_b_tonemap, fake, epoch, test_hdr_image, test_windows_im):
-        self.accG_counter, self.accDreal_counter, accDfake_counter = 0, 0, 0
+        self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         with torch.no_grad():
             real_label = torch.full((b_size,), self.real_label, device=self.device)
             test_D_output_on_real = self.netD(first_b_tonemap.detach()).view(-1)
@@ -714,20 +716,23 @@ class GanTrainer:
         output = []
         for i in range(b_size):
             cur_im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-            # if i == 0:
-            #     hdr_image_utils.print_image_details(cur_im, str(i) + "before")
-            #print(cur_im.shape)
-
             if isHDR:
                 norm_im = (np.exp(cur_im) - 1) / IMAGE_SCALE
                 tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
                 im1_dub = tone_map1.process(norm_im.copy()[:, :, ::-1])
                 im1 = (im1_dub * IMAGE_MAX_VALUE).astype("uint8")
                 norm_im = im1
-            # if i == 0:
-            #     hdr_image_utils.print_image_details(norm_im, str(i) + "after")
+
             else:
+                # hdr_image_utils.print_image_details(cur_im, str(i) + "before")
                 norm_im = (((np.exp(cur_im) - 1) / IMAGE_SCALE) * IMAGE_MAX_VALUE).astype("uint8")
+                # norm_im = (((np.exp(cur_im) - 1) / IMAGE_SCALE))
+                # min_im, max_im = float(np.min(norm_im)), float(np.max(norm_im))
+                # norm_im_clamp = np.clip(norm_im, min_im, max_im)
+                # norm_im_2 = norm_im_clamp - min_im / (max_im - min_im + 1e-5)
+                # norm_im = norm_im_2
+                # if i == 0:
+                #     hdr_image_utils.print_image_details(norm_im, str(i) + "after")
             output.append(norm_im)
         norm_batch = np.asarray(output)
         # nmaps = norm_batch.shape[0]
@@ -871,7 +876,7 @@ if __name__ == '__main__':
     print("DEVICE:", device)
     print("=====================\n")
 
-    net_G = create_net("G", device, isCheckpoint)
+    net_G = create_net("G_" + model, device, isCheckpoint)
     print("=================  NET G  ==================")
     print(net_G)
     summary(net_G, (3, 128, 128))

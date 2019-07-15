@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class UNet(nn.Module):
+class UNetSkipConnection(nn.Module):
     def __init__(
         self,
         in_channels=3,
@@ -33,62 +33,90 @@ class UNet(nn.Module):
                            learned upsampling.
                            'upsample' will use bilinear upsampling.
         """
-        super(UNet, self).__init__()
+        super(UNetSkipConnection, self).__init__()
         self.padding = 0
         self.depth = depth
-        prev_channels = in_channels
         self.down_path = nn.ModuleList()
-        for i in range(depth):
-            self.down_path.append(
-                UNetConvBlock(prev_channels, 2 ** (wf + i))
-            )
-            prev_channels = 2 ** (wf + i)
-
-        self.up_path = nn.ModuleList()
-        for i in reversed(range(depth - 1)):
-            self.up_path.append(
-                UNetUpBlock(prev_channels, int(prev_channels / 2))
-            )
-            prev_channels = int(prev_channels / 2)
-        self.up_path.append(
-            UNetUpBlock(prev_channels, in_channels, padding=0)
+        self.down_path = nn.Sequential(
+            UNetConvBlock(3, 16),
+            UNetConvBlock(16, 32),
+            UNetConvBlock(32, 64),
         )
-        self.last_sig = nn.Sigmoid()
+
+
+        self.up_path = nn.Sequential(
+            UNetUpBlock(64, 32),
+            UNetUpBlock(32, 16),
+            UNetUpBlock(16, 3),
+        )
+
+        # self.conv_block = double_conv(32, 16)
+
+
 
     def forward(self, x):
         y = x.float()
+        blocks = []
         for i, down in enumerate(self.down_path):
+            blocks.append(y)
             y = down(y)
 
         for i, up in enumerate(self.up_path):
-            y = up(y)
-        
+            y_down = blocks[-i -1]
+            y = up(y, y_down)
+
+        # return out
         return y
         #return self.last_sig(y)
 
 
 class UNetConvBlock(nn.Module):
-    def __init__(self, in_size, out_size):
+    def __init__(self, in_size, out_size, padding=1, stride=2):
         super(UNetConvBlock, self).__init__()
         block = []
-        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, padding=1, bias=True))
+        block.append(nn.Conv2d(in_size, out_size, kernel_size=4, stride=stride, padding=padding, bias=True))
         block.append(nn.ReLU())
         self.block = nn.Sequential(*block)
 
     def forward(self, x):
-
         out = self.block(x)
         return out
 
 
 class UNetUpBlock(nn.Module):
-    def __init__(self, in_size, out_size, padding=1):
+    def __init__(self, in_size, out_size):
         super(UNetUpBlock, self).__init__()
         block = []
-        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, padding=padding, bias=True))
-        block.append(nn.ReLU())
-        self.up = nn.Sequential(*block)
+        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1, bias=True))
+        # block.append(nn.ReLU())
+        self.block = nn.Sequential(*block)
+        self.conv_block = double_conv(out_size * 2, out_size)
+
+    def center_crop(self, layer, target_size):
+        _, _, layer_height, layer_width = layer.size()
+        diff_y = (layer_height - target_size[0]) // 2
+        diff_x = (layer_width - target_size[1]) // 2
+        return layer[
+               :, :, diff_y : (diff_y + target_size[0]), diff_x : (diff_x + target_size[1])
+               ]
+
+    def forward(self, x1, x2):
+        x1_up = self.block(x1)
+        x2_down_crop = self.center_crop(x2, x1_up.shape[2:])
+        out = torch.cat([x1_up, x2_down_crop], 1)
+        out = self.conv_block(out)
+        return out
+
+
+class double_conv(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+    def __init__(self, in_ch, out_ch):
+        super(double_conv, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(inplace=True),
+        )
 
     def forward(self, x):
-        out = self.up(x)
-        return out
+        x = self.conv(x)
+        return x
