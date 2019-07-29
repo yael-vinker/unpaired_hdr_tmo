@@ -44,6 +44,16 @@ def print_image_details(im, title):
     print("type : ", im.dtype)
 
 
+def RGB2YUV(rgb_im):
+
+    m = np.array([[0.29900, -0.16874,  0.50000],
+                  [0.58700, -0.33126, -0.41869],
+                  [0.11400, 0.50000, -0.08131]])
+
+    y = np.dot(rgb_im, m)[:, :, 0]
+    return y
+
+
 def rgb2yiq(imRGB):
     """
     Transform an RGB image into the YIQ color space.

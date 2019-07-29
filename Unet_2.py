@@ -9,7 +9,6 @@ class UNet(nn.Module):
         in_channels=3,
         depth=3,
         wf=4,
-        padding=1,
     ):
         """
         Implementation of

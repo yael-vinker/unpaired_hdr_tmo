@@ -106,8 +106,11 @@ class ToTensor(object):
     def __call__(self, sample):
         IMAGE_SCALE = 100
         image, binary_wind = sample[params.image_key], sample[params.window_image_key]
-        # image = image.transpose((2, 0, 1))
-        # image_tensor = torch.from_numpy(image)
+        if image.ndim == 2:
+            image = image[:, :, None]
+
+        image_tensor = torch.from_numpy(image.transpose((2, 0, 1)))
+
         # print(image_tensor.shape)
         # # height = image_tensor.shape[1]
         # # width = image_tensor.shape[2]
@@ -128,5 +131,5 @@ class ToTensor(object):
         # im_log = torch.log(im100 + 1)
 
         # There is no need to permute "window_image" channels since it has 1 channel
-        return {params.image_key: image,
+        return {params.image_key: image_tensor,
                 params.window_image_key: torch.from_numpy(binary_wind)}

@@ -13,18 +13,16 @@ IMG_EXTENSIONS_local = ('.png', '.bmp')
 IMAGE_MAX_VALUE = 255
 IMAGE_SCALE = 100
 
-def ldr_loader(path, trainMode):
+def ldr_loader(path, input_dim, trainMode):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
     :param path: image path
     :return:
     """
-    # print("-----ldr")
-    # start = time.time()
     path = pathlib.Path(path)
     im_origin = imageio.imread(path)
-    # print("load image ",time.time() - start)
-    # start = time.time()
+    if input_dim == 1:
+        im_origin = hdr_image_utils.RGB2YUV(im_origin)
     if im_origin.shape[0] < 128:
         print(path)
     if im_origin.shape[1] < 128:
@@ -48,11 +46,12 @@ class LdrDatasetFolder(DatasetFolder):
     of numpy arrays that represents hdr_images and window_binary_images.
     """
 
-    def __init__(self, root, trainMode, transform=None, target_transform=None,
+    def __init__(self, root, input_dim, trainMode, transform=None, target_transform=None,
                  loader=ldr_loader):
         super(LdrDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                                      transform=transform,
                                                      target_transform=target_transform)
+        self.input_dim = input_dim
         self.imgs = self.samples
         self.trainMode = trainMode
 
@@ -65,7 +64,7 @@ class LdrDatasetFolder(DatasetFolder):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, target = self.samples[index]
-        sample = self.loader(path, self.trainMode)
+        sample = self.loader(path, self.input_dim, self.trainMode)
         if self.transform is not None:
             sample = self.transform(sample)
         if self.target_transform is not None:

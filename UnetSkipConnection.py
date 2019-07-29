@@ -36,9 +36,10 @@ class UNetSkipConnection(nn.Module):
         super(UNetSkipConnection, self).__init__()
         self.padding = 0
         self.depth = depth
+        self.input_dim = in_channels
         self.down_path = nn.ModuleList()
         self.down_path = nn.Sequential(
-            UNetConvBlock(3, 16),
+            UNetConvBlock(self.input_dim, 16),
             UNetConvBlock(16, 32),
             UNetConvBlock(32, 64),
         )
@@ -47,7 +48,7 @@ class UNetSkipConnection(nn.Module):
         self.up_path = nn.Sequential(
             UNetUpBlock(64, 32),
             UNetUpBlock(32, 16),
-            UNetUpBlock(16, 3),
+            UNetUpBlock(16, self.input_dim),
         )
 
         # self.conv_block = double_conv(32, 16)

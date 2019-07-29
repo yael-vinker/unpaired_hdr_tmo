@@ -32,6 +32,7 @@ import tranforms as tranforms_
 # import tests
 import LdrDatasetFolder
 import HdrImageFolder
+from skimage import exposure
 
 # TODO ask about init BatchNorm weights
 def weights_init(m):
@@ -49,7 +50,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="VAE")
+    parser.add_argument("--model", type=str, default="skip_connection")
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.dataroot_npy)
@@ -61,21 +62,23 @@ def parse_arguments():
     parser.add_argument("--apply_windows_loss", type=str, default="no")
     parser.add_argument("--G_opt_for_single_D", type=int, default=1)
     parser.add_argument("--result_dir_prefix", type=str, default="local")
+    parser.add_argument("--input_dim", type=int, default=1)
     args = parser.parse_args()
-    return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), os.path.join(args.data_root_ldr), \
-            args.checkpoint, os.path.join(args.test_data_root_npy), os.path.join(args.test_data_root_ldr),\
-                os.path.join(args.test_red_wind), args.apply_windows_loss, args.G_opt_for_single_D, args.result_dir_prefix
+    return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
+           os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
+           os.path.join(args.test_data_root_ldr), os.path.join(args.test_red_wind), args.apply_windows_loss, \
+           args.G_opt_for_single_D, args.result_dir_prefix, args.input_dim
 
 
-def create_net(net, device_, is_checkpoint):
+def create_net(net, device_, is_checkpoint, input_dim):
     if net == "G_VAE":
         # Create the Generator (UNet architecture)
-        new_net = Unet_2.UNet().to(device_)
+        new_net = Unet_2.UNet(input_dim).to(device_)
     elif net == "G_skip_connection":
-        new_net = UnetSkipConnection.UNetSkipConnection().to(device_)
+        new_net = UnetSkipConnection.UNetSkipConnection(input_dim).to(device_)
     elif net == "D":
         # Create the Discriminator
-        new_net = Discriminator.Discriminator(params.n_downsamples_d, params.input_dim, params.dim,
+        new_net = Discriminator.Discriminator(params.n_downsamples_d, input_dim, params.dim,
                                               torch.cuda.device_count()).to(device_)
     else:
         assert 0, "Unsupported network request: {}  (creates only G or D)".format(net)
@@ -146,8 +149,8 @@ def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
     plt.close()
 
 
-def create_dir(result_dir_pref, model, model_path, loss_graph_path, result_path):
-    output_dir = os.path.join(result_dir_pref + "_" + model)
+def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_path):
+    output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
         print("Directory ", output_dir, " created")
@@ -176,7 +179,7 @@ class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
                  train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
                  test_red_wind_data, t_isCheckpoint, t_netG, t_netD,
-                 t_optimizerG, t_optimizerD, apply_G_windows_loss, t_g_opt_for_single_d):
+                 t_optimizerG, t_optimizerD, apply_G_windows_loss, t_g_opt_for_single_d, input_dim):
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
         self.device = t_device
@@ -203,7 +206,7 @@ class GanTrainer:
 
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr, \
             self.test_data_loader_red_wind = self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy,
-                                                       test_dataroot_ldr, test_red_wind_data)
+                                                       test_dataroot_ldr, test_red_wind_data, input_dim, testMode=False)
 
         self.window_height, self.window_width = hdr_image_utils.get_window_size(params.image_size, params.image_size)
         self.half_window_height, self.half_window_width, self.quarter_height, self.quarter_width = \
@@ -234,6 +237,7 @@ class GanTrainer:
         return loss / b_size
 
     def save_model(self, path, epoch):
+        path = os.path.join(output_dir, path)
         torch.save({
             'epoch': epoch,
             'modelD_state_dict': self.netD.state_dict(),
@@ -263,8 +267,8 @@ class GanTrainer:
     #     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
     #                                              shuffle=shuffle, num_workers=params.workers)
     #     return dataloader
-    def load_npy_data(self, npy_data_root, shuffle, batch_size, trainMode):
-        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, device=self.device,
+    def load_npy_data(self, npy_data_root, shuffle, batch_size, input_dim, trainMode):
+        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
                                                             transform=transforms.Compose([
                                                             tranforms_.ToTensor(),
                                                             # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
@@ -284,8 +288,8 @@ class GanTrainer:
     #                                                  shuffle=shuffle, num_workers=params.workers)
     #     return ldr_dataloader
 
-    def load_ldr_data(self, ldr_data_root, shuffle, batch_size, trainMode):
-        ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, trainMode=trainMode,
+    def load_ldr_data(self, ldr_data_root, shuffle, batch_size, input_dim, trainMode):
+        ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, input_dim=input_dim, trainMode=trainMode,
                                        transform=transforms.Compose([
                                            transforms.ToTensor(),
                                            # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -351,7 +355,7 @@ class GanTrainer:
 
         test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
         test_hdr_loader_single = np.asarray(test_hdr_loader[0])
-        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+        print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
                test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
         # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
@@ -368,27 +372,28 @@ class GanTrainer:
         # plt.show()
 
 
-    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr, images_number=4, testMode=False):
+    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr,
+                  input_dim, testMode, images_number=4):
         """
         :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
         :param dir_root: path to wanted directory
         :param b_size: batch size
         :return: DataLoader object of images in "dir_root"
         """
-        train_npy_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size, trainMode=True)
+        train_npy_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size, input_dim, trainMode=True)
         hdr_train_sample = self.get_single_hdr_im(train_root_npy, images_number)
 
         # test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, trainMode=False)
-        test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, trainMode=True)
+        test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, input_dim, trainMode=True)
         hdr_test_sample = self.get_single_hdr_im(test_root_npy, images_number)
 
-        train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, self.batch_size, trainMode=True)
+        train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, self.batch_size, input_dim, trainMode=True)
         ldr_train_sample = self.get_single_ldr_im(train_root_ldr, images_number)
 
         # test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, trainMode=False)
-        test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, trainMode=True)
+        test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, input_dim, trainMode=True)
         ldr_test_sample = self.get_single_ldr_im(test_root_ldr, images_number)
-        test_ldr_red_wind_data = self.load_ldr_data(test_root_red_wind_ldr, False, 24, trainMode=True)
+        test_ldr_red_wind_data = self.load_ldr_data(test_root_red_wind_ldr, False, 24, input_dim, trainMode=True)
         
         print("\ntrain_npy_dataset [%d] images" % (len(train_npy_dataloader.dataset)))
         for i in range(images_number):
@@ -489,8 +494,8 @@ class GanTrainer:
             # self.G_accuracy.append(self.accG.item())
             # self.errG = self.criterion(output_on_fake, label)
             self.errG = self.custom_loss(output_on_fake, label)
-            self.errG.backward()
-            self.optimizerG.step()
+            #self.errG.backward()
+            #self.optimizerG.step()
             fake = self.netG(real_hdr_cpu)
         self.G_losses.append(self.errG.item())
 
@@ -630,7 +635,7 @@ class GanTrainer:
                 self.save_loss_plot(epoch, output_dir)
 
 
-    def save_groups_images(self, test_hdr_image, first_b_tonemap, fake, red_wind, new_out_dir):
+    def save_groups_images(self, test_hdr_image, first_b_tonemap, fake, new_out_dir):
         # test_hdr_display = self.display_batch_as_grid(test_hdr_image, ncols_to_display=self.batch_size, isHDR=True)
         # test_hdr_display_small = self.display_batch_as_grid(test_hdr_image, ncols_to_display=2, isHDR=True)
         b_size = first_b_tonemap.shape[0]
@@ -648,7 +653,11 @@ class GanTrainer:
             plt.subplot(3, 1, 2)
             plt.axis("off")
             plt.title("Processed Images")
-            plt.imshow(test_hdr_display)
+            if test_hdr_display.shape[2] == 1:
+                plt.imshow(test_hdr_display[:, :, 0], cmap='gray')
+            else:
+                plt.imshow(test_hdr_display)
+            # plt.imshow(test_hdr_display)
 
             img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5, normalize=True)]
             plt.subplot(3, 1, 3)
@@ -718,10 +727,19 @@ class GanTrainer:
             cur_im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
             if isHDR:
                 norm_im = (np.exp(cur_im) - 1) / IMAGE_SCALE
-                tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
-                im1_dub = tone_map1.process(norm_im.copy()[:, :, ::-1])
-                im1 = (im1_dub * IMAGE_MAX_VALUE).astype("uint8")
-                norm_im = im1
+                if norm_im.shape[2] == 1:
+                    gamma_corrected = exposure.adjust_gamma(norm_im, 0.5)
+                    im1 = (gamma_corrected * IMAGE_MAX_VALUE).astype("uint8")
+                    # norm_im = im1[:, :, 0]
+                    norm_im = im1
+                else:
+                    tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
+                    im1_dub = tone_map1.process(norm_im.copy()[:, :, ::-1])
+                    im1 = (im1_dub * IMAGE_MAX_VALUE).astype("uint8")
+                    norm_im = im1
+                # print(norm_im[:,:,0].shape)
+                # plt.imshow(norm_im[:,:,0], cmap='gray')
+                # plt.show()
 
             else:
                 # hdr_image_utils.print_image_details(cur_im, str(i) + "before")
@@ -740,10 +758,7 @@ class GanTrainer:
         xmaps = min(ncols_to_display, nmaps)
         ymaps = int(math.ceil(float(nmaps) / xmaps))
         height, width = int(norm_batch.shape[1]), int(norm_batch.shape[2])
-        #print("height=",height)
-        #print("ymaps=",ymaps)
-        grid = np.full((height * ymaps, width * xmaps, 3), pad_value)
-       # print("grid_shape ",grid.shape)
+        grid = np.full((height * ymaps, width * xmaps, norm_batch.shape[3]), pad_value)
         k = 0
         for y in range(ymaps):
             for x in range(xmaps):
@@ -771,8 +786,8 @@ class GanTrainer:
         test_first_b_tonemap_display = self.display_batch_as_grid(test_first_b_tonemap, ncols_to_display=self.batch_size)
         test_first_b_display_small = self.display_batch_as_grid(test_first_b_tonemap, ncols_to_display=2)
         
-        test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
-        test_first_b_red_wind = test_red_wind_batch[0].to(device)
+        # test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
+        # test_first_b_red_wind = test_red_wind_batch[0].to(device)
 
         test_real_batch_hdr = next(iter(self.test_data_loader_npy))
         test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
@@ -800,14 +815,21 @@ class GanTrainer:
         plt.title("Real Images")
         # plt.imshow(
         #     np.transpose(vutils.make_grid(test_first_b_tonemap[:self.batch_size], padding=5).cpu(), (1, 2, 0)))
-        plt.imshow(test_first_b_tonemap_display)
+        if test_first_b_tonemap_display.shape[2] == 1:
+            plt.imshow(test_first_b_tonemap_display[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(test_first_b_tonemap_display)
 
         plt.subplot(2, 2, 2)
         plt.axis("off")
         plt.title("Real Images")
         # plt.imshow(
         #     np.transpose(vutils.make_grid(test_first_b_tonemap[:2], padding=5, normalize=True).cpu(), (1, 2, 0)))
-        plt.imshow(test_first_b_display_small)
+        if test_first_b_display_small.shape[2] == 1:
+            plt.imshow(test_first_b_display_small[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(test_first_b_display_small)
+        # plt.imshow(test_first_b_display_small)
 
         # img_list1 = [vutils.make_grid(fake[:self.batch_size], padding=5, normalize=True)]
         # img_list2 = [vutils.make_grid(fake[:2], padding=5, normalize=True)]
@@ -815,16 +837,24 @@ class GanTrainer:
         plt.axis("off")
         plt.title("Fake Images")
         # plt.imshow(np.transpose(img_list1[-1].cpu(), (1, 2, 0)))
-        plt.imshow(fake_display)
+        if fake_display.shape[2] == 1:
+            plt.imshow(fake_display[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(fake_display)
+        # plt.imshow(fake_display)
 
         plt.subplot(2, 2, 4)
         plt.axis("off")
         plt.title("Fake Images")
         # plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
-        plt.imshow(fake_display_small)
+        if fake_display_small.shape[2] == 1:
+            plt.imshow(fake_display_small[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(fake_display_small)
+        # plt.imshow(fake_display_small)
         plt.savefig(os.path.join(new_out_dir, "ALL epoch = " + str(epoch)))
         plt.close()
-        self.save_groups_images(test_hdr_image, test_first_b_tonemap, fake, test_first_b_red_wind, new_out_dir)
+        self.save_groups_images(test_hdr_image, test_first_b_tonemap, fake, new_out_dir)
 
 
     def test(self):
@@ -851,7 +881,7 @@ class GanTrainer:
 if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
         test_data_root_npy, test_data_root_ldr, test_red_wind_data, apply_windows_loss_str, g_opt_for_single_d,\
-        result_dir_pref = parse_arguments()
+        result_dir_pref, input_dim = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     # device = torch.device("cpu")
@@ -876,16 +906,16 @@ if __name__ == '__main__':
     print("DEVICE:", device)
     print("=====================\n")
 
-    net_G = create_net("G_" + model, device, isCheckpoint)
+    net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (3, 128, 128))
+    summary(net_G, (input_dim, 128, 128))
     print()
 
-    net_D = create_net("D", device, isCheckpoint)
+    net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (3, 128, 128))
+    summary(net_D, (input_dim, 128, 128))
     print()
 
     # Setup Adam optimizers for both G and D
@@ -896,7 +926,7 @@ if __name__ == '__main__':
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d)
+                             net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d, input_dim)
 
     gan_trainer.train(output_dir)
     # gan_trainer.test()
