@@ -1,30 +1,11 @@
 import os
 
-# dataroot_hdr = "transfer_to_ldr/hdr_images_small_wrap"
-dataroot_hdr_2 = "transfer_to_ldr/hdr_images_small_wrap/hdr_images"
-# dataroot_ldr = "transfer_to_ldr/ldr_images_small_wrap"
-dataroot_output = "transfer_to_ldr/processed_data"
-test_data_hdr_tonemap = "transfer_to_ldr/hdr_images_small_wrap"
-test_data_hdr = "transfer_to_ldr/processed_data"
-# dataroot_output = "transfer_to_ldr/processed_data"
-
-# dataroot_npy = "data/npy_data"
-dataroot_npy = "data/hdr_data"
-dataroot_ldr = "data/ldr_data2"
-# test_dataroot_npy = "data/test_npy_data"
-test_dataroot_npy = "data/hdr_data_test"
-test_dataroot_ldr = "data/ldr_data2"
-test_dataroot_red_wind_ldr = "data/red_hdr_wind_data"
+train_dataroot_hdr = "data/check_data/train_fake"
+train_dataroot_ldr = "data/check_data/train_real"
+test_dataroot_hdr = "data/check_data/test_fake"
+test_dataroot_ldr = "data/check_data/test_real"
+test_dataroot_red_wind_ldr = "data/check_data/test_real"
 apply_windows_loss = False
-
-# s_dataroot_npy = "data/npy_data"
-# s_dataroot_ldr = "data/ldr_data"
-s_test_dataroot_npy = "data/test_npy_data"
-s_test_dataroot_ldr = "data/test_ldr_data"
-s_test_dataroot_red_wind_ldr = "data/red_hdr_wind_data"
-
-
-
 
 image_key = "hdr_image"
 window_image_key = "binary_windows"

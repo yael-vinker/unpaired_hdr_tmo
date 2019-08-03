@@ -53,16 +53,16 @@ def parse_arguments():
     parser.add_argument("--model", type=str, default="skip_connection")
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
-    parser.add_argument("--data_root_npy", type=str, default=params.dataroot_npy)
-    parser.add_argument("--data_root_ldr", type=str, default=params.dataroot_ldr)
+    parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
+    parser.add_argument("--data_root_ldr", type=str, default=params.train_dataroot_ldr)
     parser.add_argument("--checkpoint", type=str, default="no")
-    parser.add_argument("--test_data_root_npy", type=str, default=params.test_dataroot_npy)
+    parser.add_argument("--test_data_root_npy", type=str, default=params.test_dataroot_hdr)
     parser.add_argument("--test_data_root_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--test_red_wind", type=str, default=params.test_dataroot_red_wind_ldr)
     parser.add_argument("--apply_windows_loss", type=str, default="no")
     parser.add_argument("--G_opt_for_single_D", type=int, default=1)
     parser.add_argument("--result_dir_prefix", type=str, default="local")
-    parser.add_argument("--input_dim", type=int, default=1)
+    parser.add_argument("--input_dim", type=int, default=3)
     args = parser.parse_args()
     return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
@@ -150,7 +150,8 @@ def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
 
 
 def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_path):
-    output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
+    # output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
+    output_dir = os.path.join(result_dir_pref + "_" + model_name)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
         print("Directory ", output_dir, " created")
@@ -329,7 +330,10 @@ class GanTrainer:
         for i in range(images_number):
             im_name = os.listdir(dir_path)[i]
             im_path = os.path.join(dir_path, im_name)
-            im_origin = imageio.imread(im_path, format='HDR-FI')
+            # im_origin = imageio.imread(im_path, format='HDR-FI')
+            im_origin = imageio.imread(im_path)
+            # im_origin = cv2.imread(im_path)
+            # print(im_origin.shape)
             images.append((im_name, im_origin))
         return images
 
@@ -928,5 +932,5 @@ if __name__ == '__main__':
                              test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
                              net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d, input_dim)
 
-    gan_trainer.train(output_dir)
+    # gan_trainer.train(output_dir)
     # gan_trainer.test()

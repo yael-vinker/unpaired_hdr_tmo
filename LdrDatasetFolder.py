@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import hdr_image_utils
 import time
 
-IMG_EXTENSIONS_local = ('.png', '.bmp')
+IMG_EXTENSIONS_local = ('.png', '.bmp', '.jpg')
 IMAGE_MAX_VALUE = 255
 IMAGE_SCALE = 100
 
@@ -23,19 +23,19 @@ def ldr_loader(path, input_dim, trainMode):
     im_origin = imageio.imread(path)
     if input_dim == 1:
         im_origin = hdr_image_utils.RGB2YUV(im_origin)
-    if im_origin.shape[0] < 128:
-        print(path)
-    if im_origin.shape[1] < 128:
-        print(path)
-    if trainMode:
-        height = im_origin.shape[0] - 128
-        width = im_origin.shape[1] - 128
-        rand_x = random.randint(0, width)
-        rand_y = random.randint(0, height)
-        im = im_origin[rand_y: rand_y + 128, rand_x: rand_x + 128]
-    else:
-        im = cv2.resize(im_origin, (128, 128))
-    # print("slice image ",time.time() - start)
+    # if im_origin.shape[0] < 128:
+    #     print(path)
+    # if im_origin.shape[1] < 128:
+    #     print(path)
+    # if trainMode:
+    #     height = im_origin.shape[0] - 128
+    #     width = im_origin.shape[1] - 128
+    #     rand_x = random.randint(0, width)
+    #     rand_y = random.randint(0, height)
+    #     im = im_origin[rand_y: rand_y + 128, rand_x: rand_x + 128]
+    # else:
+    #     im = cv2.resize(im_origin, (128, 128))
+    im = im_origin
     im100 = (im / IMAGE_MAX_VALUE) * IMAGE_SCALE
     im_log = np.log(im100 + 1)
     return im_log
