@@ -50,7 +50,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="skip_connection")
+    parser.add_argument("--model", type=str, default="VAE")
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -138,7 +138,7 @@ def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
     plt.figure()
     plt.plot(range(iters_n), acc_D_fake, '-r', label='acc D fake')
     plt.plot(range(iters_n), acc_D_real, '-b', label='acc D real')
-    plt.plot(range(iters_n), acc_G, '-g', label='acc G')
+    # plt.plot(range(iters_n), acc_G, '-g', label='acc G')
 
     plt.xlabel("n iteration")
     plt.legend(loc='upper left')
@@ -391,7 +391,8 @@ class GanTrainer:
         test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, input_dim, trainMode=True)
         hdr_test_sample = self.get_single_hdr_im(test_root_npy, images_number)
 
-        train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, self.batch_size, input_dim, trainMode=True)
+        half_batch_size = int(self.batch_size / 2)
+        train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, half_batch_size, input_dim, trainMode=True)
         ldr_train_sample = self.get_single_ldr_im(train_root_ldr, images_number)
 
         # test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, trainMode=False)
@@ -437,7 +438,7 @@ class GanTrainer:
         return loss
 
 
-    def train_D(self, real_hdr_cpu, real_ldr_cpu, label):
+    def train_D(self, hdr_input, real_ldr_cpu, half_batch_size):
         """
         Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         :param real_hdr_cpu: HDR images as input to G to generate fake data
@@ -445,10 +446,14 @@ class GanTrainer:
         :param label: Tensor contains real labels for first loss
         :return: fake (Tensor) result of G on hdr_data, for G train
         """
+        label = torch.full((half_batch_size,), self.real_label, device=self.device)
         # Train with all-real batch
         self.netD.zero_grad()
         # Forward pass real batch through D
+        # real_ldr_half_batch = real_ldr_cpu[0: half_batch_size]
+        print("real_ldr ",real_ldr_cpu.shape)
         output_on_real = self.netD(real_ldr_cpu).view(-1)
+        # output_on_real = self.netD(real_ldr_half_batch).view(-1)
         # Real label = 1, so we count the samples on which D was right
         self.accDreal_counter += (output_on_real > 0.5).sum().item()
         # self.D_accuracy_real.append(self.accDreal.item())
@@ -460,12 +465,16 @@ class GanTrainer:
 
         # Train with all-fake batch
         # Generate fake image batch with G
-        fake = self.netG(real_hdr_cpu)
+        hdr_input_half_batch = hdr_input[0: half_batch_size]
+        print("hdr_input_half_batch ", hdr_input_half_batch.shape)
+        fake = self.netG(hdr_input_half_batch)
+        print("fake ", fake.shape)
+        # fake = self.netG(hdr_input)
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
         # Fake label = 0, so we count the samples on which D was right
-        self.accDfake_counter += (output_on_fake < 0.5).sum().item()
+        self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
         # self.D_accuracy_fake.append(self.accDfake.item())
         # Calculate D's loss on the all-fake batch
         self.errD_fake = self.custom_loss(output_on_fake, label)
@@ -479,28 +488,27 @@ class GanTrainer:
         self.D_losses.append(self.errD.item())
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
-        return fake
 
-    def train_G(self, label, fake, real_hdr_cpu, windows_im):
+    def train_G(self, label, hdr_input):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
         :param fake: (Tensor) result of G on hdr_data
         :param real_hdr_cpu: HDR images as input to windows_loss
         """
-        for step in range(self.g_opt_for_single_d):
-            self.netG.zero_grad()
-            label.fill_(self.real_label)  # fake labels are real for generator cost
-            # Since we just updated D, perform another forward pass of all-fake batch through D
-            output_on_fake = self.netD(fake).view(-1)
-            # Real label = 1, so wo count number of samples on which G tricked D
-            self.accG_counter += (output_on_fake > 0.5).sum().item()
-            # self.G_accuracy.append(self.accG.item())
-            # self.errG = self.criterion(output_on_fake, label)
-            self.errG = self.custom_loss(output_on_fake, label)
-            #self.errG.backward()
-            #self.optimizerG.step()
-            fake = self.netG(real_hdr_cpu)
+        # for step in range(self.g_opt_for_single_d):
+        self.netG.zero_grad()
+        label.fill_(self.real_label)  # fake labels are real for generator cost
+        # Since we just updated D, perform another forward pass of all-fake batch through D
+        fake = self.netG(hdr_input)
+        output_on_fake = self.netD(fake).view(-1)
+        # Real label = 1, so wo count number of samples on which G tricked D
+        self.accG_counter += (output_on_fake > 0.5).sum().item()
+        # self.G_accuracy.append(self.accG.item())
+        # self.errG = self.criterion(output_on_fake, label)
+        self.errG = self.custom_loss(output_on_fake, label)
+        self.errG.backward()
+        self.optimizerG.step()
         self.G_losses.append(self.errG.item())
 
 
@@ -535,16 +543,24 @@ class GanTrainer:
         train_smaller_len = len_hdr_train_dset if len_hdr_train_dset < len_ldr_train_dset else len_ldr_train_dset
 
         if isTest:
-            self.accG_test = self.accG_counter / test_smaller_len
+            self.accG_test = self.accG_counter / len_hdr_test_dset
             self.accDreal_test = self.accDreal_counter / test_smaller_len
             self.accDfake_test = self.accDfake_counter / test_smaller_len
+            print("accG_test ", self.accG_test ,"=", "accG_counter ", self.accG_counter, "/ len_hdr_test_dset",  len_hdr_test_dset)
+            self.accDreal_test = self.accDreal_counter / test_smaller_len
+            print("accDreal_test ", self.accDreal_test, "=", "accDreal_counter ", self.accDreal_counter, "/ test_smaller_len",
+                  test_smaller_len)
+            self.accDfake_test = self.accDfake_counter / test_smaller_len
+            print("accDfake_test ", self.accDfake_test, "=", "accDfake_counter ", self.accDfake_counter,
+                  "/ test_smaller_len",
+                  test_smaller_len)
             self.G_accuracy_test.append(self.accG_test)
             self.D_accuracy_real_test.append(self.accDreal_test)
             self.D_accuracy_fake_test.append(self.accDfake_test)
         else:
-            self.accG = self.accG_counter / train_smaller_len
-            self.accDreal = self.accDreal_counter / train_smaller_len
-            self.accDfake = self.accDfake_counter / train_smaller_len
+            self.accG = self.accG_counter / len_hdr_train_dset
+            self.accDreal = self.accDreal_counter / len_ldr_train_dset
+            self.accDfake = self.accDfake_counter / len_ldr_train_dset
             self.G_accuracy.append(self.accG)
             self.D_accuracy_real.append(self.accDreal)
             self.D_accuracy_fake.append(self.accDfake)
@@ -558,17 +574,18 @@ class GanTrainer:
             self.num_iter += 1
             with autograd.detect_anomaly():
                 real_ldr_cpu = data_ldr[0].to(self.device)
-                b_size = real_ldr_cpu.size(0)
+                hdr_input = data_hdr[params.image_key].to(self.device)
+                b_size = hdr_input.size(0)
                 label = torch.full((b_size,), self.real_label, device=self.device)
-                real_hdr_cpu = data_hdr[params.image_key].to(self.device)
-                windows_im = data_hdr[params.window_image_key].to(self.device)
 
-                fake = self.train_D(real_hdr_cpu, real_ldr_cpu, label)
-                if self.apply_windows_loss:
-                    self.train_G_wind_loss(label, fake, real_hdr_cpu, windows_im)
-                else:
-                    self.train_G(label, fake, real_hdr_cpu, windows_im)
+                half_batch_size = int(self.batch_size / 2)
+                self.train_D(hdr_input, real_ldr_cpu, half_batch_size)
+                # if self.apply_windows_loss:
+                #     self.train_G_wind_loss(label, fake, real_hdr_cpu, windows_im)
+                # else:
+                self.train_G(label, hdr_input)
             print("Single [batch] iteration took [%.4f] seconds" % (time.time() - start))
+        print("num iters = ", self.num_iter)
         self.update_accuracy()
 
 
@@ -684,7 +701,7 @@ class GanTrainer:
 
             fake_label = torch.full((b_size,), self.fake_label, device=self.device)
             output_on_fake = self.netD(fake.detach()).view(-1)
-            self.accDfake_counter += (output_on_fake < 0.5).sum().item()
+            self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
 
             test_errD_fake = self.criterion(output_on_fake, fake_label)
             test_loss_D = test_errD_real + test_errD_fake
@@ -736,11 +753,11 @@ class GanTrainer:
                     im1 = (gamma_corrected * IMAGE_MAX_VALUE).astype("uint8")
                     # norm_im = im1[:, :, 0]
                     norm_im = im1
-                else:
-                    tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
-                    im1_dub = tone_map1.process(norm_im.copy()[:, :, ::-1])
-                    im1 = (im1_dub * IMAGE_MAX_VALUE).astype("uint8")
-                    norm_im = im1
+                # else:
+                #     tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
+                #     im1_dub = tone_map1.process(norm_im.copy()[:, :, ::-1])
+                #     im1 = (im1_dub * IMAGE_MAX_VALUE).astype("uint8")
+                #     norm_im = im1
                 # print(norm_im[:,:,0].shape)
                 # plt.imshow(norm_im[:,:,0], cmap='gray')
                 # plt.show()
@@ -913,13 +930,13 @@ if __name__ == '__main__':
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (input_dim, 128, 128))
+    summary(net_G, (input_dim, 256, 256))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (input_dim, 128, 128))
+    summary(net_D, (input_dim, 256, 256))
     print()
 
     # Setup Adam optimizers for both G and D
@@ -932,5 +949,5 @@ if __name__ == '__main__':
                              test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
                              net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d, input_dim)
 
-    # gan_trainer.train(output_dir)
+    gan_trainer.train(output_dir)
     # gan_trainer.test()

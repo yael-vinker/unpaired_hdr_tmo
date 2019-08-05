@@ -39,18 +39,18 @@ class UNet(nn.Module):
         self.down_path = nn.ModuleList()
         for i in range(depth):
             self.down_path.append(
-                UNetConvBlock(prev_channels, 2 ** (wf + i))
+                Encoder(prev_channels, 2 ** (wf + i))
             )
             prev_channels = 2 ** (wf + i)
 
         self.up_path = nn.ModuleList()
         for i in reversed(range(depth - 1)):
             self.up_path.append(
-                UNetUpBlock(prev_channels, int(prev_channels / 2))
+                Decoder(prev_channels, int(prev_channels / 2))
             )
             prev_channels = int(prev_channels / 2)
         self.up_path.append(
-            UNetUpBlock(prev_channels, in_channels, padding=0)
+            Decoder(prev_channels, in_channels, padding=0)
         )
         self.last_sig = nn.Sigmoid()
 
@@ -66,11 +66,11 @@ class UNet(nn.Module):
         #return self.last_sig(y)
 
 
-class UNetConvBlock(nn.Module):
+class Encoder(nn.Module):
     def __init__(self, in_size, out_size):
-        super(UNetConvBlock, self).__init__()
+        super(Encoder, self).__init__()
         block = []
-        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, padding=1, bias=True))
+        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, padding=2, bias=True))
         block.append(nn.ReLU())
         self.block = nn.Sequential(*block)
 
@@ -80,11 +80,11 @@ class UNetConvBlock(nn.Module):
         return out
 
 
-class UNetUpBlock(nn.Module):
+class Decoder(nn.Module):
     def __init__(self, in_size, out_size, padding=1):
-        super(UNetUpBlock, self).__init__()
+        super(Decoder, self).__init__()
         block = []
-        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, padding=padding, bias=True))
+        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, padding=2, output_padding=1, bias=True))
         block.append(nn.ReLU())
         self.up = nn.Sequential(*block)
 

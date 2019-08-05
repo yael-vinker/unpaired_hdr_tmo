@@ -49,8 +49,10 @@ def hdr_loader(path, input_dim, trainMode):
 
     im = im_origin
     max_origin = np.max(im)
-    im100 = (im / max_origin) * IMAGE_SCALE
-    im_log = np.log(im100 + 1)
+    im = im_origin / max_origin
+    im_log = np.log(im + 1)
+    # im100 = (im / max_origin) * IMAGE_SCALE
+    # im_log = np.log(im100 + 1)
     return im_log
 
 

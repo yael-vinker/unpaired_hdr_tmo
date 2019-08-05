@@ -107,7 +107,6 @@ class ToTensor(object):
         IMAGE_SCALE = 100
         image, binary_wind = sample[params.image_key], sample[params.window_image_key]
         if image.ndim == 2:
-            print("image.ndim == 2")
             image = image[:, :, None]
 
         image_tensor = torch.from_numpy(image.transpose((2, 0, 1)))

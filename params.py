@@ -1,8 +1,9 @@
 import os
 
-train_dataroot_hdr = "data/check_data/train_fake"
+train_dataroot_hdr = "data/check_data/triangle_train_fake"
 train_dataroot_ldr = "data/check_data/train_real"
-test_dataroot_hdr = "data/check_data/test_fake"
+
+test_dataroot_hdr = "data/check_data/triangle_test_fake"
 test_dataroot_ldr = "data/check_data/test_real"
 test_dataroot_red_wind_ldr = "data/check_data/test_real"
 apply_windows_loss = False
@@ -14,10 +15,8 @@ models_save_path = os.path.join("models", "net.pth")
 loss_path = os.path.join("loss_plot")
 results_path = os.path.join("result_images")
 
-n_downsample = 2
-n_downsamples_d = 4
-# n_downsamples_d = 3
-input_dim = 3
+n_downsample = 1
+n_downsamples_d = 5
 dim = 6
 # Number of workers for dataloader
 workers = 8
