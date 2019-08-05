@@ -58,15 +58,13 @@ def parse_arguments():
     parser.add_argument("--checkpoint", type=str, default="no")
     parser.add_argument("--test_data_root_npy", type=str, default=params.test_dataroot_hdr)
     parser.add_argument("--test_data_root_ldr", type=str, default=params.test_dataroot_ldr)
-    parser.add_argument("--test_red_wind", type=str, default=params.test_dataroot_red_wind_ldr)
-    parser.add_argument("--apply_windows_loss", type=str, default="no")
     parser.add_argument("--G_opt_for_single_D", type=int, default=1)
     parser.add_argument("--result_dir_prefix", type=str, default="local")
     parser.add_argument("--input_dim", type=int, default=3)
     args = parser.parse_args()
     return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
-           os.path.join(args.test_data_root_ldr), os.path.join(args.test_red_wind), args.apply_windows_loss, \
+           os.path.join(args.test_data_root_ldr), \
            args.G_opt_for_single_D, args.result_dir_prefix, args.input_dim
 
 
@@ -178,9 +176,8 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
 
 class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
-                 train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
-                 test_red_wind_data, t_isCheckpoint, t_netG, t_netD,
-                 t_optimizerG, t_optimizerD, apply_G_windows_loss, t_g_opt_for_single_d, input_dim):
+                 train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, t_isCheckpoint, t_netG, t_netD,
+                 t_optimizerG, t_optimizerD, t_g_opt_for_single_d, input_dim):
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
         self.device = t_device
@@ -189,7 +186,6 @@ class GanTrainer:
         self.optimizerD = t_optimizerD
         self.optimizerG = t_optimizerG
         self.isCheckpoint = t_isCheckpoint
-        self.apply_windows_loss = apply_G_windows_loss
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
         self.checkpoint = None
@@ -205,9 +201,9 @@ class GanTrainer:
         self.test_G_losses, self.test_G_loss_window, self.test_G_loss_d = [], [], []
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
 
-        self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr, \
-            self.test_data_loader_red_wind = self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy,
-                                                       test_dataroot_ldr, test_red_wind_data, input_dim, testMode=False)
+        self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr = \
+            self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
+                           input_dim, testMode=False)
 
         self.window_height, self.window_width = hdr_image_utils.get_window_size(params.image_size, params.image_size)
         self.half_window_height, self.half_window_width, self.quarter_height, self.quarter_width = \
@@ -376,7 +372,7 @@ class GanTrainer:
         # plt.show()
 
 
-    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, test_root_red_wind_ldr,
+    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr,
                   input_dim, testMode, images_number=4):
         """
         :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
@@ -398,7 +394,6 @@ class GanTrainer:
         # test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, trainMode=False)
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, input_dim, trainMode=True)
         ldr_test_sample = self.get_single_ldr_im(test_root_ldr, images_number)
-        test_ldr_red_wind_data = self.load_ldr_data(test_root_red_wind_ldr, False, 24, input_dim, trainMode=True)
         
         print("\ntrain_npy_dataset [%d] images" % (len(train_npy_dataloader.dataset)))
         for i in range(images_number):
@@ -424,11 +419,9 @@ class GanTrainer:
             im_name, im = sample[0], sample[1]
             print(im_name + "    max[%4.f]  min[%4.f]  dtype[%s]  " % (float(np.max(im)), float(np.min(im)), im.dtype))
 
-        print("\ntest_red_wind [%d] images" % len(test_ldr_red_wind_data.dataset))
-
         if testMode:
             self.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
-        return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader, test_ldr_red_wind_data
+        return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader
 
 
 
@@ -451,7 +444,7 @@ class GanTrainer:
         self.netD.zero_grad()
         # Forward pass real batch through D
         # real_ldr_half_batch = real_ldr_cpu[0: half_batch_size]
-        print("real_ldr ",real_ldr_cpu.shape)
+        # print("real_ldr ",real_ldr_cpu.shape)
         output_on_real = self.netD(real_ldr_cpu).view(-1)
         # output_on_real = self.netD(real_ldr_half_batch).view(-1)
         # Real label = 1, so we count the samples on which D was right
@@ -466,9 +459,9 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         hdr_input_half_batch = hdr_input[0: half_batch_size]
-        print("hdr_input_half_batch ", hdr_input_half_batch.shape)
+        # print("hdr_input_half_batch ", hdr_input_half_batch.shape)
         fake = self.netG(hdr_input_half_batch)
-        print("fake ", fake.shape)
+        # print("fake ", fake.shape)
         # fake = self.netG(hdr_input)
         label.fill_(self.fake_label)
         # Classify all fake batch with D
@@ -510,28 +503,6 @@ class GanTrainer:
         self.errG.backward()
         self.optimizerG.step()
         self.G_losses.append(self.errG.item())
-
-
-    def train_G_wind_loss(self, label, fake, real_hdr_cpu, windows_im):
-        """
-        Update G network: maximize log(D(G(z))) and minimize loss_wind
-        :param label: Tensor contains real labels for first loss
-        :param fake: (Tensor) result of G on hdr_data
-        :param real_hdr_cpu: HDR images as input to windows_loss
-        """
-        self.netG.zero_grad()
-        label.fill_(self.real_label)  # fake labels are real for generator cost
-        # Since we just updated D, perform another forward pass of all-fake batch through D
-        output_on_fake = self.netD(fake).view(-1)
-        self.errGd = self.criterion(output_on_fake, label)
-        self.errGwin = self.windows_loss(fake, real_hdr_cpu.detach(), windows_im.detach())
-        self.errG = self.errGwin + (params.g_d_loss_factor * self.errGd)
-        self.errG.backward()
-        self.optimizerG.step()
-        self.G_losses.append(self.errG.item())
-        self.G_loss_window.append(self.errGwin.item())
-        self.G_loss_d.append(self.errGd.item())
-
 
     def update_accuracy(self, isTest=False):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
@@ -580,15 +551,10 @@ class GanTrainer:
 
                 half_batch_size = int(self.batch_size / 2)
                 self.train_D(hdr_input, real_ldr_cpu, half_batch_size)
-                # if self.apply_windows_loss:
-                #     self.train_G_wind_loss(label, fake, real_hdr_cpu, windows_im)
-                # else:
                 self.train_G(label, hdr_input)
             print("Single [batch] iteration took [%.4f] seconds" % (time.time() - start))
         print("num iters = ", self.num_iter)
         self.update_accuracy()
-
-
 
 
     def print_cuda_details(self):
@@ -613,12 +579,7 @@ class GanTrainer:
               % (epoch, self.num_epochs, self.accDreal_test, self.accDfake_test, self.accG_test))
 
     def print_epoch_losses_summary(self, epoch):
-        if self.apply_windows_loss:
-            print('[%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tLoss_G_window: %.4f\tLoss_G_d_factorized: %.4f \tLoss_G_d: %.4f'
-              % (epoch, self.num_epochs, self.errD.item(), self.errG.item(), self.errGwin.item(),
-                 self.errGd.item() * params.g_d_loss_factor, self.errGd.item()))
-        else:
-            print('[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f \tLoss_G: %.4f'
+        print('[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f \tLoss_G: %.4f'
                   % (epoch, self.num_epochs, self.errD.item(), self.errD_real.item(), self.errD_fake.item(), self.errG.item()))
         print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f\n'
             % (epoch, self.num_epochs, self.accDreal, self.accDfake, self.accG))
@@ -630,9 +591,6 @@ class GanTrainer:
                             self.num_iter, loss_path)
         plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real, "accuracy epoch = "+ str(epoch),
                               self.epoch, acc_path)
-        if self.apply_windows_loss:
-            plot_specific_losses(self.G_loss_window, self.G_loss_d, self.D_loss_fake, self.D_loss_real,
-                             "detailed loss, epoch = " + str(epoch), self.num_iter, loss_path)
 
     def train(self, output_dir):
         self.print_cuda_details()
@@ -689,7 +647,7 @@ class GanTrainer:
             plt.close()
 
 
-    def update_test_loss(self, b_size, first_b_tonemap, fake, epoch, test_hdr_image, test_windows_im):
+    def update_test_loss(self, b_size, first_b_tonemap, fake, epoch):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         with torch.no_grad():
             real_label = torch.full((b_size,), self.real_label, device=self.device)
@@ -711,25 +669,9 @@ class GanTrainer:
             output_on_fake = self.netD(fake.detach()).view(-1)
             self.accG_counter += (output_on_fake > 0.5).sum().item()
             test_errGd = self.criterion(output_on_fake, real_label)
-            if self.apply_windows_loss:
-
-                test_errGwin = self.windows_loss(fake.detach(), test_hdr_image.detach(), test_windows_im.detach())
-                self.test_G_loss_d.append(test_errGd.item())
-                self.test_G_loss_window.append(test_errGwin.item())
-                self.test_G_losses.append((test_errGd + test_errGwin).item())
-                print("===== Test results =====")
-                print(
-                    '[%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tLoss_G_window: %.4f\tLoss_G_d_factorized: %.4f \tLoss_G_d: %.4f'
-                    % (
-                    epoch, self.num_epochs, test_loss_D, test_errGd, test_errGwin, test_errGd * params.g_d_loss_factor,
-                    test_errGd))
-                plot_specific_losses(self.test_G_loss_window, self.test_G_loss_d, self.test_D_loss_fake,
-                                     self.test_D_loss_real,
-                                     "TEST detailed loss, epoch = " + str(epoch), self.test_num_iter, params.loss_path)
-            else:
-                self.test_G_losses.append(test_errGd.item())
-                self.update_accuracy(isTest=True)
-                self.print_test_epoch_losses_summary(epoch, test_loss_D, test_errGd)
+            self.test_G_losses.append(test_errGd.item())
+            self.update_accuracy(isTest=True)
+            self.print_test_epoch_losses_summary(epoch, test_loss_D, test_errGd)
 
 
     def get_fake_test_images(self, first_b_hdr):
@@ -806,9 +748,6 @@ class GanTrainer:
         # print("-----------------real------------------")
         test_first_b_tonemap_display = self.display_batch_as_grid(test_first_b_tonemap, ncols_to_display=self.batch_size)
         test_first_b_display_small = self.display_batch_as_grid(test_first_b_tonemap, ncols_to_display=2)
-        
-        # test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
-        # test_first_b_red_wind = test_red_wind_batch[0].to(device)
 
         test_real_batch_hdr = next(iter(self.test_data_loader_npy))
         test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
@@ -820,8 +759,7 @@ class GanTrainer:
         fake_display_small = self.display_batch_as_grid(fake, 2)
 
         b_size = test_first_b_tonemap.size(0)
-        test_windows_im = test_real_batch_hdr[params.window_image_key].to(self.device)
-        self.update_test_loss(b_size, test_first_b_tonemap, fake, epoch, test_hdr_image, test_windows_im)
+        self.update_test_loss(b_size, test_first_b_tonemap, fake, epoch)
 
         plot_general_losses(self.test_G_losses, self.test_D_loss_fake, self.test_D_loss_real,
                             "TEST epoch loss = " + str(epoch), self.test_num_iter, loss_path)
@@ -890,18 +828,15 @@ class GanTrainer:
         test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
         test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
 
-        test_red_wind_batch = next(iter(self.test_data_loader_red_wind))
-        test_first_b_red_wind = test_red_wind_batch[0].to(device)
-
         test_real_batch_hdr = next(iter(self.test_data_loader_npy))
         test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
         new_out_dir = os.path.join(params.results_path, "images_epoch=" + str(1))
-        self.save_groups_images(test_first_b_tonemap, test_hdr_image, test_first_b_red_wind, new_out_dir)
+        # self.save_groups_images(test_first_b_tonemap, test_hdr_image, new_out_dir)
 
 
 if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
-        test_data_root_npy, test_data_root_ldr, test_red_wind_data, apply_windows_loss_str, g_opt_for_single_d,\
+        test_data_root_npy, test_data_root_ldr, g_opt_for_single_d,\
         result_dir_pref, input_dim = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
@@ -911,10 +846,6 @@ if __name__ == '__main__':
     if isCheckpoint_str == 'no':
         isCheckpoint = False
 
-    apply_windows_loss = True
-    if apply_windows_loss_str == 'no':
-        apply_windows_loss = False
-
     print("=====================")
     print("BATCH SIZE:", batch_size)
     print("EPOCHS:", num_epochs)
@@ -922,7 +853,6 @@ if __name__ == '__main__':
     print("G LR: ", G_lr)
     print("D LR: ", D_lr)
     print("CHECK POINT:", isCheckpoint)
-    print("APPLY WINDOWS LOSS:", apply_windows_loss)
     print("TRAIN G [%d] TIMES FOR EACH D STEP" % g_opt_for_single_d)
     print("DEVICE:", device)
     print("=====================\n")
@@ -946,8 +876,8 @@ if __name__ == '__main__':
     output_dir = create_dir(result_dir_pref, model, params.models_save_path, params.loss_path, params.results_path)
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-                             test_data_root_npy, test_data_root_ldr, test_red_wind_data, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, apply_windows_loss, g_opt_for_single_d, input_dim)
+                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
+                             net_G, net_D, optimizer_G, optimizer_D, g_opt_for_single_d, input_dim)
 
     gan_trainer.train(output_dir)
     # gan_trainer.test()
