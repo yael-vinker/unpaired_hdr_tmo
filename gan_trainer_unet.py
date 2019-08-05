@@ -215,23 +215,7 @@ class GanTrainer:
 
 
 
-    def windows_loss(self, fake_images, real_hdr_images, windows_im):
-        """
-        Calculates the loss of the generator by comparing windows from G's output with windows
-        extracted by our algorithm and were tone mapped by scalar division.
-        The loss is calculated by: sum(L2 for each window) / number of windows.
-        :param fake_images: batch of Variables which are the outputs of netG on the given "real_images".
-        Each image is RGB, in range [0,1].
-        :param real_hdr_images: batch of Tensors which are HDR images (RGB) in range [0,1].
-        :param windows_im: batch of Tensors binary images that contains the centers of the ldr windows.
-        :return: Tensor(int), the loss of the entire batch
-        """
-        b_size = fake_images.shape[0]
-        loss = windows_loss_calc.run_all(real_hdr_images, fake_images, self.mse_loss,
-                                         self.window_height, self.window_width,
-                                         self.half_window_height, self.half_window_width,
-                                         windows_im)
-        return loss / b_size
+    
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
@@ -254,16 +238,6 @@ class GanTrainer:
             self.netD.train()
             self.netG.train()
 
-
-    # def load_npy_data(self, npy_data_root, shuffle, batch_size):
-    #     npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root,
-    #                                                                 transform=transforms.Compose([
-    #                                                                     tranforms_.ToTensor(),
-    #                                                                     # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    #                                                                 ]))
-    #     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
-    #                                              shuffle=shuffle, num_workers=params.workers)
-    #     return dataloader
     def load_npy_data(self, npy_data_root, shuffle, batch_size, input_dim, trainMode):
         npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
                                                             transform=transforms.Compose([
@@ -273,17 +247,6 @@ class GanTrainer:
         dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
                                                  shuffle=shuffle, num_workers=params.workers)
         return dataloader
-
-    # def load_ldr_data(self, ldr_data_root, shuffle, batch_size):
-    #     ldr_dataset = dset.ImageFolder(root=ldr_data_root,
-    #                                    transform=transforms.Compose([
-    #                                        transforms.ToTensor(),
-    #                                        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    #                                    ]))
-    #
-    #     ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
-    #                                                  shuffle=shuffle, num_workers=params.workers)
-    #     return ldr_dataloader
 
     def load_ldr_data(self, ldr_data_root, shuffle, batch_size, input_dim, trainMode):
         ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, input_dim=input_dim, trainMode=trainMode,
@@ -295,7 +258,6 @@ class GanTrainer:
         ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
                                                      shuffle=shuffle, num_workers=params.workers)
         return ldr_dataloader
-
 
     def get_single_ldr_im(self, ldr_data_root, images_number=1):
         images = []
@@ -333,7 +295,6 @@ class GanTrainer:
             images.append((im_name, im_origin))
         return images
 
-
     def load_data_test_mode(self, train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader, images_number=1):
         train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
         train_hdr_loader_single = np.asarray(train_hdr_loader[0])
@@ -370,7 +331,6 @@ class GanTrainer:
         # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
         # plt.imshow(np.transpose(im_display, (1, 2, 0)))
         # plt.show()
-
 
     def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr,
                   input_dim, testMode, images_number=4):
@@ -423,13 +383,10 @@ class GanTrainer:
             self.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
         return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader
 
-
-
     def custom_loss(self, output, target):
         b_size = target.shape[0]
         loss = ((output - target)**2).sum() / b_size
         return loss
-
 
     def train_D(self, hdr_input, real_ldr_cpu, half_batch_size):
         """
@@ -536,7 +493,6 @@ class GanTrainer:
             self.D_accuracy_real.append(self.accDreal)
             self.D_accuracy_fake.append(self.accDfake)
 
-
     def train_epoch(self):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         for (h, data_hdr), (l, data_ldr) in zip(enumerate(self.train_data_loader_npy, 0),
@@ -555,7 +511,6 @@ class GanTrainer:
             print("Single [batch] iteration took [%.4f] seconds" % (time.time() - start))
         print("num iters = ", self.num_iter)
         self.update_accuracy()
-
 
     def print_cuda_details(self):
         if (self.device.type == 'cuda') and (torch.cuda.device_count() > 1):
