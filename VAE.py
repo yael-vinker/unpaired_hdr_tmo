@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 
-class UNet(nn.Module):
+class VAE(nn.Module):
     def __init__(
         self,
         in_channels=3,
@@ -32,7 +32,7 @@ class UNet(nn.Module):
                            learned upsampling.
                            'upsample' will use bilinear upsampling.
         """
-        super(UNet, self).__init__()
+        super(VAE, self).__init__()
         self.padding = 0
         self.depth = depth
         prev_channels = in_channels
@@ -50,9 +50,10 @@ class UNet(nn.Module):
             )
             prev_channels = int(prev_channels / 2)
         self.up_path.append(
-            Decoder(prev_channels, in_channels, padding=0)
+            nn.ConvTranspose2d(prev_channels, in_channels, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False)
         )
-        self.last_sig = nn.Sigmoid()
+        nn.Tanh()
+        self.last_sig = nn.Tanh()
 
     def forward(self, x):
         y = x.float()
@@ -62,7 +63,7 @@ class UNet(nn.Module):
         for i, up in enumerate(self.up_path):
             y = up(y)
         
-        return y
+        return self.last_sig(y)
         #return self.last_sig(y)
 
 
@@ -70,8 +71,9 @@ class Encoder(nn.Module):
     def __init__(self, in_size, out_size):
         super(Encoder, self).__init__()
         block = []
-        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, padding=2, bias=True))
-        block.append(nn.ReLU())
+        block.append(nn.Conv2d(in_size, out_size, kernel_size=5, stride=2, padding=2, bias=False))
+        block.append(nn.BatchNorm2d(out_size))
+        block.append(nn.ReLU(True))
         self.block = nn.Sequential(*block)
 
     def forward(self, x):
@@ -84,8 +86,9 @@ class Decoder(nn.Module):
     def __init__(self, in_size, out_size, padding=1):
         super(Decoder, self).__init__()
         block = []
-        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, padding=2, output_padding=1, bias=True))
-        block.append(nn.ReLU())
+        block.append(nn.ConvTranspose2d(in_size, out_size, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False))
+        block.append(nn.BatchNorm2d(out_size))
+        block.append(nn.ReLU(True))
         self.up = nn.Sequential(*block)
 
     def forward(self, x):
