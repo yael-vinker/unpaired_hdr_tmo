@@ -1,3 +1,4 @@
+from sklearn.feature_extraction import image
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -6,6 +7,7 @@ import math
 import cv2
 from PIL import Image
 import imageio
+import torch
 
 
 def custom_loss(output, target):
@@ -215,3 +217,46 @@ def print_dataset_details(images_number, data_loader, batch):
         sample = batch[i]
         im_name, im = sample[0], sample[1]
         print(im_name + "    max[%.4f]  min[%.4f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))
+
+
+
+
+def normalize_im_by_windows(im, window_size):
+    channeles_by_wind_im = get_windows_to_channels_im(im, window_size)
+    mean_matrix = np.mean(channeles_by_wind_im, axis=2)
+    mean_matrix_broadcasted = mean_matrix.reshape((mean_matrix.shape[0], mean_matrix.shape[1], 1))
+    std_matrix = np.sqrt(np.mean(np.power((channeles_by_wind_im - mean_matrix_broadcasted), 2), axis=2))
+    std_matrix_broadcasted = std_matrix.reshape((std_matrix.shape[0], std_matrix.shape[1], 1))
+
+    normalized_im_by_wind = (channeles_by_wind_im - mean_matrix_broadcasted) / std_matrix_broadcasted
+    return normalized_im_by_wind
+
+
+def get_windows_to_channels_im(im, window_size):
+    patches = image.extract_patches_2d(im, (window_size, window_size))
+    flat_patches = patches.flatten()
+    new_height, new_width = im.shape[0] - 2 * int(window_size / 2), im.shape[1] - 2 * int(window_size / 2)
+    return flat_patches.reshape((new_height, new_width, int(window_size ** 2) * im.shape[-1]))
+
+def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window_size):
+    im1_tensor = im1_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    normalized_im_by_wind = get_windows_to_channels_im(im1_tensor, window_size)
+    print(normalized_im_by_wind.shape)
+    normalized_im_by_wind_reshaped = normalized_im_by_wind.reshape((normalized_im_by_wind.shape[0] * normalized_im_by_wind.shape[1], normalized_im_by_wind.shape[2]))
+
+    im2_tensor = im2_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    normalized_im_by_wind_2 = get_windows_to_channels_im(im2_tensor, window_size)
+    normalized_im_by_wind_reshaped_2 = normalized_im_by_wind_2.reshape((normalized_im_by_wind_2.shape[0] * normalized_im_by_wind_2.shape[1], normalized_im_by_wind_2.shape[2]))
+
+    return torch.from_numpy(normalized_im_by_wind_reshaped), torch.from_numpy(normalized_im_by_wind_reshaped_2)
+
+
+if __name__ == '__main__':
+    a = np.arange(20 * 3)
+    a = a.reshape((4, 5, 3))
+    b = get_windows_to_channels_im(a, 3)
+    print(b)
+    print(b.shape)
+    c = b.reshape((6, 27))
+    print("c")
+    print(c)

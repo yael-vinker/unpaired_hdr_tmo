@@ -4,9 +4,8 @@ import os
 train_dataroot_hdr = "data/hdr_data"
 train_dataroot_ldr = "data/ldr_data2"
 
-test_dataroot_hdr = "data/hdr_data"
+test_dataroot_hdr = "data/hdr_test"
 test_dataroot_ldr = "data/ldr_data2"
-test_dataroot_red_wind_ldr = "data/check_data/test_real"
 apply_windows_loss = False
 
 image_key = "hdr_image"

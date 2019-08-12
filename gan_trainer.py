@@ -119,6 +119,7 @@ class GanTrainer:
 
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
+        self.mse_loss = torch.nn.MSELoss()
 
 
 
@@ -274,6 +275,17 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
+    def windows_l2_normalized_loss(self, hdr_im_batch, fake_im_batch):
+        b_size = hdr_im_batch.shape[0]
+        loss = 0
+        for i in range(b_size):
+            hdr_im, fake_im = hdr_im_batch[i], fake_im_batch[i]
+            hdr_im_normalize, fake_im_normalize = g_t_utils.get_tensor_normalized_images_for_windows_loss(hdr_im, fake_im, window_size=5)
+
+            loss += self.mse_loss(hdr_im_normalize, fake_im_normalize)
+        return loss / b_size
+
+
     def train_G(self, label, hdr_input):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
@@ -296,6 +308,9 @@ class GanTrainer:
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # self.G_accuracy.append(self.accG.item())
         self.errG = self.criterion(output_on_fake, label)
+
+        err_win = self.windows_l2_normalized_loss(hdr_input, fake)
+        print(err_win)
         # self.errG = self.custom_loss(output_on_fake, label)
         self.errG.backward()
         self.optimizerG.step()
@@ -555,8 +570,8 @@ if __name__ == '__main__':
         test_data_root_npy, test_data_root_ldr, g_opt_for_single_d,\
         result_dir_pref, input_dim = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-
+    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
@@ -575,13 +590,13 @@ if __name__ == '__main__':
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (input_dim, params.input_size, params.input_size))
+    # summary(net_G, (input_dim, params.input_size, params.input_size))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (input_dim, params.input_size, params.input_size))
+    # summary(net_D, (input_dim, params.input_size, params.input_size))
     # print()
 
     # Setup Adam optimizers for both G and D
