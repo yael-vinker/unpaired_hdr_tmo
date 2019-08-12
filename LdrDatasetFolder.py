@@ -36,11 +36,11 @@ def ldr_loader(path, input_dim, trainMode):
     # else:
     #     im = cv2.resize(im_origin, (128, 128))
     im = im_origin
-    im = im_origin / IMAGE_MAX_VALUE
-    im_log = np.log(im + 1)
+    # im = im_origin / IMAGE_MAX_VALUE
+    # im_log = np.log(im + 1)
     # im100 = (im / IMAGE_MAX_VALUE) * IMAGE_SCALE
     # im_log = np.log(im100 + 1)
-    return im_log
+    return im
 
 class LdrDatasetFolder(DatasetFolder):
     """

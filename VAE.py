@@ -52,7 +52,6 @@ class VAE(nn.Module):
         self.up_path.append(
             nn.ConvTranspose2d(prev_channels, in_channels, kernel_size=5, stride=2, padding=2, output_padding=1, bias=False)
         )
-        nn.Tanh()
         self.last_sig = nn.Tanh()
 
     def forward(self, x):

@@ -48,12 +48,12 @@ def hdr_loader(path, input_dim, trainMode):
     #     im = cv2.resize(im_origin, (128, 128))
 
     im = im_origin
-    max_origin = np.max(im)
-    im = im_origin / max_origin
-    im_log = np.log(im + 1)
+    # max_origin = np.max(im)
+    # im = (im_origin / max_origin)
+    # im_log = np.log(im + 1)
     # im100 = (im / max_origin) * IMAGE_SCALE
     # im_log = np.log(im100 + 1)
-    return im_log
+    return im
 
 
 
@@ -62,7 +62,7 @@ class HdrImageFolder(DatasetFolder):
     A customized data loader, to load .hdr file
     """
 
-    def __init__(self, root, input_dim, trainMode, transform=None, target_transform=None,
+    def __init__(self, root, input_dim=3, trainMode=False, transform=None, target_transform=None,
                  loader=hdr_loader):
         super(HdrImageFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                              transform=transform,
@@ -81,9 +81,11 @@ class HdrImageFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        image = self.loader(path, self.input_dim, self.trainMode)
-        binary_window = np.zeros(image.shape)
-        sample = {params.image_key: image, params.window_image_key: binary_window}
+        sample = self.loader(path, self.input_dim, self.trainMode)
+        # binary_window = np.zeros(image.shape)
+        # sample = {params.image_key: image, params.window_image_key: binary_window}
         if self.transform:
             sample = self.transform(sample)
-        return sample
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        return sample, target

@@ -43,8 +43,6 @@ class UNetSkipConnection(nn.Module):
             UNetConvBlock(16, 32),
             UNetConvBlock(32, 64),
         )
-
-
         self.up_path = nn.Sequential(
             UNetUpBlock(64, 32),
             UNetUpBlock(32, 16),

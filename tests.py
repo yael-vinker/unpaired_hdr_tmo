@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import params
-import gan_trainer_unet
+
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
@@ -9,6 +9,11 @@ import tranforms as transforms_
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
 from PIL import Image
+import hdr_image_utils
+import HdrImageFolder
+
+import torchvision.datasets as dset
+import gan_trainer
 
 
 def print_im_details(im, title, disply=False):
@@ -110,70 +115,45 @@ def plot_npy_data(dataloader, device, title):
     plt.show()
 
 
-def load_data_test():
-    batch_size, num_epochs, dataroot_npy, dataroot_ldr, \
-    isCheckpoint, test_dataroot_npy, test_dataroot_ldr = \
-        gan_trainer_unet.parse_arguments_2()
-    torch.manual_seed(params.manualSeed)
+def get_data_root():
+    batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
+    test_data_root_npy, test_data_root_ldr, g_opt_for_single_d, \
+    result_dir_pref, input_dim = gan_trainer.parse_arguments()
     # Decide which device we want to run on
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    print("=====================")
-    print("BATCH SIZE:", batch_size)
-    print("EPOCHS:", num_epochs)
-    print("CHECK POINT:", isCheckpoint)
-    print("DEVICE:", device)
-    print("=====================\n")
+    return train_data_root_npy
 
-    net_G = gan_trainer_unet.create_net("G", device, isCheckpoint)
-    net_D = gan_trainer_unet.create_net("D", device, isCheckpoint)
-
-    # Setup Adam optimizers for both G and D
-    optimizer_D = optim.Adam(net_D.parameters(), lr=params.lr, betas=(params.beta1, 0.999))
-    optimizer_G = optim.Adam(net_G.parameters(), lr=params.lr, betas=(params.beta1, 0.999))
-
-    gan_trainer = gan_trainer_unet.GanTrainer(device, batch_size, num_epochs, dataroot_npy, dataroot_ldr,
-                                              test_dataroot_npy, test_dataroot_ldr, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D)
-
-    train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader = \
-        gan_trainer.load_data(dataroot_npy, dataroot_ldr, test_dataroot_npy, test_dataroot_ldr)
-
-    print("[%d] images in train_npy_dset" % len(train_npy_dataloader.dataset))
-    print("[%d] images in train_ldr_dset" % len(train_ldr_dataloader.dataset))
-    plot_npy_data(train_npy_dataloader, device, "Train npy")
-    plot_data(train_ldr_dataloader, device, "Train ldr")
-
-    print("[%d] images in test_npy_dset" % len(test_npy_dataloader.dataset))
-    print("[%d] images in test_ldr_dset" % len(test_ldr_dataloader.dataset))
-    plot_npy_data(test_npy_dataloader, device, "Test npy")
-    plot_data(test_ldr_dataloader, device, "test ldr")
-
-if __name__ == '__main__':
-    transform = transforms.Compose([
+def transforms_test():
+    transform_original = transforms.Compose([
+        transforms.Resize(params.input_size),
+        transforms.CenterCrop(params.input_size),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
+    transform_custom = transforms.Compose([
+        transforms_.Scale(params.input_size),
+        transforms_.CenterCrop(params.input_size),
+        transforms_.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
 
-    # path = "S1200_CC.npy"
-    # data = np.load(path)
-    # im_hdr = data[()][params.image_key]
-    # # im_hdr = transform(im_hdr)
-    # # im_hdr = im_hdr / 1000
-    # im_hdr = np.asarray(im_hdr)
-    # print_im_details(im_hdr, "hdr", True)
-    #
-    # ldr_path = "im_99.png"
-    # with open(ldr_path, 'rb') as f:
-    #     img = Image.open(f)
-    #     im_ldr = img.convert('RGB')
-    #     # im_ldr = transform(im_ldr)
-    #     im_ldr = np.asarray(im_ldr)
-    # print_im_details(im_ldr, "ldr")
+    data_root = get_data_root()
+    dataset_origin = dset.ImageFolder(root=data_root,
+                                   transform=transform_original)
 
-    tone_map_path = "im_99.png"
-    with open(tone_map_path, 'rb') as f:
-        img = Image.open(f)
-        im_ldr = img.convert('RGB')
-        # im_ldr = transform(im_ldr)
-        im_ldr = np.asarray(im_ldr)
-    print_im_details(im_ldr, "ldr tone map", True)
+    dataset_custom = HdrImageFolder.HdrImageFolder(root=data_root,
+                                      transform=transform_custom)
+
+    original_transform_im = np.asarray(dataset_origin[0][0].permute(1, 2, 0).detach().cpu().numpy())
+    custom_transform_im = np.asarray(dataset_custom[0][0].permute(1, 2, 0).detach().cpu().numpy())
+    plt.imshow(original_transform_im)
+    plt.show()
+    plt.imshow(custom_transform_im)
+    plt.show()
+    print(np.array_equal(original_transform_im, custom_transform_im))
+    hdr_image_utils.print_image_details(original_transform_im, "original_transform_im")
+    hdr_image_utils.print_image_details(custom_transform_im, "custom_transform_im")
+
+
+if __name__ == '__main__':
+    transforms_test()
+

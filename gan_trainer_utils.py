@@ -4,6 +4,15 @@ import numpy as np
 from skimage import exposure
 import math
 import cv2
+from PIL import Image
+import imageio
+
+
+def custom_loss(output, target):
+    b_size = target.shape[0]
+    loss = ((output - target) ** 2).sum() / b_size
+    return loss
+
 
 def plot_general_losses(loss_G, loss_D_fake, loss_D_real, title, iters_n, path):
     plt.figure()
@@ -125,3 +134,84 @@ def display_batch_as_grid(batch, ncols_to_display, normalization="log100", nrow=
             k = k + 1
     return grid
 
+def get_single_ldr_im(ldr_data_root, images_number=1):
+    images = []
+    x = next(os.walk(ldr_data_root))[1][0]
+    dir_path = os.path.join(ldr_data_root, x)
+    for i in range(images_number):
+        im_name = os.listdir(dir_path)[i]
+        im_path = os.path.join(dir_path, im_name)
+        with open(im_path, 'rb') as f:
+            img = Image.open(f)
+            images.append((im_name, np.asarray(img.convert('RGB'))))
+    return images
+
+def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
+    images = []
+    # if isNpy:
+    #     x = next(os.walk(hdr_data_root))[1][0]
+    #     dir_path = os.path.join(hdr_data_root, x)
+    #     for i in range(images_number):
+    #         im_name = os.listdir(dir_path)[i]
+    #         im_path = os.path.join(dir_path, im_name)
+    #         data = np.load(im_path)
+    #         im_hdr = data[()][params.image_key]
+    #         images.append((im_name, im_hdr))
+    #     return images
+    x = next(os.walk(hdr_data_root))[1][0]
+    dir_path = os.path.join(hdr_data_root, x)
+    for i in range(images_number):
+        im_name = os.listdir(dir_path)[i]
+        im_path = os.path.join(dir_path, im_name)
+        # im_origin = imageio.imread(im_path, format='HDR-FI')
+        im_origin = imageio.imread(im_path)
+        # im_origin = cv2.imread(im_path)
+        # print(im_origin.shape)
+        images.append((im_name, im_origin))
+    return images
+
+def load_data_test_mode(train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader, images_number=1):
+    # train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
+    train_hdr_loader = next(iter(train_hdr_dataloader))[0]
+    train_hdr_loader_single = np.asarray(train_hdr_loader[0])
+    print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+          (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
+           train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
+    # im_display = (((np.exp(train_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
+    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+    # plt.show()
+
+    train_ldr_loader = next(iter(train_ldr_dataloader))[0]
+    train_ldr_loader_single = np.asarray(train_ldr_loader[0])
+    print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+          (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
+           train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
+    # im_display = (((np.exp(train_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
+    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+    # plt.show()
+
+    # test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
+    test_hdr_loader = next(iter(test_hdr_dataloader))[0]
+    test_hdr_loader_single = np.asarray(test_hdr_loader[0])
+    print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+          (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
+           test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
+    # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
+    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+    # plt.show()
+
+    test_ldr_loader = next(iter(test_ldr_dataloader))[0]
+    test_ldr_loader_single = np.asarray(test_ldr_loader[0])
+    print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+          (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
+           test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
+    # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
+    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
+    # plt.show()
+
+def print_dataset_details(images_number, data_loader, batch):
+    print("\ntrain_npy_dataset [%d] images" % (len(data_loader.dataset)))
+    for i in range(images_number):
+        sample = batch[i]
+        im_name, im = sample[0], sample[1]
+        print(im_name + "    max[%.4f]  min[%.4f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))

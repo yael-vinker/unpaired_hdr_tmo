@@ -1,10 +1,8 @@
 from __future__ import print_function
 
-import math
+
+import unet.Unet as Unet
 import VAE
-import UnetSkipConnection
-import imageio
-from PIL import Image
 from torch import autograd
 import os
 import argparse
@@ -15,14 +13,14 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import Discriminator
 import params
 import time
 import hdr_image_utils
 from torchsummary import summary
-import tranforms as tranforms_
+import tranforms as transforms_
 import LdrDatasetFolder
 import HdrImageFolder
 import gan_trainer_utils as g_t_utils
@@ -43,7 +41,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="VAE")
+    parser.add_argument("--model", type=str, default="skip_connection")
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -60,15 +58,17 @@ def parse_arguments():
            os.path.join(args.test_data_root_ldr), \
            args.G_opt_for_single_D, args.result_dir_prefix, args.input_dim
 
+
 def create_net(net, device_, is_checkpoint, input_dim):
     if net == "G_VAE":
         # Create the Generator (UNet architecture)
         new_net = VAE.VAE(input_dim).to(device_)
     elif net == "G_skip_connection":
-        new_net = UnetSkipConnection.UNetSkipConnection(input_dim).to(device_)
+        # new_net = UnetSkipConnection.UNetSkipConnection(input_dim).to(device_)
+        new_net = Unet.UNet(input_dim, input_dim).to(device_)
     elif net == "D":
         # Create the Discriminator
-        new_net = Discriminator.Discriminator(params.n_downsamples_d, input_dim, params.dim,
+        new_net = Discriminator.Discriminator(params.input_size, input_dim, params.dim,
                                               torch.cuda.device_count()).to(device_)
     else:
         assert 0, "Unsupported network request: {}  (creates only G or D)".format(net)
@@ -88,7 +88,7 @@ def create_net(net, device_, is_checkpoint, input_dim):
 class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
                  train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, t_isCheckpoint, t_netG, t_netD,
-                 t_optimizerG, t_optimizerD, t_g_opt_for_single_d, input_dim):
+                 t_optimizerG, t_optimizerD, input_dim):
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
         self.device = t_device
@@ -96,12 +96,13 @@ class GanTrainer:
         self.netD = t_netD
         self.optimizerD = t_optimizerD
         self.optimizerG = t_optimizerG
-        self.isCheckpoint = t_isCheckpoint
+        self.criterion = nn.BCELoss()
+
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
-        self.checkpoint = None
+
         self.errD_real, self.errD_fake, self.errG = None, None, None
-        self.errGwin, self.errGd, self.errD = None, None, None
+        self.errGd, self.errD = None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_test, self.accD_test, self.accDreal_test, self.accDfake_test = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -116,123 +117,50 @@ class GanTrainer:
             self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
                            input_dim, testMode=False)
 
-        self.window_height, self.window_width = hdr_image_utils.get_window_size(params.image_size, params.image_size)
-        self.half_window_height, self.half_window_width, self.quarter_height, self.quarter_width = \
-            hdr_image_utils.get_half_windw_size(self.window_height, self.window_width)
-        self.criterion = nn.BCELoss()
-        self.mse_loss = torch.nn.MSELoss(reduction='sum')
+        self.isCheckpoint = t_isCheckpoint
+        self.checkpoint = None
 
 
 
     def load_npy_data(self, npy_data_root, shuffle, batch_size, input_dim, trainMode):
-        # npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
-        #                                                     transform=transforms.Compose([
-        #                                                     tranforms_.ToTensor(),
-        #                                                     # tranforms_.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        #                                             ]))
-        npy_dataset = dset.ImageFolder(root=npy_data_root,
-                                   transform=transforms.Compose([
-                                       transforms.Resize(256),
-                                       transforms.CenterCrop(256),
-                                       transforms.ToTensor(),
-                                       transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                   ]))
+        npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
+                                                            transform=transforms.Compose([
+                                                                transforms_.Scale(params.input_size),
+                                                                transforms_.CenterCrop(params.input_size),
+                                                                transforms_.ToTensor(),
+                                                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                                    ]))
+        # npy_dataset = dset.ImageFolder(root=npy_data_root,
+        #                            transform=transforms.Compose([
+        #                                transforms.Resize(params.input_size),
+        #                                transforms.CenterCrop(params.input_size),
+        #                                transforms.ToTensor(),
+        #                                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        #                            ]))
         dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
                                                  shuffle=shuffle, num_workers=params.workers)
         return dataloader
 
     def load_ldr_data(self, ldr_data_root, shuffle, batch_size, input_dim, trainMode):
-        # ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, input_dim=input_dim, trainMode=trainMode,
-        #                                transform=transforms.Compose([
-        #                                    transforms.ToTensor(),
-        #                                    # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-        #                                ]))
-        ldr_dataset = dset.ImageFolder(root=ldr_data_root,
+        ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, input_dim=input_dim, trainMode=trainMode,
                                        transform=transforms.Compose([
-                                           transforms.Resize(256),
-                                           transforms.CenterCrop(256),
-                                           transforms.ToTensor(),
+                                           transforms_.Scale(params.input_size),
+                                           transforms_.CenterCrop(params.input_size),
+                                           transforms_.ToTensor(),
                                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                                        ]))
+        # ldr_dataset = dset.ImageFolder(root=ldr_data_root,
+        #                                transform=transforms.Compose([
+        #                                    transforms.Resize(params.input_size),
+        #                                    transforms.CenterCrop(params.input_size),
+        #                                    transforms.ToTensor(),
+        #                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        #                                    # transforms.Grayscale(num_output_channels=1),
+        #                                ]))
 
         ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
                                                      shuffle=shuffle, num_workers=params.workers)
         return ldr_dataloader
-
-    def get_single_ldr_im(self, ldr_data_root, images_number=1):
-        images = []
-        x = next(os.walk(ldr_data_root))[1][0]
-        dir_path = os.path.join(ldr_data_root, x)
-        for i in range(images_number):
-            im_name = os.listdir(dir_path)[i]
-            im_path = os.path.join(dir_path, im_name)
-            with open(im_path, 'rb') as f:
-                img = Image.open(f)
-                images.append((im_name, np.asarray(img.convert('RGB'))))
-        return images
-
-    def get_single_hdr_im(self, hdr_data_root, images_number=1, isNpy=False):
-        images = []
-        if isNpy:
-            x = next(os.walk(hdr_data_root))[1][0]
-            dir_path = os.path.join(hdr_data_root, x)
-            for i in range(images_number):
-                im_name = os.listdir(dir_path)[i]
-                im_path = os.path.join(dir_path, im_name)
-                data = np.load(im_path)
-                im_hdr = data[()][params.image_key]
-                images.append((im_name, im_hdr))
-            return images
-        x = next(os.walk(hdr_data_root))[1][0]
-        dir_path = os.path.join(hdr_data_root, x)
-        for i in range(images_number):
-            im_name = os.listdir(dir_path)[i]
-            im_path = os.path.join(dir_path, im_name)
-            # im_origin = imageio.imread(im_path, format='HDR-FI')
-            im_origin = imageio.imread(im_path)
-            # im_origin = cv2.imread(im_path)
-            # print(im_origin.shape)
-            images.append((im_name, im_origin))
-        return images
-
-    def load_data_test_mode(self, train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader, images_number=1):
-        # train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
-        train_hdr_loader = next(iter(train_hdr_dataloader))[0]
-        train_hdr_loader_single = np.asarray(train_hdr_loader[0])
-        print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-              (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
-               train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
-        # im_display = (((np.exp(train_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
-        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-        # plt.show()
-
-        train_ldr_loader = next(iter(train_ldr_dataloader))[0]
-        train_ldr_loader_single = np.asarray(train_ldr_loader[0])
-        print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-              (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
-               train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
-        # im_display = (((np.exp(train_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
-        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-        # plt.show()
-
-        # test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
-        test_hdr_loader = next(iter(test_hdr_dataloader))[0]
-        test_hdr_loader_single = np.asarray(test_hdr_loader[0])
-        print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-              (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
-               test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
-        # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
-        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-        # plt.show()
-
-        test_ldr_loader = next(iter(test_ldr_dataloader))[0]
-        test_ldr_loader_single = np.asarray(test_ldr_loader[0])
-        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-              (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
-               test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
-        # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
-        # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-        # plt.show()
 
     def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr,
                   input_dim, testMode, images_number=4):
@@ -243,54 +171,29 @@ class GanTrainer:
         :return: DataLoader object of images in "dir_root"
         """
         train_npy_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size, input_dim, trainMode=True)
-        hdr_train_sample = self.get_single_hdr_im(train_root_npy, images_number)
+        hdr_train_sample = g_t_utils.get_single_hdr_im(train_root_npy, images_number)
 
         # test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, trainMode=False)
         test_npy_dataloader = self.load_npy_data(test_root_npy, False, 24, input_dim, trainMode=True)
-        hdr_test_sample = self.get_single_hdr_im(test_root_npy, images_number)
+        hdr_test_sample = g_t_utils.get_single_hdr_im(test_root_npy, images_number)
 
         # half_batch_size = int(self.batch_size / 2)
         half_batch_size = self.batch_size
         train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, half_batch_size, input_dim, trainMode=True)
-        ldr_train_sample = self.get_single_ldr_im(train_root_ldr, images_number)
+        ldr_train_sample = g_t_utils.get_single_ldr_im(train_root_ldr, images_number)
 
         # test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, trainMode=False)
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, input_dim, trainMode=True)
-        ldr_test_sample = self.get_single_ldr_im(test_root_ldr, images_number)
-        
-        print("\ntrain_npy_dataset [%d] images" % (len(train_npy_dataloader.dataset)))
-        for i in range(images_number):
-            sample = hdr_train_sample[i]
-            im_name, im = sample[0], sample[1]
-            print(im_name + "    max[%.4f]  min[%.4f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))
+        ldr_test_sample = g_t_utils.get_single_ldr_im(test_root_ldr, images_number)
 
-        print("\ntest_npy_dataset [%d] images" % (len(test_npy_dataloader.dataset)))
-        for i in range(images_number):
-            sample = hdr_test_sample[i]
-            im_name, im = sample[0], sample[1]
-            print(im_name + "     max[%.4f]  min[%.4f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))
-
-        print("\ntrain_ldr_dataloader [%d] images" % (len(train_ldr_dataloader.dataset)))
-        for i in range(images_number):
-            sample = ldr_train_sample[i]
-            im_name, im = sample[0], sample[1]
-            print(im_name + "     max[%4.f]  min[%4.f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))
-
-        print("\ntest_ldr_dset [%d] images" % (len(test_ldr_dataloader.dataset)))
-        for i in range(images_number):
-            sample = ldr_test_sample[i]
-            im_name, im = sample[0], sample[1]
-            print(im_name + "    max[%4.f]  min[%4.f]  dtype[%s]  " % (float(np.max(im)), float(np.min(im)), im.dtype))
+        g_t_utils.print_dataset_details(images_number, train_npy_dataloader, hdr_train_sample)
+        g_t_utils.print_dataset_details(images_number, test_npy_dataloader, hdr_test_sample)
+        g_t_utils.print_dataset_details(images_number, train_ldr_dataloader, ldr_train_sample)
+        g_t_utils.print_dataset_details(images_number, test_ldr_dataloader, ldr_test_sample)
 
         if testMode:
-            self.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
+            g_t_utils.load_data_test_mode(train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader)
         return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader
-
-    def custom_loss(self, output, target):
-        b_size = target.shape[0]
-        loss = ((output - target)**2).sum() / b_size
-        return loss
-
 
     def update_accuracy(self, isTest=False):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
@@ -351,10 +254,6 @@ class GanTrainer:
 
         # Train with all-fake batch
         # Generate fake image batch with G
-        # hdr_input_half_batch = hdr_input[0: half_batch_size]
-        # print("hdr_input_half_batch ", hdr_input_half_batch.shape)
-        # fake = self.netG(hdr_input_half_batch)
-        # print("fake ", fake.shape)
         fake = self.netG(hdr_input)
         label.fill_(self.fake_label)
         # Classify all fake batch with D
@@ -387,7 +286,7 @@ class GanTrainer:
         label.fill_(self.real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
         fake = self.netG(hdr_input)
-        fake_single = np.asarray(fake[0].detach())
+        fake_single = np.asarray(fake[0].cpu().detach())
         print("fake --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
               (float(np.max(fake_single)), float(np.min(fake_single)),
                fake_single.dtype, str(fake_single.shape)))
@@ -676,13 +575,13 @@ if __name__ == '__main__':
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (input_dim, 256, 256))
+    summary(net_G, (input_dim, params.input_size, params.input_size))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (input_dim, 256, 256))
+    summary(net_D, (input_dim, params.input_size, params.input_size))
     print()
 
     # Setup Adam optimizers for both G and D
@@ -693,7 +592,7 @@ if __name__ == '__main__':
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, g_opt_for_single_d, input_dim)
+                             net_G, net_D, optimizer_G, optimizer_D, input_dim)
 
     gan_trainer.train(output_dir)
-    # gan_trainer.test()
+    # # gan_trainer.test()
