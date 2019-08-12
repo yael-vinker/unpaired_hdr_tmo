@@ -582,7 +582,7 @@ if __name__ == '__main__':
     print("=================  NET D  ==================")
     print(net_D)
     summary(net_D, (input_dim, params.input_size, params.input_size))
-    print()
+    # print()
 
     # Setup Adam optimizers for both G and D
     optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
