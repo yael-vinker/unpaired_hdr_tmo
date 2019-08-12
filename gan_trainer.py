@@ -13,7 +13,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import numpy as np
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import Discriminator
 import params
@@ -101,8 +101,8 @@ class GanTrainer:
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
 
-        self.errD_real, self.errD_fake, self.errG = None, None, None
-        self.errGd, self.errD = None, None
+        self.errD_real, self.errD_fake, self.errG, self.errG_windows = None, None, None, None
+        self.errD = None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_test, self.accD_test, self.accDreal_test, self.accDfake_test = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -110,7 +110,7 @@ class GanTrainer:
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.G_losses, self.G_loss_window, self.G_loss_d = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
-        self.test_G_losses, self.test_G_loss_window, self.test_G_loss_d = [], [], []
+        self.test_G_losses_d, self.test_G_loss_window, self.test_G_loss_d = [], [], []
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
 
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr = \
@@ -209,14 +209,14 @@ class GanTrainer:
             self.accG_test = self.accG_counter / len_hdr_test_dset
             self.accDreal_test = self.accDreal_counter / test_smaller_len
             self.accDfake_test = self.accDfake_counter / test_smaller_len
-            print("accG_test ", self.accG_test ,"=", "accG_counter ", self.accG_counter, "/ len_hdr_test_dset",  len_hdr_test_dset)
+            # print("accG_test ", self.accG_test ,"=", "accG_counter ", self.accG_counter, "/ len_hdr_test_dset",  len_hdr_test_dset)
             self.accDreal_test = self.accDreal_counter / test_smaller_len
-            print("accDreal_test ", self.accDreal_test, "=", "accDreal_counter ", self.accDreal_counter, "/ test_smaller_len",
-                  test_smaller_len)
+            # print("accDreal_test ", self.accDreal_test, "=", "accDreal_counter ", self.accDreal_counter, "/ test_smaller_len",
+            #       test_smaller_len)
             self.accDfake_test = self.accDfake_counter / test_smaller_len
-            print("accDfake_test ", self.accDfake_test, "=", "accDfake_counter ", self.accDfake_counter,
-                  "/ test_smaller_len",
-                  test_smaller_len)
+            # print("accDfake_test ", self.accDfake_test, "=", "accDfake_counter ", self.accDfake_counter,
+            #       "/ test_smaller_len",
+            #       test_smaller_len)
             self.G_accuracy_test.append(self.accG_test)
             self.D_accuracy_real_test.append(self.accDreal_test)
             self.D_accuracy_fake_test.append(self.accDfake_test)
@@ -275,14 +275,13 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
-    def windows_l2_normalized_loss(self, hdr_im_batch, fake_im_batch):
+    def windows_l2_normalized_loss(self, fake_im_batch, hdr_im_batch):
         b_size = hdr_im_batch.shape[0]
         loss = 0
         for i in range(b_size):
-            hdr_im, fake_im = hdr_im_batch[i], fake_im_batch[i]
-            hdr_im_normalize, fake_im_normalize = g_t_utils.get_tensor_normalized_images_for_windows_loss(hdr_im, fake_im, window_size=5)
-
-            loss += self.mse_loss(hdr_im_normalize, fake_im_normalize)
+            fake_im, hdr_im = fake_im_batch[i], hdr_im_batch[i]
+            fake_im_normalize, hdr_im_normalize = g_t_utils.get_tensor_normalized_images_for_windows_loss(fake_im, hdr_im, window_size=5)
+            loss += self.mse_loss(fake_im_normalize, hdr_im_normalize)
         return loss / b_size
 
 
@@ -308,19 +307,20 @@ class GanTrainer:
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # self.G_accuracy.append(self.accG.item())
         self.errG = self.criterion(output_on_fake, label)
-
-        err_win = self.windows_l2_normalized_loss(hdr_input, fake)
-        print(err_win)
         # self.errG = self.custom_loss(output_on_fake, label)
         self.errG.backward()
+
+        self.errG_windows = self.windows_l2_normalized_loss(fake, hdr_input) / 100
+        self.errG_windows.backward()
+
         self.optimizerG.step()
-        self.G_losses.append(self.errG.item())
+        self.G_loss_d.append(self.errG.item())
+        self.G_loss_window.append(self.errG_windows.item())
 
     def train_epoch(self):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         for (h, data_hdr), (l, data_ldr) in zip(enumerate(self.train_data_loader_npy, 0),
                                                 enumerate(self.train_data_loader_ldr, 0)):
-            start = time.time()
             self.num_iter += 1
             with autograd.detect_anomaly():
                 real_ldr_cpu = data_ldr[0].to(self.device)
@@ -359,15 +359,15 @@ class GanTrainer:
               % (epoch, self.num_epochs, self.accDreal_test, self.accDfake_test, self.accG_test))
 
     def print_epoch_losses_summary(self, epoch):
-        print('[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f \tLoss_G: %.4f'
-                  % (epoch, self.num_epochs, self.errD.item(), self.errD_real.item(), self.errD_fake.item(), self.errG.item()))
+        print('[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f \tLoss_G: %.4f \tLoss_G_wind: %.4f'
+                  % (epoch, self.num_epochs, self.errD.item(), self.errD_real.item(), self.errD_fake.item(), self.errG.item(), self.errG_windows.item()))
         print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f\n'
             % (epoch, self.num_epochs, self.accDreal, self.accDfake, self.accG))
 
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        g_t_utils.plot_general_losses(self.G_losses, self.D_loss_fake, self.D_loss_real, "summary epoch_=_" + str(epoch),
+        g_t_utils.plot_general_losses(self.G_loss_d, self.G_loss_window, self.D_loss_fake, self.D_loss_real, "summary epoch_=_" + str(epoch),
                             self.num_iter, loss_path)
         g_t_utils.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real, "accuracy epoch = "+ str(epoch),
                               self.epoch, acc_path)
@@ -424,7 +424,7 @@ class GanTrainer:
             plt.close()
 
 
-    def update_test_loss(self, b_size, first_b_tonemap, fake, epoch):
+    def update_test_loss(self, b_size, first_b_tonemap, fake, hdr_input, epoch):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         with torch.no_grad():
             real_label = torch.full((b_size,), self.real_label, device=self.device)
@@ -446,7 +446,10 @@ class GanTrainer:
             output_on_fake = self.netD(fake.detach()).view(-1)
             self.accG_counter += (output_on_fake > 0.5).sum().item()
             test_errGd = self.criterion(output_on_fake, real_label)
-            self.test_G_losses.append(test_errGd.item())
+            self.test_G_losses_d.append(test_errGd.item())
+
+            test_errGwindows = self.windows_l2_normalized_loss(fake, hdr_input)
+            self.test_G_loss_window.append(test_errGwindows.item())
             self.update_accuracy(isTest=True)
             self.print_test_epoch_losses_summary(epoch, test_loss_D, test_errGd)
 
@@ -458,7 +461,7 @@ class GanTrainer:
     def save_test_loss(self, epoch, out_dir):
         acc_path = os.path.join(out_dir, "accuracy")
         loss_path = os.path.join(out_dir, "loss_plot")
-        g_t_utils.plot_general_losses(self.test_G_losses, self.test_D_loss_fake, self.test_D_loss_real,
+        g_t_utils.plot_general_losses(self.test_G_losses_d, self.test_G_loss_window, self.test_D_loss_fake, self.test_D_loss_real,
                                       "TEST epoch loss = " + str(epoch), self.test_num_iter, loss_path)
 
         g_t_utils.plot_general_accuracy(self.G_accuracy_test, self.D_accuracy_fake_test, self.D_accuracy_real_test,
@@ -488,7 +491,7 @@ class GanTrainer:
         fake_display_small = g_t_utils.display_batch_as_grid(fake, 2, normalization="uint_0_1")
 
         b_size = test_real_first_b.size(0)
-        self.update_test_loss(b_size, test_real_first_b, fake, epoch)
+        self.update_test_loss(b_size, test_real_first_b, fake, test_hdr_batch_image, epoch)
 
         plt.figure(figsize=(15, 15))
         plt.subplot(2, 2, 1)
@@ -570,8 +573,8 @@ if __name__ == '__main__':
         test_data_root_npy, test_data_root_ldr, g_opt_for_single_d,\
         result_dir_pref, input_dim = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
