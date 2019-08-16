@@ -16,7 +16,21 @@ def custom_loss(output, target):
     return loss
 
 
-def plot_general_losses(loss_G, loss_D_fake, loss_D_real, title, iters_n, path):
+def plot_general_losses(loss_G, loss_G_wind, loss_D_fake, loss_D_real, title, iters_n, path):
+    plt.figure()
+    plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+    plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+    plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+    plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
+
+    plt.xlabel("n iteration")
+    plt.legend(loc='upper left')
+    plt.title(title)
+
+    # save image
+    plt.savefig(os.path.join(path, title + "all.png"))  # should before show method
+    plt.close()
+
     plt.figure()
     plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
     plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
@@ -238,25 +252,35 @@ def get_windows_to_channels_im(im, window_size):
     new_height, new_width = im.shape[0] - 2 * int(window_size / 2), im.shape[1] - 2 * int(window_size / 2)
     return flat_patches.reshape((new_height, new_width, int(window_size ** 2) * im.shape[-1]))
 
+
 def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window_size):
     im1_tensor = im1_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    normalized_im_by_wind = get_windows_to_channels_im(im1_tensor, window_size)
+    normalized_im_by_wind = normalize_im_by_windows(im1_tensor, window_size)
     print(normalized_im_by_wind.shape)
     normalized_im_by_wind_reshaped = normalized_im_by_wind.reshape((normalized_im_by_wind.shape[0] * normalized_im_by_wind.shape[1], normalized_im_by_wind.shape[2]))
 
     im2_tensor = im2_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    normalized_im_by_wind_2 = get_windows_to_channels_im(im2_tensor, window_size)
+    normalized_im_by_wind_2 = normalize_im_by_windows(im2_tensor, window_size)
     normalized_im_by_wind_reshaped_2 = normalized_im_by_wind_2.reshape((normalized_im_by_wind_2.shape[0] * normalized_im_by_wind_2.shape[1], normalized_im_by_wind_2.shape[2]))
 
     return torch.from_numpy(normalized_im_by_wind_reshaped), torch.from_numpy(normalized_im_by_wind_reshaped_2)
 
 
+
 if __name__ == '__main__':
     a = np.arange(20 * 3)
     a = a.reshape((4, 5, 3))
-    b = get_windows_to_channels_im(a, 3)
+    a = np.ones((4, 5, 3))
+    b = normalize_im_by_windows(a, 3)
+    c = b.reshape((b.shape[0] * b.shape[1], b.shape[2]))
+    print(a)
+    print("b")
     print(b)
     print(b.shape)
-    c = b.reshape((6, 27))
+
     print("c")
     print(c)
+    print(c.shape)
+    d = np.transpose(c)
+    print(np.transpose(c).shape)
+    print(np.dot(c, d))

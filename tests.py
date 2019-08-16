@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import params
-
+import ssim
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
@@ -153,7 +153,31 @@ def transforms_test():
     hdr_image_utils.print_image_details(original_transform_im, "original_transform_im")
     hdr_image_utils.print_image_details(custom_transform_im, "custom_transform_im")
 
+def ssim_test():
+    transform_custom = transforms.Compose([
+        transforms_.Scale(params.input_size),
+        transforms_.CenterCrop(params.input_size),
+        transforms_.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    data_root = get_data_root()
+    print(data_root)
+    data_root_2 = "data/hdr_data_test"
+    dataset1 = HdrImageFolder.HdrImageFolder(root=data_root,
+                                                   transform=transform_custom)
+    dataset2 = HdrImageFolder.HdrImageFolder(root=data_root_2,
+                                                   transform=transform_custom)
+    dataloader1 = torch.utils.data.DataLoader(dataset1, batch_size=4,
+                                                 shuffle=False, num_workers=params.workers)
+    dataloader2 = torch.utils.data.DataLoader(dataset2, batch_size=4,
+                                                 shuffle=False, num_workers=1)
+    batch1 = (next(iter(dataloader1)))[0]
+    batch2 = (next(iter(dataloader2)))[0]
+    ssim_loss = ssim.SSIM(window_size=11)
+    print(ssim_loss(batch1, batch2))
+
+
 
 if __name__ == '__main__':
-    transforms_test()
+    ssim_test()
 

@@ -25,6 +25,7 @@ import LdrDatasetFolder
 import HdrImageFolder
 import gan_trainer_utils as g_t_utils
 import torchvision.datasets as dset
+import ssim
 
 # TODO ask about init BatchNorm weights
 def weights_init(m):
@@ -101,8 +102,8 @@ class GanTrainer:
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
 
-        self.errD_real, self.errD_fake, self.errG, self.errG_windows = None, None, None, None
-        self.errD = None, None
+        self.errG_d, self.errG_windows = None, None
+        self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_test, self.accD_test, self.accDreal_test, self.accDfake_test = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -120,6 +121,7 @@ class GanTrainer:
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
+        self.ssim_loss = ssim.SSIM(window_size=3)
 
 
 
@@ -306,15 +308,15 @@ class GanTrainer:
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # self.G_accuracy.append(self.accG.item())
-        self.errG = self.criterion(output_on_fake, label)
-        # self.errG = self.custom_loss(output_on_fake, label)
-        self.errG.backward()
-
-        self.errG_windows = self.windows_l2_normalized_loss(fake, hdr_input) / 100
+        self.errG_d = self.criterion(output_on_fake, label)
+        # self.errG_d = self.custom_loss(output_on_fake, label)
+        self.errG_d.backward()
+        # self.errG_windows = self.windows_l2_normalized_loss(fake, hdr_input) / 100
+        self.errG_windows = 1 - self.ssim_loss(fake, hdr_input)
         self.errG_windows.backward()
 
         self.optimizerG.step()
-        self.G_loss_d.append(self.errG.item())
+        self.G_loss_d.append(self.errG_d.item())
         self.G_loss_window.append(self.errG_windows.item())
 
     def train_epoch(self):
@@ -360,7 +362,7 @@ class GanTrainer:
 
     def print_epoch_losses_summary(self, epoch):
         print('[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f \tLoss_G: %.4f \tLoss_G_wind: %.4f'
-                  % (epoch, self.num_epochs, self.errD.item(), self.errD_real.item(), self.errD_fake.item(), self.errG.item(), self.errG_windows.item()))
+                  % (epoch, self.num_epochs, self.errD.item(), self.errD_real.item(), self.errD_fake.item(), self.errG_d.item(), self.errG_windows.item()))
         print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f\n'
             % (epoch, self.num_epochs, self.accDreal, self.accDfake, self.accG))
 
@@ -382,7 +384,7 @@ class GanTrainer:
             start = time.time()
             self.train_epoch()
             print("Single [[epoch]] iteration took [%.4f] seconds\n" % (time.time() - start))
-            self.save_model(params.models_save_path, epoch)
+            # self.save_model(params.models_save_path, epoch)
             self.print_epoch_losses_summary(epoch)
 
             if epoch % 5 == 0:
@@ -613,4 +615,4 @@ if __name__ == '__main__':
                              net_G, net_D, optimizer_G, optimizer_D, input_dim)
 
     gan_trainer.train(output_dir)
-    # # gan_trainer.test()
+    # gan_trainer.test()
