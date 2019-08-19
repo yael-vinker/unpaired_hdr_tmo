@@ -7,7 +7,7 @@ class VAE(nn.Module):
     def __init__(
         self,
         in_channels=3,
-        depth=3,
+        depth=5,
         wf=4,
     ):
         """

@@ -1,3 +1,6 @@
+import pathlib
+import imageio
+import os
 import numpy as np
 import torch
 import params
@@ -10,6 +13,7 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
 from PIL import Image
 import hdr_image_utils
+import gan_trainer_utils
 import HdrImageFolder
 
 import torchvision.datasets as dset
@@ -29,7 +33,12 @@ def print_batch_details(batch, title, disply=False):
     b_size = batch.shape[0]
     for i in range(b_size):
         im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        print_im_details(im, i)
+        hdr_image_utils.print_image_details(im, i)
+        if disply:
+            im_n = gan_trainer_utils.to_0_1_range(im)
+            plt.imshow(im_n)
+            plt.show()
+
 
 def compare_tensors(b1, b2):
     b_size = b1.shape[0]
@@ -118,7 +127,7 @@ def plot_npy_data(dataloader, device, title):
 def get_data_root():
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, g_opt_for_single_d, \
-    result_dir_pref, input_dim = gan_trainer.parse_arguments()
+    result_dir_pref, input_dim, apply_g_ssim = gan_trainer.parse_arguments()
     # Decide which device we want to run on
     return train_data_root_npy
 
@@ -176,8 +185,92 @@ def ssim_test():
     ssim_loss = ssim.SSIM(window_size=11)
     print(ssim_loss(batch1, batch2))
 
+def test1(root):
+    for img_name in os.listdir(root):
+        print("-------------------------------------------")
+        im_path = os.path.join(root, img_name)
+        path_lib_path = pathlib.Path(im_path)
+        file_extension = os.path.splitext(im_path)[1]
+        if file_extension == ".hdr":
+            im_origin = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
+        elif file_extension == ".dng":
+            im_origin = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+        elif file_extension == ".bmp":
+            im_origin = imageio.imread(path_lib_path).astype('float32')
 
+        hdr_image_utils.print_image_details(im_origin, img_name + " 1")
+
+        # im_origin = im_origin / np.max(im_origin)
+        # # im_origin = np.log(im_origin + 1)
+        # hdr_image_utils.print_image_details(im_origin, img_name)
+        #
+        # std_im = (im_origin - 0.5) / 0.5
+        # hdr_image_utils.print_image_details(std_im, "std_im")
+        #
+        # im_n = (std_im - np.min(std_im)) / (np.max(std_im) - np.min(std_im))
+        # hdr_image_utils.print_image_details(im_n, "im_n")
+
+        im_log = np.log(im_origin + 1)
+
+        im_log_norm = im_log / np.max(im_log) # 0-1
+        hdr_image_utils.print_image_details(im_log_norm, "im_log_norm")
+
+        std_im = (im_log_norm - 0.5) / 0.5 # -1 1
+        hdr_image_utils.print_image_details(std_im, "std_im")
+
+        im_n = (std_im - np.min(std_im)) / (np.max(std_im) - np.min(std_im)) # 0-1 (im_log_norm)
+        hdr_image_utils.print_image_details(im_n, "im_n")
+
+        im_org = np.exp(im_n * np.log(255)) - 1
+        hdr_image_utils.print_image_details(im_org, "im_org")
+        plt.figure(figsize=(15, 15))
+        plt.subplot(1, 2, 1)
+        plt.axis("off")
+        plt.title("im_origin")
+        plt.imshow(im_origin / np.max(im_origin))
+        plt.subplot(1, 2, 2)
+        plt.axis("off")
+        plt.title("im_log_norm")
+        plt.imshow(im_log_norm)
+        plt.show()
 
 if __name__ == '__main__':
-    ssim_test()
+    root1 = os.path.join("data/ldr_data2/ldr_data")
+    root2 = os.path.join("data/hdr_data/hdr_data")
+    test1(root1)
+    test1(root2)
+
+
+    # transform_custom = transforms.Compose([
+    #     transforms_.Scale(params.input_size),
+    #     # transforms_.CenterCrop(params.input_size),
+    #     transforms_.ToTensor(),
+    #     # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    # ])
+    # data_root = get_data_root()
+    # print(data_root)
+    # data_root_2 = "data/dng_data"
+    # dataset1 = HdrImageFolder.HdrImageFolder(root=data_root,
+    #                                          transform=transform_custom)
+    # dataset2 = HdrImageFolder.HdrImageFolder(root=data_root_2,
+    #                                          transform=transform_custom)
+    #
+    # dataloader1 = torch.utils.data.DataLoader(dataset1, batch_size=4,
+    #                                           shuffle=False, num_workers=params.workers)
+    # dataloader2 = torch.utils.data.DataLoader(dataset2, batch_size=3,
+    #                                           shuffle=False, num_workers=1)
+    # batch1 = (next(iter(dataloader1)))[0]
+    # batch2 = (next(iter(dataloader2)))[0]
+    # print_batch_details(batch1, "batch1 hdr")
+    # print_batch_details(batch2, "batch2 dng")
+
+    # im1 = imageio.imread(os.path.join(data_root_2, "dng_data","dng_image.dng"), format="RAW-FI").astype('float32')
+    # im2 = imageio.imread(os.path.join(data_root_2, "dng_data","im2.dng"), format="RAW-FI")
+    # im2 = imageio.imread(os.path.join(data_root_2, "dng_data","dng_image.dng"), format="RAW-FI")
+    # hdr_image_utils.print_image_details(im1, "im1 dng")
+    # hdr_image_utils.print_image_details(im2, "im2 dng")
+    #
+    # im3 = im2 + 1
+    # hdr_image_utils.print_image_details(im3, "im3 dng")
+
 

@@ -1,3 +1,4 @@
+import pathlib
 from sklearn.feature_extraction import image
 import matplotlib.pyplot as plt
 import os
@@ -8,6 +9,7 @@ import cv2
 from PIL import Image
 import imageio
 import torch
+import hdr_image_utils
 
 
 def custom_loss(output, target):
@@ -16,20 +18,21 @@ def custom_loss(output, target):
     return loss
 
 
-def plot_general_losses(loss_G, loss_G_wind, loss_D_fake, loss_D_real, title, iters_n, path):
-    plt.figure()
-    plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
-    plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
-    plt.plot(range(iters_n), loss_G, '-g', label='loss G')
-    plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
+def plot_general_losses(loss_G, loss_G_wind, loss_D_fake, loss_D_real, title, iters_n, path, use_g_ssim_loss):
+    if use_g_ssim_loss:
+        plt.figure()
+        plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+        plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+        plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+        plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
 
-    plt.xlabel("n iteration")
-    plt.legend(loc='upper left')
-    plt.title(title)
+        plt.xlabel("n iteration")
+        plt.legend(loc='upper left')
+        plt.title(title)
 
-    # save image
-    plt.savefig(os.path.join(path, title + "all.png"))  # should before show method
-    plt.close()
+        # save image
+        plt.savefig(os.path.join(path, title + "all.png"))  # should before show method
+        plt.close()
 
     plt.figure()
     plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
@@ -62,7 +65,7 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     # output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
     output_dir = os.path.join(result_dir_pref + "_" + model_name)
     if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
+        os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
 
     model_path = os.path.join(output_dir, model_path)
@@ -104,13 +107,14 @@ def log100_normalization(im, isHDR):
         plt.show()
     else:
         norm_im = (((np.exp(im) - 1) / IMAGE_SCALE) * IMAGE_MAX_VALUE).astype("uint8")
-    norm_im_clamp = np.clip(norm_im, 0, 255)
-    return norm_im_clamp
+    # norm_im_clamp = np.clip(norm_im, 0, 255)
+    return norm_im
 
 def uint_normalization(im):
     norm_im = ((im / np.max(im)) * 255).astype("uint8")
-    norm_im_clamp = np.clip(norm_im, 0, 255)
-    return norm_im_clamp
+    # norm_im_clamp = np.clip(norm_im, 0, 255)
+    # norm_im_clamp = norm_im
+    return norm_im
 
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
@@ -128,8 +132,13 @@ def display_batch_as_grid(batch, ncols_to_display, normalization="log100", nrow=
         elif normalization == "uint_0_1":
             im = to_0_1_range(cur_im)
             norm_im = uint_normalization(im)
+        elif normalization == "log1_uint_0_1":
+            im = np.exp(cur_im) - 1
+            im = to_0_1_range(im)
+            norm_im = uint_normalization(im)
         else:
             raise Exception('ERROR: Not valid normalization for display')
+        norm_im = np.clip(norm_im, 0, 255)
         if i == 0 and toPrint:
             print("fake display --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
                   (float(np.max(norm_im)), float(np.min(norm_im)),
@@ -186,41 +195,43 @@ def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
         images.append((im_name, im_origin))
     return images
 
-def load_data_test_mode(train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader, images_number=1):
+def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=1):
     # train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
-    train_hdr_loader = next(iter(train_hdr_dataloader))[0]
-    train_hdr_loader_single = np.asarray(train_hdr_loader[0])
-    print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
-           train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
+    # train_hdr_loader = next(iter(train_hdr_dataloader))[0]
+    # train_hdr_loader_single = np.asarray(train_hdr_loader[0])
+    # print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+    #       (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
+    #        train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
     # im_display = (((np.exp(train_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
-
-    train_ldr_loader = next(iter(train_ldr_dataloader))[0]
-    train_ldr_loader_single = np.asarray(train_ldr_loader[0])
-    print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
-           train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
+    #
+    # train_ldr_loader = next(iter(train_ldr_dataloader))[0]
+    # train_ldr_loader_single = np.asarray(train_ldr_loader[0])
+    # print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+    #       (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
+    #        train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
     # im_display = (((np.exp(train_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
 
     # test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
     test_hdr_loader = next(iter(test_hdr_dataloader))[0]
-    test_hdr_loader_single = np.asarray(test_hdr_loader[0])
-    print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
-           test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
-    # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
+    test_ldr_loader = next(iter(test_ldr_dataloader))[0]
+    for i in range(images_number):
+        test_hdr_loader_single = np.asarray(test_hdr_loader[i])
+        print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
+               test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
+        # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
 
-    test_ldr_loader = next(iter(test_ldr_dataloader))[0]
-    test_ldr_loader_single = np.asarray(test_ldr_loader[0])
-    print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
-           test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
+
+        test_ldr_loader_single = np.asarray(test_ldr_loader[i])
+        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
+               test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
     # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
@@ -265,22 +276,21 @@ def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window
 
     return torch.from_numpy(normalized_im_by_wind_reshaped), torch.from_numpy(normalized_im_by_wind_reshaped_2)
 
-
+# def windows_l2_normalized_loss(fake_im_batch, hdr_im_batch):
+#     b_size = hdr_im_batch.shape[0]
+#     loss = 0
+#     for i in range(b_size):
+#         fake_im, hdr_im = fake_im_batch[i], hdr_im_batch[i]
+#         fake_im_normalize, hdr_im_normalize = get_tensor_normalized_images_for_windows_loss(fake_im, hdr_im, window_size=5)
+#         loss += mse_loss(fake_im_normalize, hdr_im_normalize)
+#     return loss / b_size
 
 if __name__ == '__main__':
-    a = np.arange(20 * 3)
-    a = a.reshape((4, 5, 3))
-    a = np.ones((4, 5, 3))
-    b = normalize_im_by_windows(a, 3)
-    c = b.reshape((b.shape[0] * b.shape[1], b.shape[2]))
-    print(a)
-    print("b")
-    print(b)
-    print(b.shape)
+    path = "hdr05.hdr"
+    path = pathlib.Path(path)
+    im_origin = imageio.imread(path)
+    im_origin = im_origin / np.max(im_origin)
+    hdr_image_utils.print_image_details(im_origin, "hdr")
 
-    print("c")
-    print(c)
-    print(c.shape)
-    d = np.transpose(c)
-    print(np.transpose(c).shape)
-    print(np.dot(c, d))
+    new_im = (im_origin - np.mean(im_origin)) / np.std(im_origin)
+    hdr_image_utils.print_image_details(new_im, "new_im")

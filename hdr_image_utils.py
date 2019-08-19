@@ -42,6 +42,8 @@ def print_image_details(im, title):
     print("shape : ", im.shape)
     print("max : ", np.max(im), "  min : ", np.min(im), "mean : ", np.mean(im))
     print("type : ", im.dtype)
+    print("unique values : ", np.unique(im).shape[0])
+    print()
 
 
 def RGB2YUV(rgb_im):

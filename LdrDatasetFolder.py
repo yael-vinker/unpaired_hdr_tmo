@@ -20,7 +20,7 @@ def ldr_loader(path, input_dim, trainMode):
     :return:
     """
     path = pathlib.Path(path)
-    im_origin = imageio.imread(path)
+    im_origin = imageio.imread(path).astype("float32")
     if input_dim == 1:
         im_origin = hdr_image_utils.RGB2YUV(im_origin)
     # if im_origin.shape[0] < 128:
@@ -35,11 +35,12 @@ def ldr_loader(path, input_dim, trainMode):
     #     im = im_origin[rand_y: rand_y + 128, rand_x: rand_x + 128]
     # else:
     #     im = cv2.resize(im_origin, (128, 128))
-    im = im_origin
+    im = im_origin / np.max(im_origin)
     # im = im_origin / IMAGE_MAX_VALUE
     # im_log = np.log(im + 1)
     # im100 = (im / IMAGE_MAX_VALUE) * IMAGE_SCALE
     # im_log = np.log(im100 + 1)
+    # im = np.log(im_origin + 1)
     return im
 
 class LdrDatasetFolder(DatasetFolder):
