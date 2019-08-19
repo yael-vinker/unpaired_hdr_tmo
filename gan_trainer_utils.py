@@ -173,23 +173,19 @@ def get_single_ldr_im(ldr_data_root, images_number=1):
 
 def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
     images = []
-    # if isNpy:
-    #     x = next(os.walk(hdr_data_root))[1][0]
-    #     dir_path = os.path.join(hdr_data_root, x)
-    #     for i in range(images_number):
-    #         im_name = os.listdir(dir_path)[i]
-    #         im_path = os.path.join(dir_path, im_name)
-    #         data = np.load(im_path)
-    #         im_hdr = data[()][params.image_key]
-    #         images.append((im_name, im_hdr))
-    #     return images
     x = next(os.walk(hdr_data_root))[1][0]
     dir_path = os.path.join(hdr_data_root, x)
     for i in range(images_number):
         im_name = os.listdir(dir_path)[i]
+        file_extension = os.path.splitext(im_name)[1]
         im_path = os.path.join(dir_path, im_name)
+        if file_extension == ".hdr":
+            im_origin = imageio.imread(im_path, format="HDR-FI").astype('float32')
+        elif file_extension == ".dng":
+            im_origin = imageio.imread(im_path, format="RAW-FI").astype('float32')
+
         # im_origin = imageio.imread(im_path, format='HDR-FI')
-        im_origin = imageio.imread(im_path)
+        # im_origin = imageio.imread(im_path)
         # im_origin = cv2.imread(im_path)
         # print(im_origin.shape)
         images.append((im_name, im_origin))
@@ -219,29 +215,31 @@ def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=
     test_hdr_loader = next(iter(test_hdr_dataloader))[0]
     test_ldr_loader = next(iter(test_ldr_dataloader))[0]
     for i in range(images_number):
+        print()
         test_hdr_loader_single = np.asarray(test_hdr_loader[i])
-        print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+        print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]  unique[%s]" %
               (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
-               test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape)))
+               test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape), str(np.unique(test_hdr_loader_single).shape[0])))
         # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
 
 
         test_ldr_loader_single = np.asarray(test_ldr_loader[i])
-        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+        print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]  unique[%s]" %
               (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
-               test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape)))
+               test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape), str(np.unique(test_ldr_loader_single).shape[0])))
     # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
     # plt.imshow(np.transpose(im_display, (1, 2, 0)))
     # plt.show()
 
-def print_dataset_details(images_number, data_loader, batch):
-    print("\ntrain_npy_dataset [%d] images" % (len(data_loader.dataset)))
+def print_dataset_details(images_number, data_loader, batch, title):
+    print(title + " [%d] images" % (len(data_loader.dataset)))
     for i in range(images_number):
         sample = batch[i]
         im_name, im = sample[0], sample[1]
-        print(im_name + "    max[%.4f]  min[%.4f]  dtype[%s]" % (float(np.max(im)), float(np.min(im)), im.dtype))
+        print(im_name + "    max[%.4f]  min[%.4f]  dtype[%s]  unique[%d]" % (float(np.max(im)), float(np.min(im)), im.dtype, np.unique(im).shape[0]))
+    print()
 
 
 

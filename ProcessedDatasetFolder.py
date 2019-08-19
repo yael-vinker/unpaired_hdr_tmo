@@ -13,7 +13,8 @@ def npy_loader(path):
     :return:
     """
     data = np.load(path)
-    return data[()][params.image_key], data[()][params.window_image_key]
+    return data
+    # return data[()][params.image_key], data[()][params.window_image_key]
 
 
 class ProcessedDatasetFolder(DatasetFolder):
@@ -38,8 +39,9 @@ class ProcessedDatasetFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        image, binary_window = self.loader(path)
-        sample = {params.image_key: image, params.window_image_key: binary_window}
+        image = self.loader(path)
+        # image, binary_window = self.loader(path)
+        # sample = {params.image_key: image, params.window_image_key: binary_window}
         if self.transform:
-            sample = self.transform(sample)
-        return sample
+            image = self.transform(image)
+        return image

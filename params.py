@@ -1,10 +1,10 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "data/hdr_data"
+train_dataroot_hdr = "data/hdrplus_train"
 train_dataroot_ldr = "data/ldr_data2"
 
-test_dataroot_hdr = "data/hdr_test"
+test_dataroot_hdr = "data/hdrplus_train"
 test_dataroot_ldr = "data/ldr_data2"
 apply_windows_loss = False
 

@@ -9,7 +9,9 @@ import numbers
 import collections
 import torchvision.transforms as torch_transforms
 import skimage.transform
+from skimage import util
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class Normalize(object):
     """Normalize a tensor image with mean and standard deviation.
@@ -143,11 +145,15 @@ class Scale(object):
     Rescale the given numpy image to a specified size.
     """
 
-    def __init__(self, size, interpolation="bilinear"):
+    def __init__(self, size, dtype=np.float32, interpolation="bilinear"):
         assert isinstance(size, int) or (isinstance(size, collections.Iterable) and len(size) == 2)
         self.size = size
+        self.dtype = dtype
         self.interpolation = interpolation
 
     def __call__(self, pic):
-        return skimage.transform.resize(pic, (self.size, self.size),  mode='reflect')
+        if self.dtype == np.uint8:
+            scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+            return util.img_as_ubyte(scaled_im) / 255
+        return skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
 

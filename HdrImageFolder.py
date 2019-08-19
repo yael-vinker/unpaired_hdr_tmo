@@ -15,6 +15,7 @@ import os
 import hdr_image_utils
 
 
+
 IMG_EXTENSIONS_local = ('.hdr','.bmp','.png', '.dng')
 IMAGE_SCALE = 100
 MAX_AXIS = 600

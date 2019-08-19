@@ -130,7 +130,7 @@ class GanTrainer:
     def load_npy_data(self, npy_data_root, shuffle, batch_size, input_dim, trainMode):
         npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
                                                             transform=transforms.Compose([
-                                                                transforms_.Scale(params.input_size),
+                                                                transforms_.Scale(params.input_size, np.float32),
                                                                 transforms_.CenterCrop(params.input_size),
                                                                 transforms_.ToTensor(),
                                                                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -142,7 +142,7 @@ class GanTrainer:
     def load_ldr_data(self, ldr_data_root, shuffle, batch_size, input_dim, trainMode):
         ldr_dataset = LdrDatasetFolder.LdrDatasetFolder(root=ldr_data_root, input_dim=input_dim, trainMode=trainMode,
                                        transform=transforms.Compose([
-                                           transforms_.Scale(params.input_size),
+                                           transforms_.Scale(params.input_size, np.uint8),
                                            transforms_.CenterCrop(params.input_size),
                                            transforms_.ToTensor(),
                                            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -176,10 +176,10 @@ class GanTrainer:
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, 24, input_dim, trainMode=True)
         ldr_test_sample = g_t_utils.get_single_ldr_im(test_root_ldr, images_number)
 
-        g_t_utils.print_dataset_details(images_number, train_npy_dataloader, hdr_train_sample)
-        g_t_utils.print_dataset_details(images_number, test_npy_dataloader, hdr_test_sample)
-        g_t_utils.print_dataset_details(images_number, train_ldr_dataloader, ldr_train_sample)
-        g_t_utils.print_dataset_details(images_number, test_ldr_dataloader, ldr_test_sample)
+        g_t_utils.print_dataset_details(images_number, train_npy_dataloader, hdr_train_sample, "train_hdr_dataloader")
+        g_t_utils.print_dataset_details(images_number, test_npy_dataloader, hdr_test_sample, "test_hdr_dataloader")
+        g_t_utils.print_dataset_details(images_number, train_ldr_dataloader, ldr_train_sample, "train_ldr_dataloader")
+        g_t_utils.print_dataset_details(images_number, test_ldr_dataloader, ldr_test_sample, "test_ldr_dataloader")
 
         if testMode:
             g_t_utils.load_data_test_mode(test_npy_dataloader, test_ldr_dataloader, images_number=4)
@@ -589,14 +589,14 @@ if __name__ == '__main__':
 
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
-    print(net_G)
-    summary(net_G, (input_dim, params.input_size, params.input_size))
+    # print(net_G)
+    # summary(net_G, (input_dim, params.input_size, params.input_size))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
-    print(net_D)
-    summary(net_D, (input_dim, params.input_size, params.input_size))
+    # print(net_D)
+    # summary(net_D, (input_dim, params.input_size, params.input_size))
     print()
 
     # Setup Adam optimizers for both G and D
