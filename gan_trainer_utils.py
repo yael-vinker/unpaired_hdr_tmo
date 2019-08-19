@@ -1,3 +1,4 @@
+import torch
 import pathlib
 from sklearn.feature_extraction import image
 import matplotlib.pyplot as plt
@@ -18,14 +19,17 @@ def custom_loss(output, target):
     return loss
 
 
-def plot_general_losses(loss_G, loss_G_wind, loss_D_fake, loss_D_real, title, iters_n, path, use_g_ssim_loss):
-    if use_g_ssim_loss:
+def plot_general_losses(loss_G, loss_G_wind, G_loss_rgb_l2, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss, use_rgb_l2_loss):
+    if use_g_ssim_loss or use_rgb_l2_loss or use_g_d_loss:
         plt.figure()
         plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
         plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
-        plt.plot(range(iters_n), loss_G, '-g', label='loss G')
-        plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
-
+        if use_g_d_loss:
+            plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+        if use_g_ssim_loss:
+            plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
+        if use_rgb_l2_loss:
+            plt.plot(range(iters_n), G_loss_rgb_l2, '-k', label='loss G rgb_l2')
         plt.xlabel("n iteration")
         plt.legend(loc='upper left')
         plt.title(title)
@@ -37,7 +41,8 @@ def plot_general_losses(loss_G, loss_G_wind, loss_D_fake, loss_D_real, title, it
     plt.figure()
     plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
     plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
-    plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+    if use_g_d_loss:
+        plt.plot(range(iters_n), loss_G, '-g', label='loss G')
 
     plt.xlabel("n iteration")
     plt.legend(loc='upper left')
@@ -166,9 +171,16 @@ def get_single_ldr_im(ldr_data_root, images_number=1):
     for i in range(images_number):
         im_name = os.listdir(dir_path)[i]
         im_path = os.path.join(dir_path, im_name)
-        with open(im_path, 'rb') as f:
-            img = Image.open(f)
-            images.append((im_name, np.asarray(img.convert('RGB'))))
+        file_extension = os.path.splitext(im_name)[1]
+
+        if file_extension == ".npy":
+            image = np.load(im_path)
+            img = image.transpose((1, 2, 0))
+        elif file_extension == ".bmp":
+            with open(im_path, 'rb') as f:
+                img = Image.open(f)
+                img = np.asarray(img.convert('RGB'))
+        images.append((im_name, img))
     return images
 
 def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
@@ -183,6 +195,9 @@ def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
             im_origin = imageio.imread(im_path, format="HDR-FI").astype('float32')
         elif file_extension == ".dng":
             im_origin = imageio.imread(im_path, format="RAW-FI").astype('float32')
+        elif file_extension == ".npy":
+            image = np.load(im_path)
+            im_origin = image.transpose((1, 2, 0))
 
         # im_origin = imageio.imread(im_path, format='HDR-FI')
         # im_origin = imageio.imread(im_path)
@@ -192,26 +207,7 @@ def get_single_hdr_im(hdr_data_root, images_number=1, isNpy=False):
     return images
 
 def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=1):
-    # train_hdr_loader = next(iter(train_hdr_dataloader))[params.image_key]
-    # train_hdr_loader = next(iter(train_hdr_dataloader))[0]
-    # train_hdr_loader_single = np.asarray(train_hdr_loader[0])
-    # print("train_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-    #       (float(np.max(train_hdr_loader_single)), float(np.min(train_hdr_loader_single)),
-    #        train_hdr_loader_single.dtype, str(train_hdr_loader_single.shape)))
-    # im_display = (((np.exp(train_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
-    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-    # plt.show()
-    #
-    # train_ldr_loader = next(iter(train_ldr_dataloader))[0]
-    # train_ldr_loader_single = np.asarray(train_ldr_loader[0])
-    # print("train_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-    #       (float(np.max(train_ldr_loader_single)), float(np.min(train_ldr_loader_single)),
-    #        train_ldr_loader_single.dtype, str(train_ldr_loader_single.shape)))
-    # im_display = (((np.exp(train_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
-    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-    # plt.show()
 
-    # test_hdr_loader = next(iter(test_hdr_dataloader))[params.image_key]
     test_hdr_loader = next(iter(test_hdr_dataloader))[0]
     test_ldr_loader = next(iter(test_ldr_dataloader))[0]
     for i in range(images_number):
@@ -220,18 +216,13 @@ def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=
         print("test_hdr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]  unique[%s]" %
               (float(np.max(test_hdr_loader_single)), float(np.min(test_hdr_loader_single)),
                test_hdr_loader_single.dtype, str(test_hdr_loader_single.shape), str(np.unique(test_hdr_loader_single).shape[0])))
-        # im_display = (((np.exp(test_hdr_loader_single) - 1) / 100) * 255).astype("uint8")
-    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-    # plt.show()
 
 
         test_ldr_loader_single = np.asarray(test_ldr_loader[i])
         print("test_ldr_dataloader --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]  unique[%s]" %
               (float(np.max(test_ldr_loader_single)), float(np.min(test_ldr_loader_single)),
                test_ldr_loader_single.dtype, str(test_ldr_loader_single.shape), str(np.unique(test_ldr_loader_single).shape[0])))
-    # im_display = (((np.exp(test_ldr_loader_single) - 1) / 100) * 255).astype("uint8")
-    # plt.imshow(np.transpose(im_display, (1, 2, 0)))
-    # plt.show()
+
 
 def print_dataset_details(images_number, data_loader, batch, title):
     print(title + " [%d] images" % (len(data_loader.dataset)))
@@ -283,12 +274,46 @@ def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window
 #         loss += mse_loss(fake_im_normalize, hdr_im_normalize)
 #     return loss / b_size
 
-if __name__ == '__main__':
-    path = "hdr05.hdr"
-    path = pathlib.Path(path)
-    im_origin = imageio.imread(path)
-    im_origin = im_origin / np.max(im_origin)
-    hdr_image_utils.print_image_details(im_origin, "hdr")
+def get_rgb_normalize_im(im):
+    new_im = im.clone()
+    fake_rgb_mean = torch.sum(im, dim=0)
+    for i in range(im.shape[0]):
+        new_im[i, :, :] = (im[i, :, :] / fake_rgb_mean).clone()
+    return new_im
 
-    new_im = (im_origin - np.mean(im_origin)) / np.std(im_origin)
-    hdr_image_utils.print_image_details(new_im, "new_im")
+def get_rgb_normalize_im_batch(batch):
+    batch_normalize = torch.stack([get_rgb_normalize_im(im_x) for im_x in batch])
+    return batch_normalize
+#
+# def get_no(fake, hdr_input):
+#     new_fake = get_rgb_normalize_im(fake)
+#     new_hdr_unput = get_rgb_normalize_im(hdr_input)
+#
+
+
+
+if __name__ == '__main__':
+    # im = imageio.imread("data/ldr_data2/ldr_data/im_96.bmp").astype('float32')
+    # new_im = np.copy(im)
+    # im_3_a = np.sum(im, axis=2)
+    # print(im_3_a[0,0])
+    # for i in range(im.shape[2]):
+    #     new_im[:, :, i] = im[:, :, i] / im_3_a
+    # print(new_im[0,0])
+    # plt.imshow(new_im)
+    # plt.show()
+    #
+    # im3 = torch.from_numpy(np.copy(im).transpose((2, 0, 1))).float()
+    # im2 = get_rgb_normalize_im(im3)
+    # print(im2[:,0,0])
+    # im4 = np.array(im2.permute(1, 2, 0))
+    # print(im.shape)
+    # plt.imshow(im4)
+    # plt.show()
+    mse_loss = torch.nn.MSELoss()
+    a = torch.tensor([[4,4,4],[1.,2.,3.]], device='cuda')
+    b = torch.tensor([[1.,1.,1.],[1.,1.,1.]], device='cuda')
+    print(mse_loss(a,b) / (a.shape[0] * a.shape[1]))
+
+
+

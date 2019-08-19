@@ -1,4 +1,5 @@
-from __future__ import print_function
+import torch
+# from __future__ import print_function
 from torchvision.datasets import DatasetFolder
 import params
 import numpy as np
@@ -12,8 +13,12 @@ def npy_loader(path):
     :param path: image path
     :return:
     """
-    data = np.load(path)
-    return data
+    image = np.load(path)
+    if image.ndim == 2:
+        image = image[:, :, None]
+    image_tensor = torch.from_numpy(image).float()
+    return image_tensor
+    # return data
     # return data[()][params.image_key], data[()][params.window_image_key]
 
 
@@ -44,4 +49,4 @@ class ProcessedDatasetFolder(DatasetFolder):
         # sample = {params.image_key: image, params.window_image_key: binary_window}
         if self.transform:
             image = self.transform(image)
-        return image
+        return image, target
