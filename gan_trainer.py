@@ -1,5 +1,5 @@
 from __future__ import print_function
-#git
+
 import unet.Unet as Unet
 import VAE
 from torch import autograd
@@ -8,20 +8,14 @@ import argparse
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-import torchvision.transforms as transforms
-import torchvision.utils as vutils
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import Discriminator
 import params
 import time
-import hdr_image_utils
-# from torchsummary import summary
-import tranforms as transforms_
 import gan_trainer_utils as g_t_utils
-import torchvision.datasets as dset
 import ProcessedDatasetFolder
 import ssim
 
@@ -354,11 +348,11 @@ class GanTrainer:
             self.save_model(params.models_save_path, epoch)
             self.print_epoch_losses_summary(epoch)
 
-            if epoch % 4 == 0:
+            if epoch % 10 == 0:
                 self.save_test_images(epoch, output_dir)
                 # self.save_test_loss(epoch, output_dir)
 
-            if epoch % 4 == 0:
+            if epoch % 10 == 0:
                 self.save_loss_plot(epoch, output_dir)
 
     def update_test_loss(self, b_size, first_b_tonemap, fake, hdr_input, epoch):

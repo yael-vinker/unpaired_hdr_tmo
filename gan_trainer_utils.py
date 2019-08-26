@@ -1,3 +1,4 @@
+import params
 import torchvision.utils as vutils
 import torch
 import pathlib
@@ -382,8 +383,9 @@ def print_test_epoch_losses_summary(num_epochs, epoch, test_loss_D, test_errGd, 
 
 def get_rgb_normalize_im(im):
     new_im = im.clone()
-    norm_rgb = torch.sqrt(torch.pow(im[0, :, :],2) + torch.pow(im[1, :, :], 2) + torch.pow(im[2, :, :], 2))
-    if (norm_rgb == 0).nonzero().shape[0] != 0:
+    norm_rgb = torch.norm(im, dim=0) + params.epsilon
+    indices = (norm_rgb == 0).nonzero()
+    if indices.shape[0] != 0:
         print("TORCH.SUM CONTAINS ZEROS")
     for i in range(im.shape[0]):
         new_im[i, :, :] = im[i, :, :] / norm_rgb
@@ -401,7 +403,14 @@ def get_rgb_normalize_im_batch(batch):
 
 
 if __name__ == '__main__':
-    # im = imageio.imread("data/ldr_data/ldr_data/im_96.bmp").astype('float32')
+    im1 = imageio.imread("data/ldr_data/ldr_data/im_96.bmp").astype('float32')
+    im1 = im1 / np.max(im1)
+    im = torch.from_numpy(np.copy(im1).transpose((2, 0, 1))).float()
+    a = torch.norm(im, dim=0)
+    b = torch.sqrt(
+        torch.pow(im[0, :, :], 2) + torch.pow(im[1, :, :], 2) + torch.pow(im[2, :, :], 2)) + params.epsilon
+    print(a[0,0])
+    print(b[0,0])
     # new_im = np.copy(im)
     # im_3_a = np.sum(im, axis=2)
     # print(im_3_a[0,0])
@@ -418,10 +427,21 @@ if __name__ == '__main__':
     # print(im.shape)
     # plt.imshow(im4)
     # plt.show()
-    mse_loss = torch.nn.MSELoss()
-    a = torch.tensor([[4,4,4],[1.,2.,3.]], device='cuda')
-    b = torch.tensor([[1.,1.,1.],[1.,1.,1.]], device='cuda')
-    print(mse_loss(a,b) / (a.shape[0] * a.shape[1]))
+    # mse_loss = torch.nn.MSELoss()
+    # a = torch.tensor([[4,4,4],[1.,2.,3.]], device='cuda')
+    # b = torch.tensor([[1.,1.,1.],[1.,1.,1.]], device='cuda')
+    # print(mse_loss(a,b) / (a.shape[0] * a.shape[1]))
+    a = torch.tensor([[1,2,0],[0,0,1]])
+    print(a,"\n")
+    a[a==0] = a[a==0] + 1
+    print(a)
+    # b = (a == 0)
+    # # print(a(torch.tensor([0,2])))
+    # for index in b:
+    #     print(index)
+    #     print(a[index[0], index[1]])
+    #     a[index[0], index[1]] = 1
+    # print(a)
 
 
 

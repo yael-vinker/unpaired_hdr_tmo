@@ -25,6 +25,8 @@ workers = 8
 # Batch size during training
 batch_size = 28
 
+epsilon = 1e-10
+
 # Spatial size of training images. All images will be resized to this
 # size using a transformer.
 
