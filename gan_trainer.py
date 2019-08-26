@@ -1,6 +1,5 @@
 from __future__ import print_function
-
-
+#git
 import unet.Unet as Unet
 import VAE
 from torch import autograd
@@ -19,10 +18,8 @@ import Discriminator
 import params
 import time
 import hdr_image_utils
-from torchsummary import summary
+# from torchsummary import summary
 import tranforms as transforms_
-import LdrDatasetFolder
-import HdrImageFolder
 import gan_trainer_utils as g_t_utils
 import torchvision.datasets as dset
 import ProcessedDatasetFolder
