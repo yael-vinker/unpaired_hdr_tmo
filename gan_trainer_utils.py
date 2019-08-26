@@ -1,6 +1,7 @@
+import torchvision.utils as vutils
 import torch
 import pathlib
-from sklearn.feature_extraction import image
+# from sklearn.feature_extraction import image
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -17,7 +18,6 @@ def custom_loss(output, target):
     b_size = target.shape[0]
     loss = ((output - target) ** 2).sum() / b_size
     return loss
-
 
 def plot_general_losses(loss_G, loss_G_wind, G_loss_rgb_l2, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss, use_rgb_l2_loss):
     if use_g_ssim_loss or use_rgb_l2_loss or use_g_d_loss:
@@ -116,7 +116,8 @@ def log100_normalization(im, isHDR):
     return norm_im
 
 def uint_normalization(im):
-    norm_im = ((im / np.max(im)) * 255).astype("uint8")
+    # norm_im = ((im / np.max(im)) * 255).astype("uint8")
+    norm_im = (im * 255).astype("uint8")
     # norm_im_clamp = np.clip(norm_im, 0, 255)
     # norm_im_clamp = norm_im
     return norm_im
@@ -124,7 +125,7 @@ def uint_normalization(im):
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
-def display_batch_as_grid(batch, ncols_to_display, normalization="log100", nrow=8, pad_value=0, isHDR=False, batch_start_index=0, toPrint=False):
+def display_batch_as_grid(batch, ncols_to_display, normalization="uint_0_1", nrow=8, pad_value=0, isHDR=False, batch_start_index=0, toPrint=False):
     batch = batch[batch_start_index:ncols_to_display]
     b_size = batch.shape[0]
     output = []
@@ -234,36 +235,36 @@ def print_dataset_details(images_number, data_loader, batch, title):
 
 
 
-
-def normalize_im_by_windows(im, window_size):
-    channeles_by_wind_im = get_windows_to_channels_im(im, window_size)
-    mean_matrix = np.mean(channeles_by_wind_im, axis=2)
-    mean_matrix_broadcasted = mean_matrix.reshape((mean_matrix.shape[0], mean_matrix.shape[1], 1))
-    std_matrix = np.sqrt(np.mean(np.power((channeles_by_wind_im - mean_matrix_broadcasted), 2), axis=2))
-    std_matrix_broadcasted = std_matrix.reshape((std_matrix.shape[0], std_matrix.shape[1], 1))
-
-    normalized_im_by_wind = (channeles_by_wind_im - mean_matrix_broadcasted) / std_matrix_broadcasted
-    return normalized_im_by_wind
-
-
-def get_windows_to_channels_im(im, window_size):
-    patches = image.extract_patches_2d(im, (window_size, window_size))
-    flat_patches = patches.flatten()
-    new_height, new_width = im.shape[0] - 2 * int(window_size / 2), im.shape[1] - 2 * int(window_size / 2)
-    return flat_patches.reshape((new_height, new_width, int(window_size ** 2) * im.shape[-1]))
+#
+# def normalize_im_by_windows(im, window_size):
+#     channeles_by_wind_im = get_windows_to_channels_im(im, window_size)
+#     mean_matrix = np.mean(channeles_by_wind_im, axis=2)
+#     mean_matrix_broadcasted = mean_matrix.reshape((mean_matrix.shape[0], mean_matrix.shape[1], 1))
+#     std_matrix = np.sqrt(np.mean(np.power((channeles_by_wind_im - mean_matrix_broadcasted), 2), axis=2))
+#     std_matrix_broadcasted = std_matrix.reshape((std_matrix.shape[0], std_matrix.shape[1], 1))
+#
+#     normalized_im_by_wind = (channeles_by_wind_im - mean_matrix_broadcasted) / std_matrix_broadcasted
+#     return normalized_im_by_wind
 
 
-def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window_size):
-    im1_tensor = im1_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    normalized_im_by_wind = normalize_im_by_windows(im1_tensor, window_size)
-    print(normalized_im_by_wind.shape)
-    normalized_im_by_wind_reshaped = normalized_im_by_wind.reshape((normalized_im_by_wind.shape[0] * normalized_im_by_wind.shape[1], normalized_im_by_wind.shape[2]))
+# def get_windows_to_channels_im(im, window_size):
+#     patches = image.extract_patches_2d(im, (window_size, window_size))
+#     flat_patches = patches.flatten()
+#     new_height, new_width = im.shape[0] - 2 * int(window_size / 2), im.shape[1] - 2 * int(window_size / 2)
+#     return flat_patches.reshape((new_height, new_width, int(window_size ** 2) * im.shape[-1]))
 
-    im2_tensor = im2_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    normalized_im_by_wind_2 = normalize_im_by_windows(im2_tensor, window_size)
-    normalized_im_by_wind_reshaped_2 = normalized_im_by_wind_2.reshape((normalized_im_by_wind_2.shape[0] * normalized_im_by_wind_2.shape[1], normalized_im_by_wind_2.shape[2]))
-
-    return torch.from_numpy(normalized_im_by_wind_reshaped), torch.from_numpy(normalized_im_by_wind_reshaped_2)
+#
+# def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window_size):
+#     im1_tensor = im1_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+#     normalized_im_by_wind = normalize_im_by_windows(im1_tensor, window_size)
+#     print(normalized_im_by_wind.shape)
+#     normalized_im_by_wind_reshaped = normalized_im_by_wind.reshape((normalized_im_by_wind.shape[0] * normalized_im_by_wind.shape[1], normalized_im_by_wind.shape[2]))
+#
+#     im2_tensor = im2_tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+#     normalized_im_by_wind_2 = normalize_im_by_windows(im2_tensor, window_size)
+#     normalized_im_by_wind_reshaped_2 = normalized_im_by_wind_2.reshape((normalized_im_by_wind_2.shape[0] * normalized_im_by_wind_2.shape[1], normalized_im_by_wind_2.shape[2]))
+#
+#     return torch.from_numpy(normalized_im_by_wind_reshaped), torch.from_numpy(normalized_im_by_wind_reshaped_2)
 
 # def windows_l2_normalized_loss(fake_im_batch, hdr_im_batch):
 #     b_size = hdr_im_batch.shape[0]
@@ -274,11 +275,118 @@ def get_tensor_normalized_images_for_windows_loss(im1_tensor, im2_tensor, window
 #         loss += mse_loss(fake_im_normalize, hdr_im_normalize)
 #     return loss / b_size
 
+def save_groups_images(test_hdr_image, test_ldr_batch, fake, new_out_dir, batch_size, epoch):
+    test_real_first_b_display = display_batch_as_grid(test_ldr_batch, ncols_to_display=batch_size,
+                                                                normalization="uint_0_1")
+    test_first_b_display_small = display_batch_as_grid(test_ldr_batch, ncols_to_display=2,
+                                                                 normalization="uint_0_1")
+    fake_display = display_batch_as_grid(fake, ncols_to_display=batch_size, normalization="uint_0_1",
+                                                   toPrint=True)
+    fake_display_small = display_batch_as_grid(fake, 2, normalization="uint_0_1")
+
+    plt.figure(figsize=(15, 15))
+    plt.subplot(2, 2, 1)
+    plt.axis("off")
+    plt.title("Real Images")
+    if test_real_first_b_display.shape[2] == 1:
+        plt.imshow(test_real_first_b_display[:, :, 0], cmap='gray')
+    else:
+        plt.imshow(test_real_first_b_display)
+
+    plt.subplot(2, 2, 2)
+    plt.axis("off")
+    plt.title("Real Images")
+    if test_first_b_display_small.shape[2] == 1:
+        plt.imshow(test_first_b_display_small[:, :, 0], cmap='gray')
+    else:
+        plt.imshow(test_first_b_display_small)
+
+    plt.subplot(2, 2, 3)
+    plt.axis("off")
+    plt.title("Fake Images")
+    if fake_display.shape[2] == 1:
+        plt.imshow(fake_display[:, :, 0], cmap='gray')
+    else:
+        plt.imshow(fake_display)
+
+    plt.subplot(2, 2, 4)
+    plt.axis("off")
+    plt.title("Fake Images")
+    if fake_display_small.shape[2] == 1:
+        plt.imshow(fake_display_small[:, :, 0], cmap='gray')
+    else:
+        plt.imshow(fake_display_small)
+    plt.savefig(os.path.join(new_out_dir, "ALL epoch = " + str(epoch)))
+    plt.close()
+
+    b_size = test_ldr_batch.shape[0]
+    output_len = int(b_size / 4)
+    for i in range(output_len):
+        plt.figure(figsize=(15, 15))
+
+        test_ldr_display = display_batch_as_grid(test_ldr_batch, ncols_to_display=(i + 1) * 4, normalization="uint_0_1",
+                                                 isHDR=False, batch_start_index=i * 4)
+        plt.subplot(3, 1, 1)
+        plt.axis("off")
+        plt.title("Real images")
+        if test_ldr_display.shape[2] == 1:
+            plt.imshow(test_ldr_display[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(test_ldr_display)
+        # plt.imshow(
+        #     np.transpose(vutils.make_grid(test_ldr_batch[i * 4: (i + 1) * 4], padding=5, normalize=True).cpu(), (1, 2, 0)))
+
+        test_hdr_display = display_batch_as_grid(test_hdr_image, ncols_to_display=(i + 1) * 4, normalization="uint_0_1", isHDR=True, batch_start_index=i * 4)
+
+        plt.subplot(3, 1, 2)
+        plt.axis("off")
+        plt.title("Processed Images")
+        if test_hdr_display.shape[2] == 1:
+            plt.imshow(test_hdr_display[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(test_hdr_display)
+
+        test_fake_display = display_batch_as_grid(fake, ncols_to_display=(i + 1) * 4,
+                                                           normalization="uint_0_1", isHDR=False,
+                                                           batch_start_index=i * 4)
+
+        plt.subplot(3, 1, 3)
+        plt.axis("off")
+        plt.title("Fake Images")
+        if test_hdr_display.shape[2] == 1:
+            plt.imshow(test_fake_display[:, :, 0], cmap='gray')
+        else:
+            plt.imshow(test_fake_display)
+        # img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5, normalize=True)]
+        # plt.subplot(3, 1, 3)
+        # plt.axis("off")
+        # plt.title("Fake Images")
+        # plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
+        plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
+        plt.close()
+
+
+def print_cuda_details(device):
+    if (device == 'cuda') and (torch.cuda.device_count() > 1):
+        print("Using [%d] GPUs" % torch.cuda.device_count())
+        for i in range(torch.cuda.device_count()):
+            print("GPU [%d] device name = %s" % (i, torch.cuda.get_device_name(i)))
+        print(torch.cuda.current_device())
+
+def print_test_epoch_losses_summary(num_epochs, epoch, test_loss_D, test_errGd, accDreal_test, accDfake_test, accG_test):
+    print("===== Test results =====")
+    print('[%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\t'
+              % (epoch, num_epochs, test_loss_D, test_errGd))
+    print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f'
+          % (epoch, num_epochs, accDreal_test, accDfake_test, accG_test))
+
 def get_rgb_normalize_im(im):
     new_im = im.clone()
-    fake_rgb_mean = torch.sum(im, dim=0)
+    norm_rgb = torch.sqrt(torch.pow(im[0, :, :],2) + torch.pow(im[1, :, :], 2) + torch.pow(im[2, :, :], 2))
+    if (norm_rgb == 0).nonzero().shape[0] != 0:
+        print("TORCH.SUM CONTAINS ZEROS")
     for i in range(im.shape[0]):
-        new_im[i, :, :] = (im[i, :, :] / fake_rgb_mean).clone()
+        new_im[i, :, :] = im[i, :, :] / norm_rgb
     return new_im
 
 def get_rgb_normalize_im_batch(batch):
@@ -293,7 +401,7 @@ def get_rgb_normalize_im_batch(batch):
 
 
 if __name__ == '__main__':
-    # im = imageio.imread("data/ldr_data2/ldr_data/im_96.bmp").astype('float32')
+    # im = imageio.imread("data/ldr_data/ldr_data/im_96.bmp").astype('float32')
     # new_im = np.copy(im)
     # im_3_a = np.sum(im, axis=2)
     # print(im_3_a[0,0])

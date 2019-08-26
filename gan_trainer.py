@@ -122,16 +122,13 @@ class GanTrainer:
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss = ssim.SSIM(window_size=3)
+        self.ssim_loss = ssim.SSIM(window_size=11)
 
         self.loss_g_d_factor = loss_g_d_factor_
-        self.retain_loss_g_gd_graph = (ssim_loss_g_factor_ != 0) or (rgb_l2_loss_g_factor_!= 0)
+        self.retain_loss_g_gd_graph = (ssim_loss_g_factor_ != 0) or (rgb_l2_loss_g_factor_ != 0)
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.retain_ssim_graph = rgb_l2_loss_g_factor_ != 0
         self.rgb_l2_loss_g_factor = rgb_l2_loss_g_factor_
-
-        print("RETAIN GRAPH")
-        print(self.retain_ssim_graph, self.retain_loss_g_gd_graph)
 
     def load_npy_data(self, npy_data_root, shuffle, batch_size, input_dim, trainMode):
         # npy_dataset = HdrImageFolder.HdrImageFolder(root=npy_data_root, input_dim=input_dim, trainMode=trainMode,
@@ -167,10 +164,10 @@ class GanTrainer:
         :param b_size: batch size
         :return: DataLoader object of images in "dir_root"
         """
-        train_npy_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size, input_dim, trainMode=True)
+        train_hdr_dataloader = self.load_npy_data(train_root_npy, True, self.batch_size, input_dim, trainMode=True)
         hdr_train_sample = g_t_utils.get_single_hdr_im(train_root_npy, images_number)
 
-        test_npy_dataloader = self.load_npy_data(test_root_npy, False, self.batch_size, input_dim, trainMode=True)
+        test_hdr_dataloader = self.load_npy_data(test_root_npy, False, self.batch_size, input_dim, trainMode=True)
         hdr_test_sample = g_t_utils.get_single_hdr_im(test_root_npy, images_number)
 
         train_ldr_dataloader = self.load_ldr_data(train_root_ldr, True, self.batch_size, input_dim, trainMode=True)
@@ -179,14 +176,14 @@ class GanTrainer:
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, False, self.batch_size, input_dim, trainMode=True)
         ldr_test_sample = g_t_utils.get_single_ldr_im(test_root_ldr, images_number)
 
-        g_t_utils.print_dataset_details(images_number, train_npy_dataloader, hdr_train_sample, "train_hdr_dataloader")
-        g_t_utils.print_dataset_details(images_number, test_npy_dataloader, hdr_test_sample, "test_hdr_dataloader")
+        g_t_utils.print_dataset_details(images_number, train_hdr_dataloader, hdr_train_sample, "train_hdr_dataloader")
+        g_t_utils.print_dataset_details(images_number, test_hdr_dataloader, hdr_test_sample, "test_hdr_dataloader")
         g_t_utils.print_dataset_details(images_number, train_ldr_dataloader, ldr_train_sample, "train_ldr_dataloader")
         g_t_utils.print_dataset_details(images_number, test_ldr_dataloader, ldr_test_sample, "test_ldr_dataloader")
 
         if testMode:
-            g_t_utils.load_data_test_mode(test_npy_dataloader, test_ldr_dataloader, images_number=4)
-        return train_npy_dataloader, train_ldr_dataloader, test_npy_dataloader, test_ldr_dataloader
+            g_t_utils.load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=4)
+        return train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader
 
     def update_accuracy(self, isTest=False):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
@@ -194,21 +191,10 @@ class GanTrainer:
         len_ldr_train_dset = len(self.train_data_loader_ldr.dataset)
         len_ldr_test_dset = len(self.test_data_loader_ldr.dataset)
 
-        test_smaller_len = len_hdr_test_dset if len_hdr_test_dset < len_ldr_test_dset else len_ldr_test_dset
-        train_smaller_len = len_hdr_train_dset if len_hdr_train_dset < len_ldr_train_dset else len_ldr_train_dset
-
         if isTest:
             self.accG_test = self.accG_counter / len_hdr_test_dset
-            self.accDreal_test = self.accDreal_counter / test_smaller_len
-            self.accDfake_test = self.accDfake_counter / test_smaller_len
-            # print("accG_test ", self.accG_test ,"=", "accG_counter ", self.accG_counter, "/ len_hdr_test_dset",  len_hdr_test_dset)
-            self.accDreal_test = self.accDreal_counter / test_smaller_len
-            # print("accDreal_test ", self.accDreal_test, "=", "accDreal_counter ", self.accDreal_counter, "/ test_smaller_len",
-            #       test_smaller_len)
-            self.accDfake_test = self.accDfake_counter / test_smaller_len
-            # print("accDfake_test ", self.accDfake_test, "=", "accDfake_counter ", self.accDfake_counter,
-            #       "/ test_smaller_len",
-            #       test_smaller_len)
+            self.accDreal_test = self.accDreal_counter / len_ldr_train_dset
+            self.accDfake_test = self.accDfake_counter / len_ldr_train_dset
             self.G_accuracy_test.append(self.accG_test)
             self.D_accuracy_real_test.append(self.accDreal_test)
             self.D_accuracy_fake_test.append(self.accDfake_test)
@@ -220,7 +206,7 @@ class GanTrainer:
             self.D_accuracy_real.append(self.accDreal)
             self.D_accuracy_fake.append(self.accDfake)
 
-    def train_D(self, hdr_input, real_ldr_cpu, half_batch_size):
+    def train_D(self, hdr_input, real_ldr_cpu):
         """
         Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         :param real_hdr_cpu: HDR images as input to G to generate fake data
@@ -228,17 +214,14 @@ class GanTrainer:
         :param label: Tensor contains real labels for first loss
         :return: fake (Tensor) result of G on hdr_data, for G train
         """
-        label = torch.full((half_batch_size,), self.real_label, device=self.device)
+        label = torch.full((self.batch_size,), self.real_label, device=self.device)
         # Train with all-real batch
         self.netD.zero_grad()
         # Forward pass real batch through D
-        # real_ldr_half_batch = real_ldr_cpu[0: half_batch_size]
-        # print("real_ldr ",real_ldr_cpu.shape)
         output_on_real = self.netD(real_ldr_cpu).view(-1)
         # output_on_real = self.netD(real_ldr_half_batch).view(-1)
         # Real label = 1, so we count the samples on which D was right
         self.accDreal_counter += (output_on_real > 0.5).sum().item()
-        # self.D_accuracy_real.append(self.accDreal.item())
 
         # Calculate loss on all-real batch
         self.errD_real = self.criterion(output_on_real, label)
@@ -255,12 +238,7 @@ class GanTrainer:
         self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
         # self.D_accuracy_fake.append(self.accDfake.item())
         # Calculate D's loss on the all-fake batch
-        # self.errD_fake = self.custom_loss(output_on_fake, label)
         self.errD_fake = self.criterion(output_on_fake, label)
-        output_on_fake_np = np.asarray(output_on_fake.cpu().detach())
-        print("output_on_fake_np --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-              (float(np.max(output_on_fake_np)), float(np.min(output_on_fake_np)),
-               output_on_fake_np.dtype, str(output_on_fake_np.shape)))
         # Calculate the gradients for this batch
         self.errD_fake.backward()
         # Add the gradients from the all-real and all-fake batches
@@ -301,9 +279,6 @@ class GanTrainer:
 
         if self.ssim_loss_g_factor != 0:
             fake_rgb_n = torch.sum(fake, dim=1)[:,None,:, :]
-            print(fake_rgb_n[0,0].shape)
-            print(torch.sum(fake, dim=1)[0].shape)
-            print(torch.all(torch.eq(fake_rgb_n[0,0], torch.sum(fake, dim=1)[0])))
             hdr_input_rgb_n = torch.sum(hdr_input, dim=1)[:,None,:, :]
             self.errG_ssim = self.ssim_loss_g_factor * (1 - self.ssim_loss(fake_rgb_n, hdr_input_rgb_n))
             self.errG_ssim.backward(retain_graph=self.retain_ssim_graph)
@@ -313,40 +288,27 @@ class GanTrainer:
             new_fake = g_t_utils.get_rgb_normalize_im_batch(fake)
             new_hdr_unput = g_t_utils.get_rgb_normalize_im_batch(hdr_input)
 
-            self.errG_rgb_l2 = self.rgb_l2_loss_g_factor * (self.mse_loss(new_fake, new_hdr_unput) / (new_fake.shape[1] * new_fake.shape[2] * new_fake.shape[3]))
+            self.errG_rgb_l2 = self.rgb_l2_loss_g_factor * self.mse_loss(new_fake, new_hdr_unput)
             self.errG_rgb_l2.backward()
             self.G_loss_rgb_l2.append(self.errG_rgb_l2.item())
 
         self.optimizerG.step()
-
-
 
     def train_epoch(self):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         for (h, data_hdr), (l, data_ldr) in zip(enumerate(self.train_data_loader_npy, 0),
                                                 enumerate(self.train_data_loader_ldr, 0)):
             self.num_iter += 1
-            # with autograd.detect_anomaly():
-            real_ldr_cpu = data_ldr[0].to(self.device)
-            # hdr_input = data_hdr[params.image_key].to(self.device)
-            hdr_input = data_hdr[0].to(self.device)
-            b_size = hdr_input.size(0)
-            label = torch.full((b_size,), self.real_label, device=self.device)
+            with autograd.detect_anomaly():
+                real_ldr_cpu = data_ldr[0].to(self.device)
+                # hdr_input = data_hdr[params.image_key].to(self.device)
+                hdr_input = data_hdr[0].to(self.device)
+                b_size = hdr_input.size(0)
+                label = torch.full((b_size,), self.real_label, device=self.device)
 
-            # half_batch_size = int(self.batch_size / 2)
-            half_batch_size = self.batch_size
-            self.train_D(hdr_input, real_ldr_cpu, half_batch_size)
-            self.train_G(label, hdr_input)
-            # print("Single [batch] iteration took [%.4f] seconds" % (time.time() - start))
-        print("num iters = ", self.num_iter)
+                self.train_D(hdr_input, real_ldr_cpu)
+                self.train_G(label, hdr_input)
         self.update_accuracy()
-
-    def print_cuda_details(self):
-        if (self.device.type == 'cuda') and (torch.cuda.device_count() > 1):
-            print("Using [%d] GPUs" % torch.cuda.device_count())
-            for i in range(torch.cuda.device_count()):
-                print("GPU [%d] device name = %s" % (i, torch.cuda.get_device_name(i)))
-            print(torch.cuda.current_device())
 
     def verify_checkpoint(self):
         if isCheckpoint:
@@ -354,13 +316,6 @@ class GanTrainer:
             self.load_model()
             print("Model was loaded")
             print()
-
-    def print_test_epoch_losses_summary(self, epoch, test_loss_D, test_errGd):
-        print("===== Test results =====")
-        print('[%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\t'
-                  % (epoch, self.num_epochs, test_loss_D, test_errGd))
-        print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f'
-              % (epoch, self.num_epochs, self.accDreal_test, self.accDfake_test, self.accG_test))
 
     def print_epoch_losses_summary(self, epoch):
         output_str = '[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f'
@@ -387,7 +342,7 @@ class GanTrainer:
                               self.epoch, acc_path)
 
     def train(self, output_dir):
-        self.print_cuda_details()
+        g_t_utils.print_cuda_details(self.device.type)
         self.verify_checkpoint()
         start_epoch = self.epoch
         print("Starting Training Loop...")
@@ -399,55 +354,12 @@ class GanTrainer:
             self.save_model(params.models_save_path, epoch)
             self.print_epoch_losses_summary(epoch)
 
-            if epoch % 5 == 0:
+            if epoch % 4 == 0:
                 self.save_test_images(epoch, output_dir)
-                self.save_test_loss(epoch, output_dir)
+                # self.save_test_loss(epoch, output_dir)
 
-            if epoch % 5 == 0:
+            if epoch % 4 == 0:
                 self.save_loss_plot(epoch, output_dir)
-
-
-    def save_groups_images(self, test_hdr_image, first_b_tonemap, fake, new_out_dir):
-        b_size = first_b_tonemap.shape[0]
-        output_len = int(b_size / 4)
-        for i in range(output_len):
-            plt.figure(figsize=(15, 15))
-            plt.subplot(3, 1, 1)
-            plt.axis("off")
-            plt.title("Real images")
-            plt.imshow(
-                np.transpose(vutils.make_grid(first_b_tonemap[i * 4: (i + 1) * 4], padding=5, normalize=True).cpu(), (1, 2, 0)))
-
-            test_hdr_display = g_t_utils.display_batch_as_grid(test_hdr_image, ncols_to_display=(i + 1) * 4, normalization="uint_0_1", isHDR=True, batch_start_index=i * 4)
-
-            plt.subplot(3, 1, 2)
-            plt.axis("off")
-            plt.title("Processed Images")
-            if test_hdr_display.shape[2] == 1:
-                plt.imshow(test_hdr_display[:, :, 0], cmap='gray')
-            else:
-                plt.imshow(test_hdr_display)
-            # plt.imshow(test_hdr_display)
-
-            test_fake_display = g_t_utils.display_batch_as_grid(fake, ncols_to_display=(i + 1) * 4,
-                                                               normalization="uint_0_1", isHDR=False,
-                                                               batch_start_index=i * 4)
-
-            plt.subplot(3, 1, 3)
-            plt.axis("off")
-            plt.title("Fake Images")
-            if test_hdr_display.shape[2] == 1:
-                plt.imshow(test_fake_display[:, :, 0], cmap='gray')
-            else:
-                plt.imshow(test_fake_display)
-            # img_list2 = [vutils.make_grid(fake[i * 4: (i + 1) * 4], padding=5, normalize=True)]
-            # plt.subplot(3, 1, 3)
-            # plt.axis("off")
-            # plt.title("Fake Images")
-            # plt.imshow(np.transpose(img_list2[-1].cpu(), (1, 2, 0)))
-            plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
-            plt.close()
-
 
     def update_test_loss(self, b_size, first_b_tonemap, fake, hdr_input, epoch):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -482,7 +394,8 @@ class GanTrainer:
                 test_errRGBl2 = self.rgb_l2_loss_g_factor * (self.mse_loss(new_fake, new_hdr_unput) / (new_fake.shape[1] * new_fake.shape[2] * new_fake.shape[3]))
                 self.test_G_loss_rgb_l2.append(test_errRGBl2.item())
             self.update_accuracy(isTest=True)
-            self.print_test_epoch_losses_summary(epoch, test_loss_D, test_errGd)
+            g_t_utils.print_test_epoch_losses_summary(self.num_epochs, epoch, test_loss_D, test_errGd, self.accDreal_test,
+                                                 self.accDfake_test, self.accG_test)
 
     def get_fake_test_images(self, first_b_hdr):
         with torch.no_grad():
@@ -499,7 +412,6 @@ class GanTrainer:
                                         "TEST epoch acc = " + str(epoch), int(self.epoch / 5) + 1, acc_path)
 
     def save_test_images(self, epoch, out_dir):
-
         out_dir = os.path.join(out_dir, "result_images")
         new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
 
@@ -510,55 +422,13 @@ class GanTrainer:
         test_real_batch = next(iter(self.test_data_loader_ldr))
         test_real_first_b = test_real_batch[0].to(device)
 
-        test_real_first_b_display = g_t_utils.display_batch_as_grid(test_real_first_b, ncols_to_display=self.batch_size, normalization="uint_0_1")
-        test_first_b_display_small = g_t_utils.display_batch_as_grid(test_real_first_b, ncols_to_display=2, normalization="uint_0_1")
-
         test_hdr_batch = next(iter(self.test_data_loader_npy))
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch[0].to(self.device)
 
         fake = self.get_fake_test_images(test_hdr_batch_image)
-        fake_display = g_t_utils.display_batch_as_grid(fake, ncols_to_display=self.batch_size, normalization="uint_0_1", toPrint=True)
-        fake_display_small = g_t_utils.display_batch_as_grid(fake, 2, normalization="uint_0_1")
-
-        b_size = test_real_first_b.size(0)
-        self.update_test_loss(b_size, test_real_first_b, fake, test_hdr_batch_image, epoch)
-
-        plt.figure(figsize=(15, 15))
-        plt.subplot(2, 2, 1)
-        plt.axis("off")
-        plt.title("Real Images")
-        if test_real_first_b_display.shape[2] == 1:
-            plt.imshow(test_real_first_b_display[:, :, 0], cmap='gray')
-        else:
-            plt.imshow(test_real_first_b_display)
-
-        plt.subplot(2, 2, 2)
-        plt.axis("off")
-        plt.title("Real Images")
-        if test_first_b_display_small.shape[2] == 1:
-            plt.imshow(test_first_b_display_small[:, :, 0], cmap='gray')
-        else:
-            plt.imshow(test_first_b_display_small)
-
-        plt.subplot(2, 2, 3)
-        plt.axis("off")
-        plt.title("Fake Images")
-        if fake_display.shape[2] == 1:
-            plt.imshow(fake_display[:, :, 0], cmap='gray')
-        else:
-            plt.imshow(fake_display)
-
-        plt.subplot(2, 2, 4)
-        plt.axis("off")
-        plt.title("Fake Images")
-        if fake_display_small.shape[2] == 1:
-            plt.imshow(fake_display_small[:, :, 0], cmap='gray')
-        else:
-            plt.imshow(fake_display_small)
-        plt.savefig(os.path.join(new_out_dir, "ALL epoch = " + str(epoch)))
-        plt.close()
-        self.save_groups_images(test_hdr_batch_image, test_real_first_b, fake, new_out_dir)
+        g_t_utils.save_groups_images(test_hdr_batch_image, test_real_first_b, fake, new_out_dir, self.batch_size, epoch)
+        self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
@@ -605,7 +475,6 @@ if __name__ == '__main__':
         result_dir_pref, input_dim, loss_g_d_factor, ssim_loss_factor, rgb_l2_loss_g_factor = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
@@ -626,13 +495,13 @@ if __name__ == '__main__':
 
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim)
     print("=================  NET G  ==================")
-    # print(net_G)
+    print(net_G)
     # summary(net_G, (input_dim, params.input_size, params.input_size))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim)
     print("=================  NET D  ==================")
-    # print(net_D)
+    print(net_D)
     # summary(net_D, (input_dim, params.input_size, params.input_size))
     print()
 
@@ -648,4 +517,3 @@ if __name__ == '__main__':
                              ssim_loss_factor, rgb_l2_loss_g_factor)
 
     gan_trainer.train(output_dir)
-    # gan_trainer.test()

@@ -60,8 +60,8 @@ def create_npy_data(input_dir, output_dir, isLdr=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--data_root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data_gen/test_data/8test_ldr_flicker/ldr_test_flicker"))
-    parser.add_argument("--data_output", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data_gen/test_data/test_ldr_npy/test_ldr_npy"))
+    parser.add_argument("--data_root_hdr", type=str, default=os.path.join("ldr_data/ldr_data"))
+    parser.add_argument("--data_output", type=str, default=os.path.join("ldr_npy/ldr_npy"))
     parser.add_argument("--is_ldr", type=str, default="yes")
     args = parser.parse_args()
     input_dir = os.path.join(args.data_root_hdr)

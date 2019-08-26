@@ -235,7 +235,7 @@ def test1(root):
         plt.show()
 
 if __name__ == '__main__':
-    root1 = os.path.join("data/ldr_data2/ldr_data")
+    root1 = os.path.join("data/ldr_data/ldr_data")
     root2 = os.path.join("data/hdr_data/hdr_data")
     test1(root1)
     test1(root2)
