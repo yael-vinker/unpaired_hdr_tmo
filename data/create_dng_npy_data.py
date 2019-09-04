@@ -8,6 +8,21 @@ import imageio
 import pathlib
 import numpy as np
 import hdr_image_utils
+import matplotlib.pyplot as plt
+
+def hdr_log_loader(path):
+    path_lib_path = pathlib.Path(path)
+    file_extension = os.path.splitext(path)[1]
+    if file_extension == ".hdr":
+        im_origin = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
+    elif file_extension == ".dng":
+        im_origin = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+    else:
+        raise Exception('invalid hdr file format: {}'.format(file_extension))
+    im_log = np.log(im_origin + 1)
+    max_log = np.max(im_log)
+    im = (im_log / max_log)
+    return im
 
 
 def hdr_loader(path):
@@ -34,6 +49,21 @@ def test_result(output_dir):
         data = np.load(im_path, allow_pickle=True)
         hdr_image_utils.print_image_details(data, img_name)
 
+def create_log_npy_data(input_dir, output_dir):
+    dtype = np.float32
+    transform_custom = transforms.Compose([
+        transforms_.Scale(params.input_size, dtype),
+        transforms_.CenterCrop(params.input_size),
+        transforms_.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    for img_name in os.listdir(input_dir):
+        im_path = os.path.join(input_dir, img_name)
+        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '.npy')
+        log_im = hdr_log_loader(im_path)
+        transformed_im = transform_custom(log_im)
+        np.save(output_path, transformed_im)
+        print(output_path)
 
 def create_npy_data(input_dir, output_dir, isLdr=False):
     dtype = np.float32
@@ -60,8 +90,8 @@ def create_npy_data(input_dir, output_dir, isLdr=False):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--data_root_hdr", type=str, default=os.path.join("ldr_data/ldr_data"))
-    parser.add_argument("--data_output", type=str, default=os.path.join("ldr_npy/ldr_npy"))
+    parser.add_argument("--data_root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data_gen/train_data/hdrplus_data/dng_collection"))
+    parser.add_argument("--data_output", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data_gen/train_data/train_log_dng"))
     parser.add_argument("--is_ldr", type=str, default="yes")
     args = parser.parse_args()
     input_dir = os.path.join(args.data_root_hdr)
@@ -70,6 +100,6 @@ if __name__ == '__main__':
     if args.is_ldr == "yes":
         isLdr = True
     print(isLdr)
-
-    create_npy_data(input_dir, output_dir, isLdr)
-    test_result(output_dir)
+    create_log_npy_data(input_dir, output_dir)
+    # create_npy_data(input_dir, output_dir, isLdr)
+    # test_result(output_dir)
