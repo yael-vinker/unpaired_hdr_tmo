@@ -13,39 +13,39 @@ from skimage import util
 from PIL import Image
 import matplotlib.pyplot as plt
 
-class Normalize(object):
-    """Normalize a tensor image with mean and standard deviation.
-    Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
-    will normalize each channel of the input ``torch.*Tensor`` i.e.
-    ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
-
-    .. note::
-        This transform acts out of place, i.e., it does not mutates the input tensor.
-
-    Args:
-        mean (sequence): Sequence of means for each channel.
-        std (sequence): Sequence of standard deviations for each channel.
-    """
-
-    def __init__(self, mean, std, inplace=False):
-        self.mean = mean
-        self.std = std
-        self.inplace = inplace
-
-    def __call__(self, sample):
-        """
-        Args:
-            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
-
-        Returns:
-            Tensor: Normalized Tensor image.
-        """
-        tensor, binary_wind = sample[params.image_key], sample[params.window_image_key]
-        return {params.image_key: F.normalize(tensor, self.mean, self.std, self.inplace),
-                params.window_image_key: binary_wind}
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+# class Normalize(object):
+#     """Normalize a tensor image with mean and standard deviation.
+#     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
+#     will normalize each channel of the input ``torch.*Tensor`` i.e.
+#     ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
+#
+#     .. note::
+#         This transform acts out of place, i.e., it does not mutates the input tensor.
+#
+#     Args:
+#         mean (sequence): Sequence of means for each channel.
+#         std (sequence): Sequence of standard deviations for each channel.
+#     """
+#
+#     def __init__(self, mean, std, inplace=False):
+#         self.mean = mean
+#         self.std = std
+#         self.inplace = inplace
+#
+#     def __call__(self, sample):
+#         """
+#         Args:
+#             tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+#
+#         Returns:
+#             Tensor: Normalized Tensor image.
+#         """
+#         tensor, binary_wind = sample[params.image_key], sample[params.window_image_key]
+#         return {params.image_key: F.normalize(tensor, self.mean, self.std, self.inplace),
+#                 params.window_image_key: binary_wind}
+#
+#     def __repr__(self):
+#         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
 class NormalizeForDisplay(object):
@@ -137,7 +137,6 @@ class CenterCrop(object):
 
         # get crop params: starting pixels and size of the crop
         i, j, h, w = self.get_params(pic, self.size)
-
         return pic[i:i + h, j:j + w, :]
 
 class Scale(object):
@@ -152,8 +151,45 @@ class Scale(object):
         self.interpolation = interpolation
 
     def __call__(self, pic):
-        if self.dtype == np.uint8:
-            scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
-            return util.img_as_ubyte(scaled_im) / 255
-        return skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+        # if self.dtype == np.uint8:
+        #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+        #     return util.img_as_ubyte(scaled_im) / 255
+        im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+        return im
+
+class Normalize(object):
+    """Normalize a tensor image with mean and standard deviation.
+    Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
+    will normalize each channel of the input ``torch.*Tensor`` i.e.
+    ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
+
+    .. note::
+        This transform acts out of place, i.e., it does not mutates the input tensor.
+
+    Args:
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
+    """
+
+    def __init__(self, mean, std, inplace=False):
+        self.mean = mean
+        self.std = std
+        self.inplace = inplace
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+
+        Returns:
+            Tensor: Normalized Tensor image.
+        """
+        mean = torch.tensor(self.mean, dtype=torch.float32)
+        std = torch.tensor(self.std, dtype=torch.float32)
+        tensor.sub_(mean).div_(std)
+        return tensor
+        # return F.normalize(tensor, self.mean, self.std, self.inplace)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 

@@ -45,6 +45,14 @@ def print_image_details(im, title):
     print("unique values : ", np.unique(im).shape[0])
     print()
 
+def print_tensor_details(im, title):
+    print(title)
+    print("shape : ", im.shape)
+    print("max : ", im.max(), "  min : ", im.min(), "mean : ", im.mean())
+    print("type : ", im.dtype)
+    print("unique values : ", np.unique(im.numpy()).shape[0])
+    print()
+
 
 def RGB2YUV(rgb_im):
 

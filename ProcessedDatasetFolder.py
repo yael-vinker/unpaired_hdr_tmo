@@ -3,23 +3,30 @@ import torch
 from torchvision.datasets import DatasetFolder
 import params
 import numpy as np
+import hdr_image_utils
 
 IMG_EXTENSIONS_local = ('.npy')
 
 
-def npy_loader(path):
+def npy_loader(path, testMode):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
     :param path: image path
     :return:
     """
-    image = np.load(path)
-    if image.ndim == 2:
-        image = image[:, :, None]
-    image_tensor = torch.from_numpy(image).float()
+    data = np.load(path, allow_pickle=True)
+    if testMode:
+        input_im = data[()]["input_image"]
+        color_im = data[()]["display_image"]
+        return input_im, color_im
+    if data.ndim == 2:
+        data = data[:, :, None]
+    image_tensor = torch.from_numpy(data).float()
     return image_tensor
     # return data
     # return data[()][params.image_key], data[()][params.window_image_key]
+
+
 
 
 class ProcessedDatasetFolder(DatasetFolder):
@@ -28,12 +35,13 @@ class ProcessedDatasetFolder(DatasetFolder):
     of numpy arrays that represents hdr_images and window_binary_images.
     """
 
-    def __init__(self, root, transform=None, target_transform=None,
+    def __init__(self, root, testMode, transform=None, target_transform=None,
                  loader=npy_loader):
         super(ProcessedDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                                      transform=transform,
                                                      target_transform=target_transform)
         self.imgs = self.samples
+        self.test_mode = testMode
 
     def __getitem__(self, index):
         """
@@ -44,9 +52,13 @@ class ProcessedDatasetFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        image = self.loader(path)
+        if self.test_mode:
+            input_im, color_im = self.loader(path, self.test_mode)
+            return {"input_im": input_im, "color_im": color_im}
+        else:
+            input_im = self.loader(path, self.test_mode)
         # image, binary_window = self.loader(path)
         # sample = {params.image_key: image, params.window_image_key: binary_window}
-        if self.transform:
-            image = self.transform(image)
-        return image, target
+        # if self.transform:
+        #     image = self.transform(image)
+        return input_im, target
