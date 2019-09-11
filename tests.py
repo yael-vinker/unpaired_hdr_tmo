@@ -5,16 +5,14 @@ import numpy as np
 import torch
 import params
 import ssim
-import torch.optim as optim
 import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 import tranforms as transforms_
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
-from PIL import Image
 import hdr_image_utils
 import gan_trainer_utils
-import HdrImageFolder
+from old_files import HdrImageFolder
 
 import torchvision.datasets as dset
 import gan_trainer
@@ -150,7 +148,7 @@ def transforms_test():
                                    transform=transform_original)
 
     dataset_custom = HdrImageFolder.HdrImageFolder(root=data_root,
-                                      transform=transform_custom)
+                                                   transform=transform_custom)
 
     original_transform_im = np.asarray(dataset_origin[0][0].permute(1, 2, 0).detach().cpu().numpy())
     custom_transform_im = np.asarray(dataset_custom[0][0].permute(1, 2, 0).detach().cpu().numpy())
@@ -173,9 +171,9 @@ def ssim_test():
     print(data_root)
     data_root_2 = "data/hdr_data_test"
     dataset1 = HdrImageFolder.HdrImageFolder(root=data_root,
-                                                   transform=transform_custom)
+                                             transform=transform_custom)
     dataset2 = HdrImageFolder.HdrImageFolder(root=data_root_2,
-                                                   transform=transform_custom)
+                                             transform=transform_custom)
     dataloader1 = torch.utils.data.DataLoader(dataset1, batch_size=4,
                                                  shuffle=False, num_workers=params.workers)
     dataloader2 = torch.utils.data.DataLoader(dataset2, batch_size=4,

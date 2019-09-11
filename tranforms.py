@@ -193,3 +193,28 @@ class Normalize(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
+
+class GrayToColor(object):
+    """
+
+    """
+    def __init__(self, factor):
+        self.factor = factor
+
+    def __call__(self, tensor, fake):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+
+        Returns:
+            Tensor: Normalized Tensor image.
+        """
+        mean = torch.tensor(self.mean, dtype=torch.float32)
+        std = torch.tensor(self.std, dtype=torch.float32)
+        tensor.sub_(mean).div_(std)
+        return tensor
+        # return F.normalize(tensor, self.mean, self.std, self.inplace)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+

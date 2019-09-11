@@ -8,7 +8,6 @@ import argparse
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import vgg_metric
@@ -50,7 +49,7 @@ def parse_arguments():
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument("--ssim_loss_g_factor", type=float, default=1)
-    parser.add_argument("--rgb_l2_loss_g_factor", type=float, default=0)
+    parser.add_argument("--rgb_l2_loss_g_factor", type=float, default=1)
     # if 0, images are in [-1, 1] range, if 0.5 then [0,1]
     parser.add_argument("--input_images_mean", type=float, default=0)
     args = parser.parse_args()
@@ -157,9 +156,11 @@ class GanTrainer:
         train_ldr_dataloader = self.load_ldr_data(train_root_ldr, self.batch_size, shuffle=True, testMode=False)
         test_ldr_dataloader = self.load_ldr_data(test_root_ldr, self.batch_size, shuffle=False, testMode=True)
 
-        printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader, test_ldr_dataloader],
+        printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader,
+                                       test_ldr_dataloader],
                                         [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
-                                        ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader", "test_ldr_dataloader"],
+                                        ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
+                                         "test_ldr_dataloader"],
                                         [True, True, False, False],
                                         [False, True, False, True])
 
@@ -261,14 +262,17 @@ class GanTrainer:
     def update_rgb_l2_loss(self, hdr_input, fake):
         # if self.rgb_l2_loss_g_factor != 0 and self.input_dim == 3:
         if self.rgb_l2_loss_g_factor != 0:
-            # new_fake = g_t_utils.get_rgb_normalize_im_batch(fake)
-            # new_hdr_unput = g_t_utils.get_rgb_normalize_im_batch(hdr_input)
-            #
-            # self.errG_rgb_l2 = self.rgb_l2_loss_g_factor * self.mse_loss(new_fake, new_hdr_unput)
-            self.errG_rgb_l2 = self.vgg_loss(fake, hdr_input)
+            if self.input_dim == 3:
+                # new_fake = g_t_utils.get_rgb_normalize_im_batch(fake)
+                # new_hdr_unput = g_t_utils.get_rgb_normalize_im_batch(hdr_input)
+                #
+                # self.errG_rgb_l2 = self.rgb_l2_loss_g_factor * self.mse_loss(new_fake, new_hdr_unput)
+                self.errG_rgb_l2 = self.vgg_loss(fake, hdr_input)
 
-            self.errG_rgb_l2.backward()
-            self.G_loss_rgb_l2.append(self.errG_rgb_l2.item())
+                self.errG_rgb_l2.backward()
+                self.G_loss_rgb_l2.append(self.errG_rgb_l2.item())
+            # else:
+
 
     def train_G(self, label, hdr_input, raise_oom=False):
         """
