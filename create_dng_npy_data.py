@@ -166,8 +166,8 @@ if __name__ == '__main__':
     parser.add_argument("--root_ldr", type=str, default=os.path.join("data/ldr_data/ldr_data"))
     # parser.add_argument("--output_hdr", type=str, default=os.path.join("data/test_hdr_npy/test_hdr_npy"))
     # parser.add_argument("--output_ldr", type=str, default=os.path.join("data/test_ldr_npy/test_ldr_npy"))
-    parser.add_argument("--output_hdr", type=str, default=os.path.join("data/hdr_npy/hdr_npy"))
-    parser.add_argument("--output_ldr", type=str, default=os.path.join("data/ldr_npy/ldr_npy"))
+    parser.add_argument("--output_hdr", type=str, default=os.path.join("data/test_hdr_npy/test_hdr_npy"))
+    parser.add_argument("--output_ldr", type=str, default=os.path.join("data/test_ldr_npy/test_ldr_npy"))
     args = parser.parse_args()
     input_hdr_dir = os.path.join(args.root_hdr)
     input_ldr_dir = os.path.join(args.root_ldr)
@@ -176,5 +176,5 @@ if __name__ == '__main__':
     channels = 1
     images_mean = 0
     # create_log_npy_data(input_dir, output_dir)
-    create_npy_data(input_hdr_dir, output_hdr_dir, False, channels, images_mean)
-    create_npy_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)
+    create_test_data(input_hdr_dir, output_hdr_dir, False, channels, images_mean)
+    create_test_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)

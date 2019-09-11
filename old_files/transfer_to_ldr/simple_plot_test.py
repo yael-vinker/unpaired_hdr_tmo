@@ -9,7 +9,7 @@ from PIL import Image
 import numpy as np
 import torchvision.utils as vutils
 import torchvision.transforms as transforms
-import HdrImageFolder
+from old_files import HdrImageFolder
 import torchvision.datasets as dset
 
 
