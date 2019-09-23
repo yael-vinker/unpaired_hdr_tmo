@@ -19,6 +19,7 @@ import ProcessedDatasetFolder
 import ssim
 import printer
 # import Writer
+import tranforms as custom_transform
 
 
 # TODO ask about init BatchNorm weights
@@ -134,6 +135,7 @@ class GanTrainer:
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.retain_ssim_graph = rgb_l2_loss_g_factor_ != 0
         self.rgb_l2_loss_g_factor = rgb_l2_loss_g_factor_
+        self.transform_exp = custom_transform.Exp(1000)
 
     def load_npy_data(self, npy_data_root, batch_size, shuffle, testMode):
         npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root, testMode=testMode)
@@ -215,7 +217,7 @@ class GanTrainer:
 
         # Train with all-fake batch
         # Generate fake image batch with G
-        fake = self.netG(hdr_input)
+        fake = self.transform_exp(self.netG(hdr_input))
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
@@ -290,7 +292,7 @@ class GanTrainer:
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake)
 
-        output_on_fake = self.netD(fake).view(-1)
+        output_on_fake = self.netD(self.transform_exp(fake)).view(-1)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
@@ -369,7 +371,7 @@ class GanTrainer:
             self.test_D_loss_real.append(test_errD_real.item())
 
             fake_label = torch.full((b_size,), self.fake_label, device=self.device)
-            output_on_fake = self.netD(fake.detach()).view(-1)
+            output_on_fake = self.netD(self.transform_exp(fake.detach())).view(-1)
             self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
 
             test_errD_fake = self.criterion(output_on_fake, fake_label)
@@ -377,7 +379,7 @@ class GanTrainer:
             self.test_D_loss_fake.append(test_errD_fake.item())
             self.test_D_losses.append(test_loss_D.item())
 
-            output_on_fake = self.netD(fake.detach()).view(-1)
+            # output_on_fakake = self.netD(fake.detach()).view(-1)
             self.accG_counter += (output_on_fake > 0.5).sum().item()
             # if self.loss_g_d_factor != 0:
             test_errGd = self.criterion(output_on_fake, real_label)
@@ -429,7 +431,7 @@ class GanTrainer:
         fake = self.get_fake_test_images(test_hdr_batch_image)
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device))
 
-        g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
+        g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      self.input_images_mean)
         self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)

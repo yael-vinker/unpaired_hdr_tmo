@@ -193,15 +193,25 @@ class Normalize(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
+class Exp(object):
+    """Normalize a tensor image with mean and standard deviation.
+    Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
+    will normalize each channel of the input ``torch.*Tensor`` i.e.
+    ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
 
-class GrayToColor(object):
+    .. note::
+        This transform acts out of place, i.e., it does not mutates the input tensor.
+
+    Args:
+        mean (sequence): Sequence of means for each channel.
+        std (sequence): Sequence of standard deviations for each channel.
     """
 
-    """
     def __init__(self, factor):
         self.factor = factor
+        self.log_factor = torch.tensor(np.log(1 + factor))
 
-    def __call__(self, tensor, fake):
+    def __call__(self, tensor):
         """
         Args:
             tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
@@ -209,12 +219,13 @@ class GrayToColor(object):
         Returns:
             Tensor: Normalized Tensor image.
         """
-        mean = torch.tensor(self.mean, dtype=torch.float32)
-        std = torch.tensor(self.std, dtype=torch.float32)
-        tensor.sub_(mean).div_(std)
-        return tensor
+        # import torch
+        im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
+        im_lm = im_0_1 * self.log_factor
+        im_exp = torch.exp(im_lm) - 1
+        im_end = im_exp / 1000
+        return im_end
         # return F.normalize(tensor, self.mean, self.std, self.inplace)
 
-    def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
 
