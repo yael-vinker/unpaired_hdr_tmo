@@ -13,6 +13,7 @@ from PIL import Image
 import imageio
 import torch
 import tranforms as transforms_
+# import Writer
 
 
 def custom_loss(output, target):
@@ -69,6 +70,11 @@ def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
     plt.close()
 
 
+def get_loss_path(result_dir_pref, model_name, loss_graph_path):
+    output_dir = os.path.join(result_dir_pref + "_" + model_name)
+    loss_graph_path = os.path.join(output_dir, loss_graph_path)
+
+
 def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_path):
     # output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
     output_dir = os.path.join(result_dir_pref + "_" + model_name)
@@ -86,6 +92,7 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
         print("Directory ", model_path, " created")
     if not os.path.exists(loss_graph_path):
         os.mkdir(loss_graph_path)
+
         print("Directory ", loss_graph_path, " created")
     if not os.path.exists(result_path):
         os.mkdir(result_path)
@@ -232,7 +239,7 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
             k = k + 1
     return grid
 
-def save_groups_images(test_hdr_batch, test_real_batch, fake, new_out_dir, batch_size, epoch, image_mean):
+def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_dir, batch_size, epoch, image_mean):
     test_ldr_batch = test_real_batch["input_im"]
     color_test_ldr_batch = test_real_batch["color_im"]
     test_hdr_image = test_hdr_batch["input_im"]
@@ -243,15 +250,16 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, new_out_dir, batch
         normalization_string = "none"
 
     output_len = int(batch_size / 4)
-    display_group = [test_hdr_image, fake, fake]
-    titles = ["Input Images", "Fake Images", "Exp Images"]
-    normalization_string_arr = ["0_1", "0_1", "exp"]
+    display_group = [test_ldr_batch, fake_ldr, test_hdr_image, fake]
+    # titles = ["Input Images", "Fake Images", "Exp Images"]
+    titles = ["Real (LDR) Images", "G(LDR)", "Input (HDR) Images", "Fake Images"]
+    normalization_string_arr = ["0_1", "0_1", "0_1", "0_1"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
-        for j in range(3):
+        for j in range(4):
             display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4, normalization=normalization_string_arr[j],
                                                  isHDR=False, batch_start_index=i * 4)
-            plt.subplot(3, 1, j + 1)
+            plt.subplot(4, 1, j + 1)
             plt.axis("off")
             plt.title(titles[j])
             if display_im.ndim == 2:
@@ -261,12 +269,13 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, new_out_dir, batch
         plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
         plt.close()
 
-    # color_fake = back_to_color_batch(color_test_hdr_image, test_hdr_image, fake)
-    # color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
     color_fake = back_to_color_batch(color_test_hdr_image, fake)
-    color_fake_exp = back_to_color_exp_batch(color_test_hdr_image, fake)
-    color_display_group = [color_test_hdr_image, color_fake, color_fake_exp]
-    titles = ["Input Images", "Fake Images", "Exp Images"]
+    color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
+    # color_fake = back_to_color_batch(color_test_hdr_image, fake)
+    # color_fake_exp = back_to_color_exp_batch(color_test_hdr_image, fake)
+    # color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
+    # titles = ["Input Images", "Fake Images", "Exp Images"]
+    titles = ["Real (LDR) Images", "Input (HDR) Images", "Fake Images"]
     # normalization_string_arr = ["0_1", "0_1", "exp"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
@@ -331,6 +340,29 @@ def display_tensor(tensor):
     im_display = to_0_1_range(im_display)
     plt.imshow(im_display)
     plt.show()
+
+def save_test_images(self, epoch, out_dir, device):
+    out_dir = os.path.join(out_dir, "result_images")
+    new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
+
+    if not os.path.exists(new_out_dir):
+        os.mkdir(new_out_dir)
+
+    self.test_num_iter += 1
+    test_real_batch = next(iter(self.test_data_loader_ldr))
+    test_real_first_b = test_real_batch["input_im"].to(device)
+
+    test_hdr_batch = next(iter(self.test_data_loader_npy))
+    # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
+    test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
+
+    fake = self.get_fake_test_images(test_hdr_batch_image)
+    save_groups_images(test_hdr_batch, test_real_batch, fake,
+                                 new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
+                                 self.input_images_mean)
+    self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)
+
+
 
 if __name__ == '__main__':
     im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')

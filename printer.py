@@ -1,17 +1,8 @@
-import params
-import torchvision.utils as vutils
-import torch
-import pathlib
-import matplotlib.pyplot as plt
 import os
 import numpy as np
-from skimage import exposure
-import math
-import cv2
 from PIL import Image
 import imageio
 import torch
-import hdr_image_utils
 
 def print_loader(im, title):
     print(title + " --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]  unique[%s]" %
@@ -26,7 +17,7 @@ def print_tensor_loader(im, title):
            im.dtype, str(im.shape),
            str(np.unique(im.numpy()).shape[0])))
 
-def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, title, images_number=1):
+def load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, title, images_number=1):
 
     test_hdr_loader = next(iter(test_hdr_dataloader))
     test_ldr_loader = next(iter(test_ldr_dataloader))

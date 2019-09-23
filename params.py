@@ -45,3 +45,4 @@ beta1 = 0.5
 manualSeed = 999
 
 g_d_loss_factor = 0.2
+

@@ -3,7 +3,6 @@ import torch
 from torchvision.datasets import DatasetFolder
 import params
 import numpy as np
-import hdr_image_utils
 
 IMG_EXTENSIONS_local = ('.npy')
 
