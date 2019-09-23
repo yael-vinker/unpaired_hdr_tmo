@@ -260,44 +260,44 @@ def create_dict_data_log(input_dir, output_dir, isLdr, channels_, images_mean, l
         print(i)
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description="Parser for gan network")
-    # parser.add_argument("--root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/dng_collection"))
-    # parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
-    # parser.add_argument("--output_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/hdrplus_dict_log1000/hdrplus_dict_log1000"))
-    # parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict/ldr_flicker_dict"))
-    # args = parser.parse_args()
-    # input_hdr_dir = os.path.join(args.root_hdr)
-    # input_ldr_dir = os.path.join(args.root_ldr)
-    # output_hdr_dir = os.path.join(args.output_hdr)
-    # output_ldr_dir = os.path.join(args.output_ldr)
-    # channels = 1
-    # images_mean = 0
-    # log_factor = 1000
-    # create_dict_data_log(input_hdr_dir, output_hdr_dir, False, channels, images_mean, log_factor)
+    parser = argparse.ArgumentParser(description="Parser for gan network")
+    parser.add_argument("--root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/dng_collection"))
+    parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
+    parser.add_argument("--output_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/hdrplus_dict_log1000/hdrplus_dict_log1000"))
+    parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict/ldr_flicker_dict"))
+    args = parser.parse_args()
+    input_hdr_dir = os.path.join(args.root_hdr)
+    input_ldr_dir = os.path.join(args.root_ldr)
+    output_hdr_dir = os.path.join(args.output_hdr)
+    output_ldr_dir = os.path.join(args.output_ldr)
+    channels = 1
+    images_mean = 0
+    log_factor = 1000
+    create_dict_data_log(input_hdr_dir, output_hdr_dir, False, channels, images_mean, log_factor)
     # # print_result(output_hdr_dir)
     # create_test_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)
-    path = "data/hdr_data/hdr_data/belgium.hdr"
-    im1 = to_gray(hdr_log_loader_factorize(path, 1000))
-    output_transform = get_transforms(0, 1)
-    gray = output_transform(im1)
-    # gray = np.array(gray.permute(1, 2, 0))
-
-    import torch
-    im_pos2 = (gray - gray.min()) / (gray.max() - gray.min())
-    im_lm = im_pos2 * (np.log(1+1000))
-    im_exp = torch.exp(im_lm) - 1
-    im_end = im_exp / 1000
-    images = [im1, np.array(im_pos2.permute(1, 2, 0)), np.array(im_end.permute(1, 2, 0))]
-
-    plt.figure(figsize=(15, 15))
-    for j in range(3):
-        display_im = images[j]
-        hdr_image_utils.print_image_details(display_im,"")
-        plt.subplot(3, 1, j + 1)
-        plt.axis("off")
-        # if display_im.ndim == 2:
-        display_im = np.squeeze(display_im)
-        plt.imshow(display_im, cmap='gray')
-        # else:
-        #     plt.imshow(display_im)
-    plt.show()
+    # path = "data/hdr_data/hdr_data/belgium.hdr"
+    # im1 = to_gray(hdr_log_loader_factorize(path, 1000))
+    # output_transform = get_transforms(0, 1)
+    # gray = output_transform(im1)
+    # # gray = np.array(gray.permute(1, 2, 0))
+    #
+    # import torch
+    # im_pos2 = (gray - gray.min()) / (gray.max() - gray.min())
+    # im_lm = im_pos2 * (np.log(1+1000))
+    # im_exp = torch.exp(im_lm) - 1
+    # im_end = im_exp / 1000
+    # images = [im1, np.array(im_pos2.permute(1, 2, 0)), np.array(im_end.permute(1, 2, 0))]
+    #
+    # plt.figure(figsize=(15, 15))
+    # for j in range(3):
+    #     display_im = images[j]
+    #     hdr_image_utils.print_image_details(display_im,"")
+    #     plt.subplot(3, 1, j + 1)
+    #     plt.axis("off")
+    #     # if display_im.ndim == 2:
+    #     display_im = np.squeeze(display_im)
+    #     plt.imshow(display_im, cmap='gray')
+    #     # else:
+    #     #     plt.imshow(display_im)
+    # plt.show()
