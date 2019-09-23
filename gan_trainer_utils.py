@@ -1,3 +1,4 @@
+import torchvision.transforms as transforms
 import params
 import torchvision.utils as vutils
 import torch
@@ -11,6 +12,7 @@ import cv2
 from PIL import Image
 import imageio
 import torch
+import tranforms as transforms_
 
 
 def custom_loss(output, target):
@@ -28,7 +30,7 @@ def plot_general_losses(loss_G, loss_G_wind, G_loss_rgb_l2, loss_D_fake, loss_D_
         if use_g_ssim_loss:
             plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
         if use_rgb_l2_loss:
-            plt.plot(range(iters_n), G_loss_rgb_l2, '-k', label='loss G rgb_l2')
+            plt.plot(range(iters_n), G_loss_rgb_l2, '-k', label='loss G vgg')
         plt.xlabel("n iteration")
         plt.legend(loc='upper left')
         plt.title(title)
@@ -128,8 +130,10 @@ def uint_normalization(im):
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
-def back_to_color(im_hdr, im_gray_, fake):
-    # im_hdr = to_0_1_range(im_hdr)
+def to_0_1_range_tensor(im):
+    return (im - im.min()) / (im.max() - im.min())
+
+def back_to_color(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
     fake = to_0_1_range(fake)
     norm_im = np.zeros(im_hdr.shape)
@@ -139,16 +143,39 @@ def back_to_color(im_hdr, im_gray_, fake):
     output_im = np.power(norm_im, 0.5) * fake
     return output_im
 
-def back_to_color_batch(im_hdr_batch, im_gray_batch, fake_batch):
+def back_to_color_exp(im_hdr, fake):
+    im_gray_ = np.sum(im_hdr, axis=2)
+    fake = to_0_1_range(fake)
+    fake = exp_normalization(fake)
+    norm_im = np.zeros(im_hdr.shape)
+    norm_im[:, :, 0] = im_hdr[:, :, 0] / im_gray_
+    norm_im[:, :, 1] = im_hdr[:, :, 1] / im_gray_
+    norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
+    output_im = np.power(norm_im, 0.5) * fake
+    return output_im
+
+def back_to_color_batch(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
     output = []
     for i in range(b_size):
         im_hdr = im_hdr_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        im_gray_ = im_gray_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
         fake = fake_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        norm_im = back_to_color(im_hdr, im_gray_, fake)
+        norm_im = back_to_color(im_hdr, fake)
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
     return torch.stack(output)
+
+def back_to_color_exp_batch(im_hdr_batch, fake_batch):
+    b_size = im_hdr_batch.shape[0]
+    output = []
+    for i in range(b_size):
+        im_hdr = im_hdr_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        fake = fake_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        norm_im = back_to_color_exp(im_hdr, fake)
+        output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
+    return torch.stack(output)
+
+def exp_normalization(im):
+    return (np.exp(im) - 1) / (np.exp(np.max(im)) - 1)
 
 
 def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_value=0.0, isHDR=False,
@@ -171,6 +198,9 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
             im = np.exp(cur_im) - 1
             im = to_0_1_range(im)
             norm_im = uint_normalization(im)
+        elif normalization == "exp":
+            im = to_0_1_range(cur_im)
+            norm_im = exp_normalization(im)
         elif normalization == "none":
             norm_im = cur_im
         else:
@@ -213,12 +243,13 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, new_out_dir, batch
         normalization_string = "none"
 
     output_len = int(batch_size / 4)
-    display_group = [test_ldr_batch, test_hdr_image, fake]
-    titles = ["Real images", "Processed Images", "Fake Images"]
+    display_group = [test_hdr_image, fake, fake]
+    titles = ["Input Images", "Fake Images", "Exp Images"]
+    normalization_string_arr = ["0_1", "0_1", "exp"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
         for j in range(3):
-            display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4, normalization=normalization_string,
+            display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4, normalization=normalization_string_arr[j],
                                                  isHDR=False, batch_start_index=i * 4)
             plt.subplot(3, 1, j + 1)
             plt.axis("off")
@@ -230,8 +261,13 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, new_out_dir, batch
         plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
         plt.close()
 
-    color_fake = back_to_color_batch(color_test_hdr_image, test_hdr_image, fake)
-    color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
+    # color_fake = back_to_color_batch(color_test_hdr_image, test_hdr_image, fake)
+    # color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
+    color_fake = back_to_color_batch(color_test_hdr_image, fake)
+    color_fake_exp = back_to_color_exp_batch(color_test_hdr_image, fake)
+    color_display_group = [color_test_hdr_image, color_fake, color_fake_exp]
+    titles = ["Input Images", "Fake Images", "Exp Images"]
+    # normalization_string_arr = ["0_1", "0_1", "exp"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
         for j in range(3):
@@ -265,60 +301,95 @@ def get_rgb_normalize_im_batch(batch):
 #     new_hdr_unput = get_rgb_normalize_im(hdr_input)
 #
 
+def back_to_color_tensor(fake, im_hdr_display):
+    """
 
+    :param fake: range [-1, -] gray
+    :param im_hdr: range [-1, 1] gray
+    :param im_hdr_display: range [0,1]
+    :return:
+    """
+    gray_im = im_hdr_display.sum(dim=0)
+    rgb_hdr_copy = im_hdr_display.clone()
+    rgb_hdr_copy[0, :, :] = rgb_hdr_copy[0, :, :] / gray_im
+    rgb_hdr_copy[1, :, :] = rgb_hdr_copy[1, :, :] / gray_im
+    rgb_hdr_copy[2, :, :] = rgb_hdr_copy[2, :, :] / gray_im
+    gray_fake_to_0_1 = to_0_1_range_tensor(fake)
+    output_im = torch.pow(rgb_hdr_copy, 0.5) * gray_fake_to_0_1
+    # display_tensor(output_im)
+    return output_im
+
+
+def back_to_color_batch_tensor(fake_batch, hdr_input_display_batch):
+    b_size = fake_batch.shape[0]
+    output = [back_to_color_tensor(fake_batch[i], hdr_input_display_batch[i]) for i in range(b_size)]
+    return torch.stack(output)
+
+
+def display_tensor(tensor):
+    im_display = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    im_display = to_0_1_range(im_display)
+    plt.imshow(im_display)
+    plt.show()
 
 if __name__ == '__main__':
-    im1 = imageio.imread("data/hdr_data/hdr_data/hdr05.hdr").astype('float32')
-    im = im1 / np.max(im1)
-    im_gray = np.sum(im, axis=2)
-    im2 = np.copy(im)
-    im2[:,:,0] = im[:,:,0] / im_gray
-    im2[:,:,1] = im[:,:,1] / im_gray
-    im2[:,:,2] = im[:,:,2] / im_gray
-    print(im2[0,0,0])
-    print(im[0,0,0] / (im[0,0,0] + im[0,0,1] + im[0,0,2]))
-    im3 = np.power(im2, 0.5) * im1
-    # hdr_image_utils.print_image_details(im3, "pow")
-    plt.imshow(im3)
+    im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')
+    im1 = (im1 / np.max(im1))
+
+    im_gray = np.dot(im1[..., :3], [0.299, 0.587, 0.114])
+    transform_custom_ = transforms.Compose([
+        transforms_.Scale(params.input_size),
+        transforms_.CenterCrop(params.input_size),
+        transforms_.ToTensor(),
+    ])
+    transform_custom_gray = transforms.Compose([
+        transforms_.Scale(params.input_size),
+        transforms_.CenterCrop(params.input_size),
+        transforms_.ToTensor(),
+        transforms_.Normalize(0.5, 0.5),
+    ])
+    im_transform = transform_custom_(im1)
+    gray_t = im_transform.sum(axis=0)
+    gray_fake = transform_custom_gray(im_gray)
+    gray_fake_0_1 = gray_fake + 1
+    # gray_np = gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy()[:,:,0]
+    # gray_np_gamma = torch.pow(gray_fake_0_1[0, :, :], 0.5)
+    # plt.imshow(gray_np_gamma, cmap='gray')
+    # plt.show()
+    # gray_fake[0, :, :] = gray_np_gamma
+
+    im5 = back_to_color(im_transform.clone().permute(1, 2, 0).detach().cpu().numpy(), gray_t, gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy())
+    plt.imshow(im5)
     plt.show()
-    #
-    # im = torch.from_numpy(np.copy(im1).transpose((2, 0, 1))).float()
-    # a = torch.norm(im, dim=0)
-    # b = torch.sqrt(
-    #     torch.pow(im[0, :, :], 2) + torch.pow(im[1, :, :], 2) + torch.pow(im[2, :, :], 2)) + params.epsilon
-    # print(a[0,0])
-    # print(b[0,0])
-    # new_im = np.copy(im)
-    # im_3_a = np.sum(im, axis=2)
-    # print(im_3_a[0,0])
-    # for i in range(im.shape[2]):
-    #     new_im[:, :, i] = im[:, :, i] / im_3_a
-    # print(new_im[0,0])
-    # plt.imshow(new_im)
+
+    im2 = im_transform.clone()
+    print(im2.shape)
+    print(gray_t.shape)
+    # im2[0, :, :].div(gray_t)
+    im2[0, :, :] = im_transform[0, :, :] / gray_t
+    im2[1, :, :] = im_transform[1, :, :] / gray_t
+    im2[2, :, :] = im_transform[2, :, :] / gray_t
+    print(im2[0,0,0])
+    print(im_transform[0,0,0] / (gray_t[0,0]))
+    im3 = torch.pow(im2, 0.4) * gray_fake_0_1
+
+    im_display = im3.clone().permute(1, 2, 0).detach().cpu().numpy()
+    im_display = to_0_1_range(im_display)
+    im2_display = (np.exp(im_display)) / (np.exp(np.max(im_display)))
+    # im3_d = im2_display / np.max(im2_display)
+    im3_d = im2_display
+    plt.imshow(im_display)
+
+    # plt.imsave("im4.jpg", im_display)
+    plt.show()
+    plt.imshow(im3_d)
+    # plt.imsave("im4.jpg", im_display)
+    plt.show()
+
+    # hdr_image_utils.print_image_details(im3, "pow")
+    # plt.imshow(im3)
     # plt.show()
-    #
-    # im3 = torch.from_numpy(np.copy(im).transpose((2, 0, 1))).float()
-    # im2 = get_rgb_normalize_im(im3)
-    # print(im2[:,0,0])
-    # im4 = np.array(im2.permute(1, 2, 0))
-    # print(im.shape)
-    # plt.imshow(im4)
-    # plt.show()
-    # mse_loss = torch.nn.MSELoss()
-    # a = torch.tensor([[4,4,4],[1.,2.,3.]], device='cuda')
-    # b = torch.tensor([[1.,1.,1.],[1.,1.,1.]], device='cuda')
-    # print(mse_loss(a,b) / (a.shape[0] * a.shape[1]))
-    a = torch.tensor([[1,2,0],[0,0,1]])
-    print(a,"\n")
-    a[a==0] = a[a==0] + 1
-    print(a)
-    # b = (a == 0)
-    # # print(a(torch.tensor([0,2])))
-    # for index in b:
-    #     print(index)
-    #     print(a[index[0], index[1]])
-    #     a[index[0], index[1]] = 1
-    # print(a)
+
 
 #
 # def normalize_im_by_windows(im, window_size):

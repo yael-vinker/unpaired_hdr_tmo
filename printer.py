@@ -26,21 +26,21 @@ def print_tensor_loader(im, title):
            im.dtype, str(im.shape),
            str(np.unique(im.numpy()).shape[0])))
 
-def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, images_number=1):
+def load_data_test_mode(test_hdr_dataloader, test_ldr_dataloader, title, images_number=1):
 
     test_hdr_loader = next(iter(test_hdr_dataloader))
     test_ldr_loader = next(iter(test_ldr_dataloader))
     for i in range(images_number):
         print()
         input_test_hdr_loader_single = np.asarray(test_hdr_loader["input_im"][i])
-        print_loader(input_test_hdr_loader_single, "input_test_hdr_loader_single")
+        print_loader(input_test_hdr_loader_single, title + "_gray_hdr_loader_single")
         color_test_hdr_loader_single = np.asarray(test_hdr_loader["color_im"][i])
-        print_loader(color_test_hdr_loader_single, "color_test_hdr_loader_single")
+        print_loader(color_test_hdr_loader_single, title + "_color_hdr_loader_single")
 
         input_test_ldr_loader_single = np.asarray(test_ldr_loader["input_im"][i])
-        print_loader(input_test_ldr_loader_single, "input_test_ldr_loader_single")
+        print_loader(input_test_ldr_loader_single, title + "_gray_ldr_loader_single")
         color_test_ldr_loader_single = np.asarray(test_ldr_loader["color_im"][i])
-        print_loader(color_test_ldr_loader_single, "color_test_ldr_loader_single")
+        print_loader(color_test_ldr_loader_single, title + "_color_ldr_loader_single")
 
 
 
@@ -161,6 +161,6 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
         format_str = format_str + (errG_ssim.item(),)
 
     if rgb_l2_loss_g_factor != 0:
-        output_str = output_str + ' \tLoss_G_rgb_l2: %.4f'
+        output_str = output_str + ' \tLoss_G_vgg: %.4f'
         format_str = format_str + (errG_rgb_l2.item(),)
     print(output_str % format_str)

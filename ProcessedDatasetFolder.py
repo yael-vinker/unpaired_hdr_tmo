@@ -15,14 +15,14 @@ def npy_loader(path, testMode):
     :return:
     """
     data = np.load(path, allow_pickle=True)
-    if testMode:
-        input_im = data[()]["input_image"]
-        color_im = data[()]["display_image"]
-        return input_im, color_im
-    if data.ndim == 2:
-        data = data[:, :, None]
-    image_tensor = torch.from_numpy(data).float()
-    return image_tensor
+    # if testMode:
+    input_im = data[()]["input_image"]
+    color_im = data[()]["display_image"]
+    return input_im, color_im
+    # if data.ndim == 2:
+    #     data = data[:, :, None]
+    # image_tensor = torch.from_numpy(data).float()
+    # return image_tensor
     # return data
     # return data[()][params.image_key], data[()][params.window_image_key]
 
@@ -52,13 +52,14 @@ class ProcessedDatasetFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        if self.test_mode:
-            input_im, color_im = self.loader(path, self.test_mode)
-            return {"input_im": input_im, "color_im": color_im}
-        else:
-            input_im = self.loader(path, self.test_mode)
+        # if self.test_mode:
+        # input_im, color_im = self.loader(path, self.test_mode)
+        input_im, color_im = self.loader(path, True)
+        return {"input_im": input_im, "color_im": color_im}
+        # else:
+        #     input_im = self.loader(path, self.test_mode)
         # image, binary_window = self.loader(path)
         # sample = {params.image_key: image, params.window_image_key: binary_window}
         # if self.transform:
         #     image = self.transform(image)
-        return input_im, target
+        # return input_im, target

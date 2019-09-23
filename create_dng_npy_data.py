@@ -55,7 +55,7 @@ def display_tensor(tensor_im, isgray):
         plt.imshow(im)
     plt.show()
 
-def print_result(output_dir, testMode):
+def print_result(output_dir, testMode=True):
     for img_name in os.listdir(output_dir):
         im_path = os.path.join(output_dir, img_name)
         data = np.load(im_path, allow_pickle=True)
@@ -64,9 +64,9 @@ def print_result(output_dir, testMode):
             input_im = data[()]["input_image"]
             color_im = data[()]["display_image"]
             hdr_image_utils.print_tensor_details(input_im, "input_im " + img_name)
-            # display_tensor(input_im, True)
+            display_tensor(input_im, True)
             hdr_image_utils.print_tensor_details(color_im, "display_image " + img_name)
-            # display_tensor(color_im, False)
+            display_tensor(color_im, False)
         else:
             input_im = data[()]["input_image"]
             hdr_image_utils.print_tensor_details(input_im, img_name)
@@ -138,27 +138,75 @@ def create_npy_data(input_dir, output_dir, isLdr, channels_, images_mean):
             print(output_path)
         print(i)
 
-
-def create_test_data(input_dir, output_dir, isLdr, channels_, images_mean):
+def create_ldr_dict_data(input_dir, output_dir, channels_, images_mean):
+    from os import path
     output_transform = get_transforms(images_mean, channels_)
     display_transform = get_transforms(images_mean, 3, True)
-    for img_name in os.listdir(input_dir):
+    for img_name, i in zip(os.listdir(input_dir), range(896)):
         im_path = os.path.join(input_dir, img_name)
         output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '_one_dim.npy')
-        if isLdr:
+        if not path.exists(output_path):
             rgb_img = ldr_loader(im_path)
-        else:
-            rgb_img = hdr_loader(im_path)
-        if channels == 1:
-            output_im = to_gray(rgb_img)
-        else:
-            output_im = rgb_img
-        # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
-        transformed_output_im = output_transform(output_im)
-        transformed_display_im = display_transform(rgb_img)
-        data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
-        np.save(output_path, data)
-        print(output_path)
+            if channels == 1:
+                output_im = to_gray(rgb_img)
+            else:
+                output_im = rgb_img
+            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
+            transformed_output_im = output_transform(output_im)
+            transformed_display_im = display_transform(rgb_img)
+            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
+            np.save(output_path, data)
+            print(output_path)
+        print(i)
+
+def create_hdr_dict_data(input_dir, output_dir, channels_, images_mean, isLog=False):
+    from os import path
+    output_transform = get_transforms(images_mean, channels_)
+    display_transform = get_transforms(images_mean, 3, True)
+    for img_name, i in zip(os.listdir(input_dir), range(896)):
+        im_path = os.path.join(input_dir, img_name)
+        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '_one_dim.npy')
+        if not path.exists(output_path):
+            if isLog:
+                rgb_img_log = hdr_log_loader(im_path)
+                rgb_img = hdr_loader(im_path)
+            else:
+                rgb_img = hdr_loader(im_path)
+            if channels == 1:
+                output_im = to_gray(rgb_img_log)
+            else:
+                output_im = rgb_img_log
+            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
+            transformed_output_im = output_transform(output_im)
+            transformed_display_im = display_transform(rgb_img)
+            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
+            np.save(output_path, data)
+            print(output_path)
+        print(i)
+
+def create_test_data(input_dir, output_dir, isLdr, channels_, images_mean):
+    from os import path
+    output_transform = get_transforms(images_mean, channels_)
+    display_transform = get_transforms(images_mean, 3, True)
+    for img_name, i in zip(os.listdir(input_dir), range(896)):
+        im_path = os.path.join(input_dir, img_name)
+        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '_one_dim.npy')
+        if not path.exists(output_path):
+            if isLdr:
+                rgb_img = ldr_loader(im_path)
+            else:
+                rgb_img = hdr_loader(im_path)
+            if channels == 1:
+                output_im = to_gray(rgb_img)
+            else:
+                output_im = rgb_img
+            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
+            transformed_output_im = output_transform(output_im)
+            transformed_display_im = display_transform(rgb_img)
+            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
+            np.save(output_path, data)
+            print(output_path)
+        print(i)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
@@ -166,8 +214,8 @@ if __name__ == '__main__':
     parser.add_argument("--root_ldr", type=str, default=os.path.join("data/ldr_data/ldr_data"))
     # parser.add_argument("--output_hdr", type=str, default=os.path.join("data/test_hdr_npy/test_hdr_npy"))
     # parser.add_argument("--output_ldr", type=str, default=os.path.join("data/test_ldr_npy/test_ldr_npy"))
-    parser.add_argument("--output_hdr", type=str, default=os.path.join("data/test_hdr_npy/test_hdr_npy"))
-    parser.add_argument("--output_ldr", type=str, default=os.path.join("data/test_ldr_npy/test_ldr_npy"))
+    parser.add_argument("--output_hdr", type=str, default=os.path.join("data/hdr_log_data/hdr_log_data"))
+    parser.add_argument("--output_ldr", type=str, default=os.path.join("data/ldr_npy/ldr_npy"))
     args = parser.parse_args()
     input_hdr_dir = os.path.join(args.root_hdr)
     input_ldr_dir = os.path.join(args.root_ldr)
@@ -175,6 +223,8 @@ if __name__ == '__main__':
     output_ldr_dir = os.path.join(args.output_ldr)
     channels = 1
     images_mean = 0
+    create_hdr_dict_data(input_hdr_dir, output_hdr_dir, channels, images_mean, isLog=True)
+    print_result(output_hdr_dir)
     # create_log_npy_data(input_dir, output_dir)
-    create_test_data(input_hdr_dir, output_hdr_dir, False, channels, images_mean)
-    create_test_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)
+    # create_test_data(input_hdr_dir, output_hdr_dir, False, channels, images_mean)
+    # create_test_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)

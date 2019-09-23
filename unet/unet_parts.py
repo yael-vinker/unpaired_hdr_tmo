@@ -38,6 +38,7 @@ class down(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(down, self).__init__()
         self.mpconv = nn.Sequential(
+            # nn.Conv2d(in_ch // 2, in_ch // 2, 2, stride=2),
             nn.MaxPool2d(2),
             double_conv(in_ch, out_ch)
         )
