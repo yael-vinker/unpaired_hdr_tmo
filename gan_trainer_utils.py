@@ -83,6 +83,8 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
         print("Directory ", output_dir, " created")
 
     model_path = os.path.join(output_dir, model_path)
+    models_250_save_path = os.path.join("models_250", "models_250_net.pth")
+    model_path_250 = os.path.join(output_dir, models_250_save_path)
     loss_graph_path = os.path.join(output_dir, loss_graph_path)
     result_path = os.path.join(output_dir, result_path)
     acc_path = os.path.join(output_dir, "accuracy")
@@ -90,6 +92,11 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     if not os.path.exists(os.path.dirname(model_path)):
         os.makedirs(os.path.dirname(model_path))
         print("Directory ", model_path, " created")
+
+    if not os.path.exists(os.path.dirname(model_path_250)):
+        os.makedirs(os.path.dirname(model_path_250))
+        print("Directory ", model_path_250, " created")
+
     if not os.path.exists(loss_graph_path):
         os.mkdir(loss_graph_path)
 

@@ -352,11 +352,11 @@ class GanTrainer:
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim,
                                                self.rgb_l2_loss_g_factor, self.errG_rgb_l2)
-            if epoch % 1 == 0:
+            if epoch % 10 == 0:
                 self.save_test_images(epoch, output_dir)
-                self.save_test_loss(epoch, output_dir)
+                # self.save_test_loss(epoch, output_dir)
 
-            if epoch % 1 == 0:
+            if epoch % 10 == 0:
                 self.save_loss_plot(epoch, output_dir)
 
 
@@ -446,6 +446,17 @@ class GanTrainer:
             'optimizerG_state_dict': self.optimizerG.state_dict(),
         }, path)
 
+        if epoch == 2:
+            models_250_save_path = os.path.join("models_250", "models_250_net.pth")
+            path_250 = os.path.join(output_dir, models_250_save_path)
+            torch.save({
+                'epoch': epoch,
+                'modelD_state_dict': self.netD.state_dict(),
+                'modelG_state_dict': self.netG.state_dict(),
+                'optimizerD_state_dict': self.optimizerD.state_dict(),
+                'optimizerG_state_dict': self.optimizerG.state_dict(),
+            }, path_250)
+
     def load_model(self):
         if self.isCheckpoint:
             self.checkpoint = torch.load(params.models_save_path)
@@ -480,8 +491,8 @@ if __name__ == '__main__':
         test_data_root_npy, test_data_root_ldr, g_opt_for_single_d, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, rgb_l2_loss_g_factor, input_images_mean = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
