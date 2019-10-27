@@ -1,3 +1,4 @@
+import unet.Unet as Unet
 import numpy as np
 import imageio
 import matplotlib.pyplot as plt
@@ -16,7 +17,7 @@ def _RGBtoY(RGB):
 
 def show_im(im, isTensor=False):
     if isTensor:
-        im = im.clone().permute(1, 2, 0).detach().cpu().numpy()
+        im = im.clone().detach().cpu().numpy()
         gray_im = np.squeeze(im)
         print(gray_im.shape)
         plt.imshow(gray_im, cmap='gray')
@@ -176,6 +177,7 @@ def TMQI(L_hdr, L_ldr):
     S, s_local, s_maps = _StructuralFidelity(L_hdr, L_ldr, lvl, weight, window)
     Q = a * (S ** Alpha) + (1. - a) * (N ** Beta)
     print_result(Q, S, N, s_local, s_maps)
+    return Q
 
     # else:
     #     # but we really should scale them similarly...
@@ -191,58 +193,114 @@ def hdr_log_loader_factorize(im_origin, range_factor):
     return im
 
 def log_tone_map(path):
-    return hdr_log_loader_factorize(path, 100)
+    return hdr_log_loader_factorize(path, 1)
 
 def Dargo_tone_map(im):
-
     # Tonemap using Drago's method to obtain 24-bit color image
     im = im / np.max(im)
     tonemapDrago = cv2.createTonemapDrago(1.0, 0.7, 0.85)
     ldrDrago = tonemapDrago.process(im)
     # ldrDrago = 3 * ldrDrago
-    hdr_image_utils.print_image_details(ldrDrago,"dargo")
+    # hdr_image_utils.print_image_details(ldrDrago,"dargo")
+    return ldrDrago
 
 def Durand_tone_map(im):
     # Tonemap using Durand's method obtain 24-bit color image
     tonemapDurand = cv2.createTonemapDurand(1.5,4,1.0,1,1)
     ldrDurand = tonemapDurand.process(im)
     # ldrDurand = 3 * ldrDurand
-    hdr_image_utils.print_image_details(ldrDurand,"durand")
+    # hdr_image_utils.print_image_details(ldrDurand,"durand")
+    return ldrDurand
+
+
+def back_to_color(im_hdr, fake):
+    im_gray_ = np.sum(im_hdr, axis=2)
+    fake = to_0_1_range(fake)
+    norm_im = np.zeros(im_hdr.shape)
+    norm_im[:, :, 0] = im_hdr[:, :, 0] / im_gray_
+    norm_im[:, :, 1] = im_hdr[:, :, 1] / im_gray_
+    norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
+    output_im = np.power(norm_im, 0.5) * fake
+    return output_im
+
+def ours(original_im, net_path):
+    import torch
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    G_net = Unet.UNet(1, 1, 0, bilinear=False).to(device)
+    checkpoint = torch.load(net_path)
+    state_dict = checkpoint['modelG_state_dict']
+    # G_net.load_state_dict(checkpoint['modelG_state_dict'])
+
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    G_net.load_state_dict(new_state_dict)
+    G_net.eval()
+    data = np.load("data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
+    L_hdr_log = data[()]["input_image"].to(device)
+    inputs = L_hdr_log.unsqueeze(0)
+    # outputs = net(inputs)
+    # L_ldr = np.squeeze(L_ldr.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # _L_ldr = to_0_1_range(L_ldr)
+    ours_tone_map = torch.squeeze(G_net(inputs), dim=0)
+    # ours_tone_map = np.squeeze(ours_tone_map, axis=0)
+    return back_to_color(original_im, ours_tone_map.clone().permute(1, 2, 0).detach().cpu().numpy())
+
 
 if __name__ == '__main__':
-    hdr_path = "data/hdr_data/hdr_data/S0010.hdr"
+    hdr_path = "data/hdr_data/hdr_data/belgium.hdr"
     im_hdr = imageio.imread(hdr_path).astype('float32')
-    tone_map_im = im_hdr
     # hdr_image_utils.print_image_details(_L_hdr, "L_hdr AFTER READ")
     _L_hdr = skimage.transform.resize(im_hdr, (256, 256), mode='reflect', preserve_range=False)
+    _L_ldr = _L_hdr
 
-    tone_map_methods = ["log_100", "Dargo", "None"]
-    for t_m in tone_map_methods:
+    tone_map_methods = ["None", "log_100", "Dargo", "Ours"]
+    plt.figure(figsize=(15, 15))
+    for i in range(len(tone_map_methods)):
+        t_m = tone_map_methods[i]
+        plt.subplot(2, 2, i + 1)
+        plt.axis("off")
+
         if t_m == "None":
-            print()
+            print("NON TONE MAP RESULTS : ")
+            q = TMQI(_L_hdr, _L_ldr)
+            plt.title(t_m + " Q = "+ str(q))
+            plt.imshow(_L_ldr)
         if t_m == "log_100":
             print("LOG TONE MAP RESULTS : ")
-            _L_ldr = log_tone_map(im_hdr)
+            _L_ldr_log = log_tone_map(im_hdr)
+            _L_ldr_log = skimage.transform.resize(_L_ldr_log, (256, 256), mode='reflect', preserve_range=False)
+            q = TMQI(_L_hdr, _L_ldr_log)
+            plt.title(t_m + " Q = " + str(q))
+            plt.imshow(_L_ldr_log)
         if t_m == "Dargo":
             print("DARGO: ")
-            _L_ldr = Dargo_tone_map(im_hdr)
+            _L_ldr_dargo = Dargo_tone_map(im_hdr)
+            _L_ldr_dargo = skimage.transform.resize(_L_ldr_dargo, (256, 256), mode='reflect', preserve_range=False)
+            q = TMQI(_L_hdr, _L_ldr_dargo)
+            plt.title(t_m + " Q = " + str(q))
+            plt.imshow(_L_ldr_dargo)
+        if t_m == "Ours":
+            print("Ours: ")
+            _L_ldr_ours = ours(_L_hdr, "/cs/labs/raananf/yael_vinker/09_22/results/ldr_test_validation_images_skip_connection_conv/models/net.pth")
+            q = TMQI(_L_hdr, _L_ldr_ours)
+            plt.title(t_m + " Q = " + str(q))
+            plt.imshow(_L_ldr_ours)
+        print()
+    plt.show()
 
 
-    print("NON TONE MAP RESULTS : ")
-    TMQI(_L_hdr, _L_hdr)
-
-    print("LOG TONE MAP RESULTS : ")
-    log_tone_map_im = log_tone_map(_L_hdr)
-    TMQI(_L_hdr, log_tone_map_im)
-    Dargo_tone_map(im_hdr)
-    Durand_tone_map(im_hdr)
-
-    data = np.load("data/hdr_log_data/hdr_log_data/S0010_1000.npy", allow_pickle=True)
-    L_ldr = data[()]["input_image"]
-    L_ldr = np.squeeze(L_ldr.clone().permute(1, 2, 0).detach().cpu().numpy())
-    _L_ldr = to_0_1_range(L_ldr)
-    # hdr_image_utils.print_image_details(L_ldr, "L_ldr AFTER READ")
-    _L_hdr = _L_ldr
-
-    TMQI(_L_hdr, _L_ldr)
+    #
+    #
+    # data = np.load("data/hdr_log_data/hdr_log_data/S0010_1000.npy", allow_pickle=True)
+    # L_ldr = data[()]["input_image"]
+    # L_ldr = np.squeeze(L_ldr.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # _L_ldr = to_0_1_range(L_ldr)
+    # # hdr_image_utils.print_image_details(L_ldr, "L_ldr AFTER READ")
+    # _L_hdr = _L_ldr
+    #
+    # TMQI(_L_hdr, _L_ldr)
 
