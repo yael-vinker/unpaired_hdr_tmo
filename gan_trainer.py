@@ -18,7 +18,6 @@ import Discriminator
 import params
 import time
 import gan_trainer_utils as g_t_utils
-import ProcessedDatasetFolder
 import ssim
 import printer
 # import Writer
@@ -112,18 +111,14 @@ class GanTrainer:
         self.errG_d, self.errG_ssim = None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
-        self.accG_test, self.accD_test, self.accDreal_test, self.accDfake_test = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
-        self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.G_loss_ssim, self.G_loss_d = [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
-        self.test_G_losses_d, self.test_G_loss_ssim = [], []
-        self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
 
-        self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr = \
-            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
-                                self.batch_size)
+        self.train_data_loader_npy, self.train_data_loader_ldr = \
+            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr,
+                                self.batch_size, testMode=False, title="train")
 
         self.input_dim = input_dim
         self.input_images_mean = input_images_mean_
@@ -139,26 +134,16 @@ class GanTrainer:
         self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, t_batch_size, t_device,
                                     loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, self.transform_exp)
 
-    def update_accuracy(self, isTest=False):
+    def update_accuracy(self):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
-        len_hdr_test_dset = len(self.test_data_loader_npy.dataset)
         len_ldr_train_dset = len(self.train_data_loader_ldr.dataset)
-        len_ldr_test_dset = len(self.test_data_loader_ldr.dataset)
 
-        if isTest:
-            self.accG_test = self.accG_counter / len_hdr_test_dset
-            self.accDreal_test = self.accDreal_counter / len_ldr_train_dset
-            self.accDfake_test = self.accDfake_counter / len_ldr_train_dset
-            self.G_accuracy_test.append(self.accG_test)
-            self.D_accuracy_real_test.append(self.accDreal_test)
-            self.D_accuracy_fake_test.append(self.accDfake_test)
-        else:
-            self.accG = self.accG_counter / len_hdr_train_dset
-            self.accDreal = self.accDreal_counter / len_ldr_train_dset
-            self.accDfake = self.accDfake_counter / len_ldr_train_dset
-            self.G_accuracy.append(self.accG)
-            self.D_accuracy_real.append(self.accDreal)
-            self.D_accuracy_fake.append(self.accDfake)
+        self.accG = self.accG_counter / len_hdr_train_dset
+        self.accDreal = self.accDreal_counter / len_ldr_train_dset
+        self.accDfake = self.accDfake_counter / len_ldr_train_dset
+        self.G_accuracy.append(self.accG)
+        self.D_accuracy_real.append(self.accDreal)
+        self.D_accuracy_fake.append(self.accDfake)
 
     def train_D(self, hdr_input, real_ldr_cpu):
         """
@@ -343,23 +328,6 @@ class GanTrainer:
             self.optimizerG.load_state_dict(self.checkpoint['optimizerG_state_dict'])
             self.netD.train()
             self.netG.train()
-
-    def test(self):
-        # test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
-        # test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
-        # tests.test_normalize_transform(test_first_b_tonemap, self.device)
-        #
-        # test_real_batch_hdr = next(iter(self.test_data_loader_npy))
-        # test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
-        # tests.test_normalize_transform(test_hdr_image, self.device)
-        #
-        test_real_batch_tonemap = next(iter(self.test_data_loader_ldr))
-        test_first_b_tonemap = test_real_batch_tonemap[0].to(device)
-
-        test_real_batch_hdr = next(iter(self.test_data_loader_npy))
-        test_hdr_image = test_real_batch_hdr[params.image_key].to(self.device)
-        new_out_dir = os.path.join(params.results_path, "images_epoch=" + str(1))
-        # self.save_groups_images(test_first_b_tonemap, test_hdr_image, new_out_dir)
 
 
 if __name__ == '__main__':

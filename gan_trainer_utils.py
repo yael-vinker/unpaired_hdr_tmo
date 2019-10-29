@@ -377,7 +377,7 @@ def load_data_set(data_root, batch_size_, shuffle, testMode):
     return dataloader
 
 
-def load_data(train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, batch_size):
+def load_data(train_root_npy, train_root_ldr, batch_size, testMode, title):
     import printer
     """
     :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
@@ -385,22 +385,17 @@ def load_data(train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, batc
     :param b_size: batch size
     :return: DataLoader object of images in "dir_root"
     """
-    train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, testMode=False)
-    test_hdr_dataloader = load_data_set(test_root_npy, batch_size, shuffle=False, testMode=True)
-    train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, testMode=False)
-    test_ldr_dataloader = load_data_set(test_root_ldr, batch_size, shuffle=False, testMode=True)
+    train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, testMode=testMode)
+    train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, testMode=testMode)
 
-    printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader,
-                                   test_ldr_dataloader],
-                                  [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
-                                  ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
-                                   "test_ldr_dataloader"],
-                                  [True, True, False, False],
-                                  [True, True, True, True])
+    printer.print_dataset_details([train_hdr_dataloader, train_ldr_dataloader],
+                                  [train_root_npy, train_root_ldr],
+                                  [title + "_hdr_dataloader", title + "_ldr_dataloader"],
+                                  [True, False],
+                                  [True, True])
 
-    printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, "train", images_number=2)
-    printer.load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, "test", images_number=2)
-    return train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader
+    printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
+    return train_hdr_dataloader, train_ldr_dataloader
 
 
 if __name__ == '__main__':

@@ -5,40 +5,11 @@ import params
 import os
 import gan_trainer_utils as g_t_utils
 
-def load_data_set(data_root, batch_size_, shuffle, testMode):
-    npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, testMode=testMode)
-    dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
-                                             shuffle=shuffle, num_workers=params.workers)
-    return dataloader
-
-
-def load_data(test_root_npy, test_root_ldr, batch_size):
-    """
-    :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
-    :param dir_root: path to wanted directory
-    :param b_size: batch size
-    :return: DataLoader object of images in "dir_root"
-    """
-    test_hdr_dataloader = load_data_set(test_root_npy, batch_size, shuffle=False, testMode=True)
-    test_ldr_dataloader = load_data_set(test_root_ldr, batch_size, shuffle=False, testMode=True)
-
-    printer.print_dataset_details([test_hdr_dataloader, test_hdr_dataloader, test_ldr_dataloader,
-                                   test_ldr_dataloader],
-                                  [test_root_npy, test_root_npy, test_root_ldr, test_root_ldr],
-                                  ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
-                                   "test_ldr_dataloader"],
-                                  [True, True, False, False],
-                                  [True, True, True, True])
-
-    printer.load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, "test", images_number=2)
-    return test_hdr_dataloader, test_ldr_dataloader
-
-
 class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, batch_size, device,
                  loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_):
         self.test_data_loader_npy, self.test_data_loader_ldr = \
-            load_data(test_dataroot_npy, test_dataroot_ldr, batch_size)
+            g_t_utils.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
@@ -81,7 +52,7 @@ class Tester:
             if self.ssim_loss_g_factor != 0:
                 test_errGssim = self.ssim_loss_g_factor * (1 - ssim_loss(fake, hdr_input))
                 self.test_G_loss_ssim.append(test_errGssim.item())
-            self.update_accuracy(isTest=True)
+            self.update_accuracy()
             printer.print_test_epoch_losses_summary(num_epochs, epoch, test_loss_D, test_errGd, self.accDreal_test,
                                                     self.accDfake_test, self.accG_test)
 
@@ -91,17 +62,16 @@ class Tester:
             fake = netG(first_b_hdr)
             return fake
 
-    def update_accuracy(self, isTest=True):
+    def update_accuracy(self):
         len_hdr_test_dset = len(self.test_data_loader_npy.dataset)
         len_ldr_test_dset = len(self.test_data_loader_ldr.dataset)
 
-        if isTest:
-            self.accG_test = self.accG_counter / len_hdr_test_dset
-            self.accDreal_test = self.accDreal_counter / len_ldr_test_dset
-            self.accDfake_test = self.accDfake_counter / len_ldr_test_dset
-            self.G_accuracy_test.append(self.accG_test)
-            self.D_accuracy_real_test.append(self.accDreal_test)
-            self.D_accuracy_fake_test.append(self.accDfake_test)
+        self.accG_test = self.accG_counter / len_hdr_test_dset
+        self.accDreal_test = self.accDreal_counter / len_ldr_test_dset
+        self.accDfake_test = self.accDfake_counter / len_ldr_test_dset
+        self.G_accuracy_test.append(self.accG_test)
+        self.D_accuracy_real_test.append(self.accDreal_test)
+        self.D_accuracy_fake_test.append(self.accDfake_test)
 
     def save_test_loss(self, epoch, out_dir):
         acc_path = os.path.join(out_dir, "accuracy")
