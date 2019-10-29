@@ -1,9 +1,11 @@
 import collections
 import numbers
+import torchvision.transforms as torch_transforms
 
 import numpy as np
 import skimage.transform
 import torch
+import params
 
 
 # class Normalize(object):
@@ -224,3 +226,35 @@ class Exp(object):
         im_end = im_exp / 1000
         return im_end
         # return F.normalize(tensor, self.mean, self.std, self.inplace)
+
+# image in [-1, 1]
+gray_image_transform = torch_transforms.Compose([
+    Scale(params.input_size),
+    CenterCrop(params.input_size),
+    ToTensor(),
+    Normalize(0.5, 0.5),
+])
+
+rgb_non_display_image_transform = torch_transforms.Compose([
+                Scale(params.input_size),
+                CenterCrop(params.input_size),
+                ToTensor(),
+                Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ])
+
+# image in [0,1..] or rgb image display
+rgb_display_image_transform = torch_transforms.Compose([
+                Scale(params.input_size),
+                CenterCrop(params.input_size),
+                ToTensor(),
+            ])
+
+rgb_display_image_transform_numpy = torch_transforms.Compose([
+                # Scale(params.input_size),
+                # CenterCrop(params.input_size),
+            ])
+
+tmqi_input_transforms = torch_transforms.Compose([
+    ToTensor(),
+    Normalize(0.5, 0.5),
+            ])

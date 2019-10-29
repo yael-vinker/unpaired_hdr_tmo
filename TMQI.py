@@ -7,8 +7,14 @@ from scipy import signal
 from scipy.signal import convolve
 from scipy.stats import norm, beta
 from skimage.util import view_as_blocks
+import tranforms
+import hdr_image_utils
 
 import unet.Unet as Unet
+
+
+def to_0_1_range(im):
+    return (im - np.min(im)) / (np.max(im) - np.min(im))
 
 
 def _RGBtoY(RGB):
@@ -27,7 +33,6 @@ def show_im(im, isTensor=False):
     else:
         plt.imshow(im)
         plt.show()
-
 
 def StatisticalNaturalness(L_ldr, win=11):
     phat1 = 4.4
@@ -63,9 +68,6 @@ def StatisticalNaturalness(L_ldr, win=11):
     N = pb * pc
     return N
 
-
-def to_0_1_range(im):
-    return (im - np.min(im)) / (np.max(im) - np.min(im))
 
 
 def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
@@ -181,8 +183,8 @@ def TMQI(L_hdr, L_ldr):
 
     S, s_local, s_maps = _StructuralFidelity(L_hdr, L_ldr, lvl, weight, window)
     Q = a * (S ** Alpha) + (1. - a) * (N ** Beta)
-    print_result(Q, S, N, s_local, s_maps)
-    return Q
+    # print_result(Q, S, N, s_local, s_maps)
+    return Q, S, N
 
     # else:
     #     # but we really should scale them similarly...
@@ -191,21 +193,16 @@ def TMQI(L_hdr, L_ldr):
     #
 
 
-def hdr_log_loader_factorize(im_origin, range_factor):
-    max_origin = np.max(im_origin)
-    image_new_range = (im_origin / max_origin) * range_factor
+def log_tone_map(im, range_factor):
+    max_origin = np.max(im)
+    image_new_range = (im / max_origin) * range_factor
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
-
-def log_tone_map(path):
-    return hdr_log_loader_factorize(path, 1)
-
-
 def Dargo_tone_map(im):
+    # im = im / np.max(im)
     # Tonemap using Drago's method to obtain 24-bit color image
-    im = im / np.max(im)
     tonemapDrago = cv2.createTonemapDrago(1.0, 0.7, 0.85)
     ldrDrago = tonemapDrago.process(im)
     # ldrDrago = 3 * ldrDrago
@@ -221,6 +218,23 @@ def Durand_tone_map(im):
     # hdr_image_utils.print_image_details(ldrDurand,"durand")
     return ldrDurand
 
+def Reinhard_tone_map(im):
+    # Tonemap using Reinhard's method to obtain 24-bit color image
+    tonemapReinhard = cv2.createTonemapReinhard(1.5, 0, 0, 0)
+    ldrReinhard = tonemapReinhard.process(im)
+    return ldrReinhard
+
+def Mantiuk_tone_map(im):
+    # Tonemap using Mantiuk's method to obtain 24-bit color image
+    tonemapMantiuk = cv2.createTonemapMantiuk(2.2,0.85, 1.2)
+    ldrMantiuk = tonemapMantiuk.process(im)
+    return ldrMantiuk
+
+def Durand_tone_map(im):
+    # Tonemap using Durand's method obtain 24-bit color image
+     tonemapDurand = cv2.createTonemapDurand(1.5,4,1.0,1,1)
+     ldrDurand = tonemapDurand.process(im)
+     return ldrDurand
 
 def back_to_color(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
@@ -260,56 +274,62 @@ def ours(original_im, net_path):
     return back_to_color(original_im, ours_tone_map.clone().permute(1, 2, 0).detach().cpu().numpy())
 
 
-if __name__ == '__main__':
-    hdr_path = "data/hdr_data/hdr_data/belgium.hdr"
-    im_hdr = imageio.imread(hdr_path).astype('float32')
-    # hdr_image_utils.print_image_details(_L_hdr, "L_hdr AFTER READ")
-    _L_hdr = skimage.transform.resize(im_hdr, (256, 256), mode='reflect', preserve_range=False)
-    _L_ldr = _L_hdr
-
-    tone_map_methods = ["None", "log_100", "Dargo", "Ours"]
+def run(_L_hdr):
+    _L_hdr_numpy = _L_hdr
+    tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
     plt.figure(figsize=(15, 15))
     for i in range(len(tone_map_methods)):
         t_m = tone_map_methods[i]
-        plt.subplot(2, 2, i + 1)
-        plt.axis("off")
-
         if t_m == "None":
-            print("NON TONE MAP RESULTS : ")
-            q = TMQI(_L_hdr, _L_ldr)
-            plt.title(t_m + " Q = " + str(q))
-            plt.imshow(_L_ldr)
-        if t_m == "log_100":
-            print("LOG TONE MAP RESULTS : ")
-            _L_ldr_log = log_tone_map(im_hdr)
-            _L_ldr_log = skimage.transform.resize(_L_ldr_log, (256, 256), mode='reflect', preserve_range=False)
-            q = TMQI(_L_hdr, _L_ldr_log)
-            plt.title(t_m + " Q = " + str(q))
-            plt.imshow(_L_ldr_log)
-        if t_m == "Dargo":
-            print("DARGO: ")
-            _L_ldr_dargo = Dargo_tone_map(im_hdr)
-            _L_ldr_dargo = skimage.transform.resize(_L_ldr_dargo, (256, 256), mode='reflect', preserve_range=False)
-            q = TMQI(_L_hdr, _L_ldr_dargo)
-            plt.title(t_m + " Q = " + str(q))
-            plt.imshow(_L_ldr_dargo)
-        if t_m == "Ours":
-            print("Ours: ")
-            _L_ldr_ours = ours(_L_hdr,
-                               "/cs/labs/raananf/yael_vinker/09_22/results/ldr_test_validation_images_skip_connection_conv/models/net.pth")
-            q = TMQI(_L_hdr, _L_ldr_ours)
-            plt.title(t_m + " Q = " + str(q))
-            plt.imshow(_L_ldr_ours)
+            tone_mapped = _L_hdr_numpy
+        elif t_m == "log_100":
+            tone_mapped = log_tone_map(_L_hdr_numpy, 100)
+        #     _L_ldr_log = skimage.transform.resize(_L_ldr_log, (256, 256), mode='reflect', preserve_range=False)
+        #     q = TMQI(_L_hdr, _L_ldr_log)
+        #     plt.title(t_m + " Q = " + str(q))
+        #     plt.imshow(_L_ldr_log)
+        elif t_m == "Durand":
+            tone_mapped = Durand_tone_map(_L_hdr_numpy)
+        elif t_m == "Dargo":
+            tone_mapped = Dargo_tone_map(_L_hdr_numpy)
+        elif t_m == "Mantiuk":
+            tone_mapped = Mantiuk_tone_map(_L_hdr_numpy)
+        elif t_m == "Reinhard":
+            tone_mapped = Reinhard_tone_map(_L_hdr_numpy)
+        elif t_m == "Ours":
+            tone_mapped = ours(_L_hdr,
+                               "local_skip_connection_conv/models/net.pth")
+        else:
+            continue
+        plt.subplot(2, 3, i + 1)
+        plt.axis("off")
+        print(t_m)
+        hdr_image_utils.print_image_details(tone_mapped, t_m)
+        q = TMQI(_L_hdr, tone_mapped)[0]
+        plt.title(t_m + " Q = " + str(q))
+        plt.imshow(tone_mapped)
         print()
     plt.show()
+    return
 
-    #
-    #
-    # data = np.load("data/hdr_log_data/hdr_log_data/S0010_1000.npy", allow_pickle=True)
-    # L_ldr = data[()]["input_image"]
-    # L_ldr = np.squeeze(L_ldr.clone().permute(1, 2, 0).detach().cpu().numpy())
-    # _L_ldr = to_0_1_range(L_ldr)
-    # # hdr_image_utils.print_image_details(L_ldr, "L_ldr AFTER READ")
-    # _L_hdr = _L_ldr
-    #
-    # TMQI(_L_hdr, _L_ldr)
+if __name__ == '__main__':
+    hdr_path = "data/hdr_data/hdr_data/hdr05.hdr"
+    im_hdr_original = imageio.imread(hdr_path).astype('float32')
+    # hdr_norm = im_hdr_original / np.max(im_hdr_original)
+    hdr_norm = im_hdr_original
+    hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
+    # tran_norm = hdr_transform(hdr_norm).astype('float32')
+    hdr_image_utils.print_image_details(im_hdr_original, "norm")
+    # tran_non_norm = hdr_transform(im_hdr_original)
+    # hdr_image_utils.print_tensor_details(tran_non_norm, "non norm")
+    # plt.figure(figsize=(15, 15))
+    # plt.subplot(2, 2, 1)
+    # plt.title("norm")
+    # plt.imshow(tran_norm.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # plt.subplot(2, 2, 2)
+    # plt.title("non norm")
+    # plt.imshow(tran_non_norm.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # plt.show()
+    run(im_hdr_original)
+
+

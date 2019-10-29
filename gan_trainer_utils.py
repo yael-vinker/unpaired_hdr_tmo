@@ -13,6 +13,7 @@ from PIL import Image
 import imageio
 import torch
 import tranforms as transforms_
+import hdr_image_utils
 # import Writer
 
 
@@ -86,6 +87,7 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     loss_graph_path = os.path.join(output_dir, loss_graph_path)
     result_path = os.path.join(output_dir, result_path)
     acc_path = os.path.join(output_dir, "accuracy")
+    tmqi_path = os.path.join(output_dir, "tmqi")
 
     if not os.path.exists(os.path.dirname(model_path)):
         os.makedirs(os.path.dirname(model_path))
@@ -105,6 +107,11 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     if not os.path.exists(acc_path):
         os.mkdir(acc_path)
         print("Directory ", acc_path, " created")
+
+    if not os.path.exists(tmqi_path):
+        os.mkdir(tmqi_path)
+        print("Directory ", tmqi_path, " created")
+
     return output_dir
 
 
@@ -346,28 +353,6 @@ def display_tensor(tensor):
     plt.imshow(im_display)
     plt.show()
 
-def save_test_images(self, epoch, out_dir, device):
-    out_dir = os.path.join(out_dir, "result_images")
-    new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
-
-    if not os.path.exists(new_out_dir):
-        os.mkdir(new_out_dir)
-
-    self.test_num_iter += 1
-    test_real_batch = next(iter(self.test_data_loader_ldr))
-    test_real_first_b = test_real_batch["input_im"].to(device)
-
-    test_hdr_batch = next(iter(self.test_data_loader_npy))
-    # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
-    test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
-
-    fake = self.get_fake_test_images(test_hdr_batch_image)
-    save_groups_images(test_hdr_batch, test_real_batch, fake,
-                                 new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                 self.input_images_mean)
-    self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)
-
-
 # ----- data loader -------
 def load_data_set(data_root, batch_size_, shuffle, testMode):
     import ProcessedDatasetFolder
@@ -397,8 +382,33 @@ def load_data(train_root_npy, train_root_ldr, batch_size, testMode, title):
     printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
     return train_hdr_dataloader, train_ldr_dataloader
 
+def hdr_log_loader_factorize(path, range_factor):
+    path_lib_path = pathlib.Path(path)
+    file_extension = os.path.splitext(path)[1]
+    if file_extension == ".hdr":
+        im_origin = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
+    elif file_extension == ".dng":
+        im_origin = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+    else:
+        raise Exception('invalid hdr file format: {}'.format(file_extension))
+    max_origin = np.max(im_origin)
+    image_new_range = (im_origin / max_origin) * range_factor
+    im_log = np.log(image_new_range + 1)
+    im = (im_log / np.log(range_factor + 1)).astype('float32')
+    return im
+
+def to_gray(im):
+    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+
+
+
 
 if __name__ == '__main__':
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
+    # if testMode:
+    input_im = data[()]["input_image"]
+    print(input_im.shape)
+    color_im = data[()]["display_image"]
     im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')
     im1 = (im1 / np.max(im1))
 

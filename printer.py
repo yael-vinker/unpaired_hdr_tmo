@@ -133,6 +133,10 @@ def print_test_epoch_losses_summary(num_epochs, epoch, test_loss_D, test_errGd, 
     print('[%d/%d]\taccuracy_D_real: %.4f \taccuracy_D_fake: %.4f \taccuracy_G: %.4f'
           % (epoch, num_epochs, accDreal_test, accDfake_test, accG_test))
 
+def print_TMQI_summary(q, s, n, num_epochs, epoch):
+    print('[%d/%d]\tQ: %.8f\tS: %.8f\tN: %.8f\t'
+          % (epoch, num_epochs, q, s, n))
+
 def print_g_progress(fake):
     fake_single = np.asarray(fake[0].cpu().detach())
     print("fake --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %

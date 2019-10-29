@@ -4,9 +4,12 @@ import ProcessedDatasetFolder
 import params
 import os
 import gan_trainer_utils as g_t_utils
+import TMQI
+import imageio
+import tranforms
 
 class Tester:
-    def __init__(self, test_dataroot_npy, test_dataroot_ldr, batch_size, device,
+    def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
                  loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_):
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             g_t_utils.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
@@ -21,6 +24,25 @@ class Tester:
         self.loss_g_d_factor = loss_g_d_factor_
         self.test_num_iter = 0
         self.transform_exp = transform_exp_
+        self.Q_arr, self.S_arr, self.N_arr = [], [], []
+        self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
+
+    def load_original_test_hdr_images(self, root):
+        original_hdr_images = []
+        counter = 1
+        for img_name in os.listdir(root):
+            im_path = os.path.join(root, img_name)
+            im_hdr_original = imageio.imread(im_path).astype('float32')
+            im_hdr_log = g_t_utils.hdr_log_loader_factorize(im_path, 100)
+            im_log_gray = g_t_utils.to_gray(im_hdr_log)
+            im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+            original_hdr_images.append({'im_name': str(counter),
+                                        'im_hdr_original': im_hdr_original,
+                                        'im_log_normalize_tensor': im_log_normalize_tensor,
+                                        'Q': 0,
+                                        'epoch': 0})
+            counter += 1
+        return original_hdr_images
 
     def update_test_loss(self, netD, criterion, ssim_loss, b_size, num_epochs, first_b_tonemap, fake, hdr_input, epoch):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -113,3 +135,33 @@ class Tester:
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
         # netD, criterion, ssim_loss, b_size, num_epochs, first_b_tonemap, fake, hdr_input, epoch):
+
+    def update_TMQI(self, netG, out_dir, num_epochs, epoch):
+        import matplotlib.pyplot as plt
+        out_dir = os.path.join(out_dir, "tmqi")
+
+        with torch.no_grad():
+            for im_and_q in self.test_original_hdr_images:
+                im_hdr_original = im_and_q['im_hdr_original']
+                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor']
+                fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0)), dim=0)
+                fake_im_color = g_t_utils.back_to_color(im_hdr_original,
+                                                        fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy())
+
+                Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
+                if Q > im_and_q['Q']:
+                    im_and_q['Q'] = Q
+                    im_and_q['epoch'] = num_epochs
+                    print("ok")
+                    plt.figure(figsize=(15, 15))
+                    plt.axis("off")
+                    plt.title(('Q = ', Q, " \nepoch = ", epoch))
+                    plt.imshow(fake_im_color)
+                    plt.savefig(os.path.join(out_dir, im_and_q["im_name"]))
+                    plt.close()
+                    print("ok2")
+
+                # printer.print_TMQI_summary(Q, S, N, num_epochs, epoch)
+                # self.Q_arr.append(Q)
+                # self.S_arr.append(S)
+                # self.N_arr.append(N)

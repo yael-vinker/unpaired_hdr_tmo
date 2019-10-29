@@ -13,7 +13,7 @@ import VAE
 import unet.Unet as Unet
 import Tester
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import Discriminator
 import params
 import time
@@ -47,6 +47,8 @@ def parse_arguments():
     parser.add_argument("--data_root_ldr", type=str, default=params.train_dataroot_ldr)
     parser.add_argument("--checkpoint", type=str, default="no")
     parser.add_argument("--test_data_root_npy", type=str, default=params.test_dataroot_hdr)
+    parser.add_argument("--test_dataroot_original_hdr", type=str, default=params.test_dataroot_original_hdr)
+
     parser.add_argument("--test_data_root_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--result_dir_prefix", type=str, default="local")
     parser.add_argument("--input_dim", type=int, default=1)
@@ -59,7 +61,8 @@ def parse_arguments():
     return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
            os.path.join(args.test_data_root_ldr), args.result_dir_prefix, args.input_dim, \
-           args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp
+           args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp, \
+           args.test_dataroot_original_hdr
 
 
 def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_):
@@ -94,7 +97,7 @@ class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
                  train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, t_isCheckpoint, t_netG, t_netD,
                  t_optimizerG, t_optimizerD, input_dim, loss_g_d_factor_, ssim_loss_g_factor_,
-                 input_images_mean_, writer_, use_transform_exp_):
+                 input_images_mean_, writer_, use_transform_exp_, test_dataroot_original_hdr):
         self.writer = writer_
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
@@ -131,7 +134,7 @@ class GanTrainer:
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.transform_exp = custom_transform.Exp(1000)
         self.use_transform_exp = use_transform_exp_
-        self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, t_batch_size, t_device,
+        self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size, t_device,
                                     loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, self.transform_exp)
 
     def update_accuracy(self):
@@ -289,13 +292,14 @@ class GanTrainer:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
-            if epoch % 1 == 0:
+            if epoch % 2 == 0:
                 self.tester.save_test_images(epoch, output_dir, self.input_images_mean, self.netD, self.netG,
                                              self.criterion, self.ssim_loss, self.num_epochs)
                 # self.save_test_loss(epoch, output_dir)
 
-            if epoch % 1 == 0:
+            if epoch % 2 == 0:
                 self.save_loss_plot(epoch, output_dir)
+                self.tester.update_TMQI(self.netG, output_dir, self.num_epochs, epoch)
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
@@ -333,7 +337,7 @@ class GanTrainer:
 if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
-    ssim_loss_factor, input_images_mean, use_transform_exp = parse_arguments()
+    ssim_loss_factor, input_images_mean, use_transform_exp, test_dataroot_original_hdr = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     # device = torch.device("cpu")
@@ -379,6 +383,6 @@ if __name__ == '__main__':
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, isCheckpoint,
                              net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-                             ssim_loss_factor, input_images_mean, writer, use_transform_exp)
+                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, test_dataroot_original_hdr)
 
     gan_trainer.train(output_dir)
