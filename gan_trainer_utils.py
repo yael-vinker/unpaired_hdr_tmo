@@ -21,17 +21,15 @@ def custom_loss(output, target):
     loss = ((output - target) ** 2).sum() / b_size
     return loss
 
-def plot_general_losses(loss_G, loss_G_wind, G_loss_rgb_l2, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss, use_rgb_l2_loss):
-    if use_g_ssim_loss or use_rgb_l2_loss or use_g_d_loss:
+def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss):
+    if use_g_ssim_loss or use_g_d_loss:
         plt.figure()
         plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
         plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
         if use_g_d_loss:
-            plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+            plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
         if use_g_ssim_loss:
-            plt.plot(range(iters_n), loss_G_wind, '-y', label='loss G SSIM')
-        if use_rgb_l2_loss:
-            plt.plot(range(iters_n), G_loss_rgb_l2, '-k', label='loss G vgg')
+            plt.plot(range(iters_n), G_loss_ssim, '-y', label='loss G SSIM')
         plt.xlabel("n iteration")
         plt.legend(loc='upper left')
         plt.title(title)
@@ -44,7 +42,7 @@ def plot_general_losses(loss_G, loss_G_wind, G_loss_rgb_l2, loss_D_fake, loss_D_
     plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
     plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
     if use_g_d_loss:
-        plt.plot(range(iters_n), loss_G, '-g', label='loss G')
+        plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
 
     plt.xlabel("n iteration")
     plt.legend(loc='upper left')

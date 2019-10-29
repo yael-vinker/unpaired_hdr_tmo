@@ -140,7 +140,7 @@ def print_g_progress(fake):
            fake_single.dtype, str(fake_single.shape)))
 
 def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, loss_g_d_factor, errG_d,
-                               ssim_loss_g_factor, errG_ssim, rgb_l2_loss_g_factor, errG_rgb_l2):
+                               ssim_loss_g_factor, errG_ssim):
     output_str = '[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f'
     format_str = (epoch, num_epochs, errD, errD_real, errD_fake)
     if loss_g_d_factor != 0:
@@ -150,8 +150,4 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
     if ssim_loss_g_factor != 0:
         output_str = output_str + ' \tLoss_G_SSIM: %.4f'
         format_str = format_str + (errG_ssim.item(),)
-
-    if rgb_l2_loss_g_factor != 0:
-        output_str = output_str + ' \tLoss_G_vgg: %.4f'
-        format_str = format_str + (errG_rgb_l2.item(),)
     print(output_str % format_str)
