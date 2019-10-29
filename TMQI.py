@@ -1,19 +1,21 @@
-import unet.Unet as Unet
-import numpy as np
+import cv2
 import imageio
 import matplotlib.pyplot as plt
+import numpy as np
 import skimage
 from scipy import signal
 from scipy.signal import convolve
-from skimage.util import view_as_blocks
 from scipy.stats import norm, beta
-import hdr_image_utils
-import cv2
+from skimage.util import view_as_blocks
+
+import unet.Unet as Unet
+
 
 def _RGBtoY(RGB):
     M = np.asarray([[0.2126, 0.7152, 0.0722], ])
     Y = np.dot(RGB.reshape(-1, 3), M.T)
     return Y.reshape(RGB.shape[0:2])
+
 
 def show_im(im, isTensor=False):
     if isTensor:
@@ -25,6 +27,7 @@ def show_im(im, isTensor=False):
     else:
         plt.imshow(im)
         plt.show()
+
 
 def StatisticalNaturalness(L_ldr, win=11):
     phat1 = 4.4
@@ -60,11 +63,12 @@ def StatisticalNaturalness(L_ldr, win=11):
     N = pb * pc
     return N
 
+
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
-def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
 
+def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     window = window / window.sum()
 
     mu1 = convolve(window, img1, 'valid')
@@ -93,13 +97,13 @@ def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
 
     sigma2p = norm.cdf(sigma2, loc=u_ldr, scale=sig_ldr)
 
-    s_map = ((2 * sigma1p * sigma2p + C1) / (sigma1p**2 + sigma2p**2 + C1)
+    s_map = ((2 * sigma1p * sigma2p + C1) / (sigma1p ** 2 + sigma2p ** 2 + C1)
              * ((sigma12 + C2) / (sigma1 * sigma2 + C2)))
     s = np.mean(s_map)
     return s, s_map
 
-def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
 
+def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
     f = 32
     s_local = []
     s_maps = []
@@ -122,6 +126,7 @@ def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
 
     S = np.prod(np.power(s_local, weight))
     return S, s_local, s_maps
+
 
 def print_result(Q, S, N, s_local, s_maps):
     # from scipy.misc import imsave
@@ -185,6 +190,7 @@ def TMQI(L_hdr, L_ldr):
     #     L_ldr = factor * (L_ldr - L_ldr.min()) / (L_ldr.max() - L_ldr.min())
     #
 
+
 def hdr_log_loader_factorize(im_origin, range_factor):
     max_origin = np.max(im_origin)
     image_new_range = (im_origin / max_origin) * range_factor
@@ -192,8 +198,10 @@ def hdr_log_loader_factorize(im_origin, range_factor):
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
+
 def log_tone_map(path):
     return hdr_log_loader_factorize(path, 1)
+
 
 def Dargo_tone_map(im):
     # Tonemap using Drago's method to obtain 24-bit color image
@@ -204,9 +212,10 @@ def Dargo_tone_map(im):
     # hdr_image_utils.print_image_details(ldrDrago,"dargo")
     return ldrDrago
 
+
 def Durand_tone_map(im):
     # Tonemap using Durand's method obtain 24-bit color image
-    tonemapDurand = cv2.createTonemapDurand(1.5,4,1.0,1,1)
+    tonemapDurand = cv2.createTonemapDurand(1.5, 4, 1.0, 1, 1)
     ldrDurand = tonemapDurand.process(im)
     # ldrDurand = 3 * ldrDurand
     # hdr_image_utils.print_image_details(ldrDurand,"durand")
@@ -223,6 +232,7 @@ def back_to_color(im_hdr, fake):
     output_im = np.power(norm_im, 0.5) * fake
     return output_im
 
+
 def ours(original_im, net_path):
     import torch
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
@@ -234,7 +244,7 @@ def ours(original_im, net_path):
     from collections import OrderedDict
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
-        name = k[7:] # remove `module.`
+        name = k[7:]  # remove `module.`
         new_state_dict[name] = v
     # load params
     G_net.load_state_dict(new_state_dict)
@@ -267,7 +277,7 @@ if __name__ == '__main__':
         if t_m == "None":
             print("NON TONE MAP RESULTS : ")
             q = TMQI(_L_hdr, _L_ldr)
-            plt.title(t_m + " Q = "+ str(q))
+            plt.title(t_m + " Q = " + str(q))
             plt.imshow(_L_ldr)
         if t_m == "log_100":
             print("LOG TONE MAP RESULTS : ")
@@ -285,13 +295,13 @@ if __name__ == '__main__':
             plt.imshow(_L_ldr_dargo)
         if t_m == "Ours":
             print("Ours: ")
-            _L_ldr_ours = ours(_L_hdr, "/cs/labs/raananf/yael_vinker/09_22/results/ldr_test_validation_images_skip_connection_conv/models/net.pth")
+            _L_ldr_ours = ours(_L_hdr,
+                               "/cs/labs/raananf/yael_vinker/09_22/results/ldr_test_validation_images_skip_connection_conv/models/net.pth")
             q = TMQI(_L_hdr, _L_ldr_ours)
             plt.title(t_m + " Q = " + str(q))
             plt.imshow(_L_ldr_ours)
         print()
     plt.show()
-
 
     #
     #
@@ -303,4 +313,3 @@ if __name__ == '__main__':
     # _L_hdr = _L_ldr
     #
     # TMQI(_L_hdr, _L_ldr)
-

@@ -368,6 +368,40 @@ def save_test_images(self, epoch, out_dir, device):
     self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)
 
 
+# ----- data loader -------
+def load_data_set(data_root, batch_size_, shuffle, testMode):
+    import ProcessedDatasetFolder
+    npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, testMode=testMode)
+    dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
+                                             shuffle=shuffle, num_workers=params.workers)
+    return dataloader
+
+
+def load_data(train_root_npy, train_root_ldr, test_root_npy, test_root_ldr, batch_size):
+    import printer
+    """
+    :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
+    :param dir_root: path to wanted directory
+    :param b_size: batch size
+    :return: DataLoader object of images in "dir_root"
+    """
+    train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, testMode=False)
+    test_hdr_dataloader = load_data_set(test_root_npy, batch_size, shuffle=False, testMode=True)
+    train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, testMode=False)
+    test_ldr_dataloader = load_data_set(test_root_ldr, batch_size, shuffle=False, testMode=True)
+
+    printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader,
+                                   test_ldr_dataloader],
+                                  [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
+                                  ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
+                                   "test_ldr_dataloader"],
+                                  [True, True, False, False],
+                                  [True, True, True, True])
+
+    printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, "train", images_number=2)
+    printer.load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, "test", images_number=2)
+    return train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader
+
 
 if __name__ == '__main__':
     im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')

@@ -10,6 +10,8 @@ apply_windows_loss = False
 
 image_key = "hdr_image"
 window_image_key = "binary_windows"
+gray_input_image_key = "input_im"
+color_image_key = "color_im"
 
 models_save_path = os.path.join("models", "net.pth")
 loss_path = os.path.join("loss_plot")

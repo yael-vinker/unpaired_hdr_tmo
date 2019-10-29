@@ -1,17 +1,10 @@
-import random
-import numpy as np
-from scipy import misc, ndimage
-import params
-import torchvision.transforms.functional as F
-import torch
-import time
-import numbers
 import collections
-import torchvision.transforms as torch_transforms
+import numbers
+
+import numpy as np
 import skimage.transform
-from skimage import util
-from PIL import Image
-import matplotlib.pyplot as plt
+import torch
+
 
 # class Normalize(object):
 #     """Normalize a tensor image with mean and standard deviation.
@@ -84,8 +77,10 @@ class ToTensor(object):
         image_tensor = torch.from_numpy(image.transpose((2, 0, 1))).float()
         return image_tensor
 
+
 def _is_numpy_image(img):
     return isinstance(img, np.ndarray)
+
 
 class CenterCrop(object):
     """Crops the given PIL Image at the center.
@@ -139,6 +134,7 @@ class CenterCrop(object):
         i, j, h, w = self.get_params(pic, self.size)
         return pic[i:i + h, j:j + w, :]
 
+
 class Scale(object):
     """
     Rescale the given numpy image to a specified size.
@@ -154,8 +150,9 @@ class Scale(object):
         # if self.dtype == np.uint8:
         #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
         #     return util.img_as_ubyte(scaled_im) / 255
-        im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+        im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=False)
         return im
+
 
 class Normalize(object):
     """Normalize a tensor image with mean and standard deviation.
@@ -193,6 +190,7 @@ class Normalize(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
+
 class Exp(object):
     """Normalize a tensor image with mean and standard deviation.
     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
@@ -226,6 +224,3 @@ class Exp(object):
         im_end = im_exp / 1000
         return im_end
         # return F.normalize(tensor, self.mean, self.std, self.inplace)
-
-
-

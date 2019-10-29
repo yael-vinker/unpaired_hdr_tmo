@@ -1,16 +1,18 @@
 from __future__ import print_function
 
-import unet.Unet as Unet
-import VAE
-from torch import autograd
-import os
 import argparse
+import os
+
+import matplotlib
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
-import matplotlib
+from torch import autograd
+
+import VAE
+import unet.Unet as Unet
+
 matplotlib.use('Agg')
-import vgg_metric
 import Discriminator
 import params
 import time
@@ -38,7 +40,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="skip_connection_conv") # up sampling is the default
+    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -119,7 +121,7 @@ class GanTrainer:
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
 
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr = \
-            self.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr)
+            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, self.batch_size)
 
         self.input_dim = input_dim
         self.input_images_mean = input_images_mean_
@@ -133,17 +135,12 @@ class GanTrainer:
         self.transform_exp = custom_transform.Exp(1000)
         self.use_transform_exp = use_transform_exp_
 
-    def load_npy_data(self, npy_data_root, batch_size, shuffle, testMode):
-        npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=npy_data_root, testMode=testMode)
-        dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size,
+    @staticmethod
+    def load_data_set(data_root, batch_size_, shuffle, testMode):
+        npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, testMode=testMode)
+        dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
                                                  shuffle=shuffle, num_workers=params.workers)
         return dataloader
-
-    def load_ldr_data(self, ldr_data_root, batch_size, shuffle, testMode):
-        ldr_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=ldr_data_root, testMode=testMode)
-        ldr_dataloader = torch.utils.data.DataLoader(ldr_dataset, batch_size=batch_size,
-                                                     shuffle=shuffle, num_workers=params.workers)
-        return ldr_dataloader
 
     def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr):
         """
@@ -152,18 +149,18 @@ class GanTrainer:
         :param b_size: batch size
         :return: DataLoader object of images in "dir_root"
         """
-        train_hdr_dataloader = self.load_npy_data(train_root_npy, self.batch_size, shuffle=True, testMode=False)
-        test_hdr_dataloader = self.load_npy_data(test_root_npy, self.batch_size, shuffle=False, testMode=True)
-        train_ldr_dataloader = self.load_ldr_data(train_root_ldr, self.batch_size, shuffle=True, testMode=False)
-        test_ldr_dataloader = self.load_ldr_data(test_root_ldr, self.batch_size, shuffle=False, testMode=True)
+        train_hdr_dataloader = self.load_data_set(train_root_npy, self.batch_size, shuffle=True, testMode=False)
+        test_hdr_dataloader = self.load_data_set(test_root_npy, self.batch_size, shuffle=False, testMode=True)
+        train_ldr_dataloader = self.load_data_set(train_root_ldr, self.batch_size, shuffle=True, testMode=False)
+        test_ldr_dataloader = self.load_data_set(test_root_ldr, self.batch_size, shuffle=False, testMode=True)
 
         printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader,
                                        test_ldr_dataloader],
-                                        [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
-                                        ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
-                                         "test_ldr_dataloader"],
-                                        [True, True, False, False],
-                                        [True, True, True, True])
+                                      [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
+                                      ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
+                                       "test_ldr_dataloader"],
+                                      [True, True, False, False],
+                                      [True, True, True, True])
 
         printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, "train", images_number=2)
         printer.load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, "test", images_number=2)
@@ -245,12 +242,11 @@ class GanTrainer:
             self.errG_d = self.criterion(output_on_fake, label)
             self.G_loss_d.append(self.errG_d.item())
 
-
     def update_ssim_loss(self, hdr_input, fake):
         if self.ssim_loss_g_factor != 0:
             if self.input_dim == 3:
-                fake_rgb_n = torch.sum(fake, dim=1)[:,None,:, :]
-                hdr_input_rgb_n = torch.sum(hdr_input, dim=1)[:,None,:, :]
+                fake_rgb_n = torch.sum(fake, dim=1)[:, None, :, :]
+                hdr_input_rgb_n = torch.sum(hdr_input, dim=1)[:, None, :, :]
             elif self.input_images_mean == 0.5:
                 fake_rgb_n = fake
                 hdr_input_rgb_n = hdr_input
@@ -292,9 +288,9 @@ class GanTrainer:
                                                 enumerate(self.train_data_loader_ldr, 0)):
             self.num_iter += 1
             with autograd.detect_anomaly():
-                real_ldr_cpu = data_ldr["input_im"].to(self.device)
-                hdr_input = data_hdr["input_im"].to(self.device)
-                hdr_input_display = data_hdr["color_im"].to(self.device)
+                real_ldr_cpu = data_ldr[params.gray_input_image_key].to(self.device)
+                hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
+                hdr_input_display = data_hdr[params.color_image_key].to(self.device)
                 b_size = hdr_input.size(0)
                 label = torch.full((b_size,), self.real_label, device=self.device)
 
@@ -314,9 +310,10 @@ class GanTrainer:
         acc_path = os.path.join(output_dir, "accuracy")
         g_t_utils.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.D_loss_fake,
                                       self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
-                                      (self.loss_g_d_factor != 0),(self.ssim_loss_g_factor != 0))
-        g_t_utils.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real, "accuracy epoch = "+ str(epoch),
-                              self.epoch, acc_path)
+                                      (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
+        g_t_utils.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
+                                        "accuracy epoch = " + str(epoch),
+                                        self.epoch, acc_path)
 
     def train(self, output_dir):
         printer.print_cuda_details(self.device.type)
@@ -373,7 +370,7 @@ class GanTrainer:
                 self.test_G_loss_ssim.append(test_errGssim.item())
             self.update_accuracy(isTest=True)
             printer.print_test_epoch_losses_summary(self.num_epochs, epoch, test_loss_D, test_errGd, self.accDreal_test,
-                                                 self.accDfake_test, self.accG_test)
+                                                    self.accDfake_test, self.accG_test)
 
     def get_fake_test_images(self, first_b_hdr):
         with torch.no_grad():
@@ -411,8 +408,8 @@ class GanTrainer:
 
         if self.use_transform_exp:
             g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
-                                     new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                     self.input_images_mean)
+                                         new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
+                                         self.input_images_mean)
         else:
             g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                          new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
@@ -471,7 +468,7 @@ class GanTrainer:
 
 if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
-        test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
+    test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
@@ -512,7 +509,8 @@ if __name__ == '__main__':
 
     # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
     writer = 1
-    output_dir = g_t_utils.create_dir(result_dir_pref, model, params.models_save_path, params.loss_path, params.results_path)
+    output_dir = g_t_utils.create_dir(result_dir_pref, model, params.models_save_path, params.loss_path,
+                                      params.results_path)
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, isCheckpoint,
