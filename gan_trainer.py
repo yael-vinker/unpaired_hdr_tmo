@@ -11,6 +11,7 @@ from torch import autograd
 
 import VAE
 import unet.Unet as Unet
+import Tester
 
 matplotlib.use('Agg')
 import Discriminator
@@ -121,7 +122,8 @@ class GanTrainer:
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
 
         self.train_data_loader_npy, self.train_data_loader_ldr, self.test_data_loader_npy, self.test_data_loader_ldr = \
-            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, self.batch_size)
+            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr,
+                                self.batch_size)
 
         self.input_dim = input_dim
         self.input_images_mean = input_images_mean_
@@ -134,37 +136,8 @@ class GanTrainer:
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.transform_exp = custom_transform.Exp(1000)
         self.use_transform_exp = use_transform_exp_
-
-    @staticmethod
-    def load_data_set(data_root, batch_size_, shuffle, testMode):
-        npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, testMode=testMode)
-        dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
-                                                 shuffle=shuffle, num_workers=params.workers)
-        return dataloader
-
-    def load_data(self, train_root_npy, train_root_ldr, test_root_npy, test_root_ldr):
-        """
-        :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
-        :param dir_root: path to wanted directory
-        :param b_size: batch size
-        :return: DataLoader object of images in "dir_root"
-        """
-        train_hdr_dataloader = self.load_data_set(train_root_npy, self.batch_size, shuffle=True, testMode=False)
-        test_hdr_dataloader = self.load_data_set(test_root_npy, self.batch_size, shuffle=False, testMode=True)
-        train_ldr_dataloader = self.load_data_set(train_root_ldr, self.batch_size, shuffle=True, testMode=False)
-        test_ldr_dataloader = self.load_data_set(test_root_ldr, self.batch_size, shuffle=False, testMode=True)
-
-        printer.print_dataset_details([train_hdr_dataloader, test_hdr_dataloader, train_ldr_dataloader,
-                                       test_ldr_dataloader],
-                                      [train_root_npy, test_root_npy, train_root_ldr, test_root_ldr],
-                                      ["train_hdr_dataloader", "test_hdr_dataloader", "train_ldr_dataloader",
-                                       "test_ldr_dataloader"],
-                                      [True, True, False, False],
-                                      [True, True, True, True])
-
-        printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, "train", images_number=2)
-        printer.load_data_dict_mode(test_hdr_dataloader, test_ldr_dataloader, "test", images_number=2)
-        return train_hdr_dataloader, train_ldr_dataloader, test_hdr_dataloader, test_ldr_dataloader
+        self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, t_batch_size, t_device,
+                                    loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, self.transform_exp)
 
     def update_accuracy(self, isTest=False):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
@@ -332,89 +305,12 @@ class GanTrainer:
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
             if epoch % 1 == 0:
-                self.save_test_images(epoch, output_dir)
+                self.tester.save_test_images(epoch, output_dir, self.input_images_mean, self.netD, self.netG,
+                                             self.criterion, self.ssim_loss, self.num_epochs)
                 # self.save_test_loss(epoch, output_dir)
 
             if epoch % 1 == 0:
                 self.save_loss_plot(epoch, output_dir)
-
-    def update_test_loss(self, b_size, first_b_tonemap, fake, hdr_input, epoch):
-        self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
-        with torch.no_grad():
-            real_label = torch.full((b_size,), self.real_label, device=self.device)
-            test_D_output_on_real = self.netD(first_b_tonemap.detach()).view(-1)
-            self.accDreal_counter += (test_D_output_on_real > 0.5).sum().item()
-
-            test_errD_real = self.criterion(test_D_output_on_real, real_label)
-            self.test_D_loss_real.append(test_errD_real.item())
-
-            fake_label = torch.full((b_size,), self.fake_label, device=self.device)
-            if self.use_transform_exp:
-                output_on_fake = self.netD(self.transform_exp(fake.detach())).view(-1)
-            else:
-                output_on_fake = self.netD(fake.detach()).view(-1)
-            self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
-
-            test_errD_fake = self.criterion(output_on_fake, fake_label)
-            test_loss_D = test_errD_real + test_errD_fake
-            self.test_D_loss_fake.append(test_errD_fake.item())
-            self.test_D_losses.append(test_loss_D.item())
-
-            # output_on_fakake = self.netD(fake.detach()).view(-1)
-            self.accG_counter += (output_on_fake > 0.5).sum().item()
-            # if self.loss_g_d_factor != 0:
-            test_errGd = self.criterion(output_on_fake, real_label)
-            self.test_G_losses_d.append(test_errGd.item())
-            if self.ssim_loss_g_factor != 0:
-                test_errGssim = self.ssim_loss_g_factor * (1 - self.ssim_loss(fake, hdr_input))
-                self.test_G_loss_ssim.append(test_errGssim.item())
-            self.update_accuracy(isTest=True)
-            printer.print_test_epoch_losses_summary(self.num_epochs, epoch, test_loss_D, test_errGd, self.accDreal_test,
-                                                    self.accDfake_test, self.accG_test)
-
-    def get_fake_test_images(self, first_b_hdr):
-        with torch.no_grad():
-            fake = self.netG(first_b_hdr)
-            return fake
-
-    def save_test_loss(self, epoch, out_dir):
-        acc_path = os.path.join(out_dir, "accuracy")
-        loss_path = os.path.join(out_dir, "loss_plot")
-        g_t_utils.plot_general_losses(self.test_G_losses_d, self.test_G_loss_ssim,
-                                      self.test_D_loss_fake, self.test_D_loss_real,
-                                      "TEST epoch loss = " + str(epoch), self.test_num_iter, loss_path,
-                                      (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
-
-        g_t_utils.plot_general_accuracy(self.G_accuracy_test, self.D_accuracy_fake_test, self.D_accuracy_real_test,
-                                        "TEST epoch acc = " + str(epoch), self.epoch, acc_path)
-
-    def save_test_images(self, epoch, out_dir):
-        out_dir = os.path.join(out_dir, "result_images")
-        new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
-
-        if not os.path.exists(new_out_dir):
-            os.mkdir(new_out_dir)
-
-        self.test_num_iter += 1
-        test_real_batch = next(iter(self.test_data_loader_ldr))
-        test_real_first_b = test_real_batch["input_im"].to(device)
-
-        test_hdr_batch = next(iter(self.test_data_loader_npy))
-        # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
-        test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
-
-        fake = self.get_fake_test_images(test_hdr_batch_image)
-        fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device))
-
-        if self.use_transform_exp:
-            g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
-                                         new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                         self.input_images_mean)
-        else:
-            g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
-                                         new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                         self.input_images_mean)
-        self.update_test_loss(test_real_first_b.size(0), test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
