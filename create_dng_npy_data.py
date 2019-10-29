@@ -97,147 +97,8 @@ def print_result(output_dir, testMode=True):
             input_im = data[()]["input_image"]
             hdr_image_utils.print_tensor_details(input_im, img_name)
 
-def create_log_npy_data(input_dir, output_dir):
-    dtype = np.float32
-    transform_custom = transforms.Compose([
-        transforms_.Scale(params.input_size, dtype),
-        transforms_.CenterCrop(params.input_size),
-        transforms_.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    for img_name in os.listdir(input_dir):
-        im_path = os.path.join(input_dir, img_name)
-        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '.npy')
-        log_im = hdr_log_loader(im_path)
-        transformed_im = transform_custom(log_im)
-        np.save(output_path, transformed_im)
-        print(output_path)
-
-def get_transforms(images_mean_, channels_, display=False):
-    if images_mean_ == 0.5:
-        transform_custom_ = transforms.Compose([
-            transforms_.Scale(params.input_size),
-            transforms_.CenterCrop(params.input_size),
-            transforms_.ToTensor(),
-        ])
-
-    elif channels_ == 3:
-        if display:
-            transform_custom_ = transforms.Compose([
-                transforms_.Scale(params.input_size),
-                transforms_.CenterCrop(params.input_size),
-                transforms_.ToTensor(),
-            ])
-        else:
-            transform_custom_ = transforms.Compose([
-                transforms_.Scale(params.input_size),
-                transforms_.CenterCrop(params.input_size),
-                transforms_.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ])
-    else:
-        transform_custom_ = transforms.Compose([
-            transforms_.Scale(params.input_size),
-            transforms_.CenterCrop(params.input_size),
-            transforms_.ToTensor(),
-            transforms_.Normalize(0.5, 0.5),
-        ])
-    return transform_custom_
-
-def create_npy_data(input_dir, output_dir, isLdr, channels_, images_mean):
+def create_dict_data_log(input_dir, output_dir, isLdr, log_factor_):
     from os import path
-    output_transform = get_transforms(images_mean, channels_)
-    for img_name, i in zip(os.listdir(input_dir), range(896)):
-        im_path = os.path.join(input_dir, img_name)
-        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '.npy')
-        if not path.exists(output_path):
-            if isLdr:
-                rgb_img = ldr_loader(im_path)
-            else:
-                rgb_img = hdr_loader(im_path)
-            if channels == 1:
-                output_im = to_gray(rgb_img)
-            else:
-                output_im = rgb_img
-            transformed_output_im = output_transform(output_im)
-            np.save(output_path, transformed_output_im)
-            print(output_path)
-        print(i)
-
-def create_ldr_dict_data(input_dir, output_dir, channels_, images_mean):
-    from os import path
-    output_transform = get_transforms(images_mean, channels_)
-    display_transform = get_transforms(images_mean, 3, True)
-    for img_name, i in zip(os.listdir(input_dir), range(896)):
-        im_path = os.path.join(input_dir, img_name)
-        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '_one_dim.npy')
-        if not path.exists(output_path):
-            rgb_img = ldr_loader(im_path)
-            if channels == 1:
-                output_im = to_gray(rgb_img)
-            else:
-                output_im = rgb_img
-            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
-            transformed_output_im = output_transform(output_im)
-            transformed_display_im = display_transform(rgb_img)
-            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
-            np.save(output_path, data)
-            print(output_path)
-        print(i)
-
-def create_hdr_dict_data(input_dir, output_dir, channels_, images_mean, isLog=False):
-    from os import path
-    output_transform = get_transforms(images_mean, channels_)
-    display_transform = get_transforms(images_mean, 3, True)
-    for img_name, i in zip(os.listdir(input_dir), range(896)):
-        im_path = os.path.join(input_dir, img_name)
-        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '_one_dim.npy')
-        if not path.exists(output_path):
-            if isLog:
-                rgb_img_log = hdr_log_loader(im_path)
-                rgb_img = hdr_loader(im_path)
-            else:
-                rgb_img = hdr_loader(im_path)
-            if channels == 1:
-                output_im = to_gray(rgb_img_log)
-            else:
-                output_im = rgb_img_log
-            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
-            transformed_output_im = output_transform(output_im)
-            transformed_display_im = display_transform(rgb_img)
-            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
-            np.save(output_path, data)
-            print(output_path)
-        print(i)
-
-def create_test_data(input_dir, output_dir, isLdr, channels_, images_mean):
-    from os import path
-    output_transform = get_transforms(images_mean, channels_)
-    display_transform = get_transforms(images_mean, 3, True)
-    for img_name, i in zip(os.listdir(input_dir), range(908)):
-        im_path = os.path.join(input_dir, img_name)
-        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '.npy')
-        if not path.exists(output_path):
-            if isLdr:
-                rgb_img = ldr_loader(im_path)
-            else:
-                rgb_img = hdr_loader(im_path)
-            if channels == 1:
-                output_im = to_gray(rgb_img)
-            else:
-                output_im = rgb_img
-            # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
-            transformed_output_im = output_transform(output_im)
-            transformed_display_im = display_transform(rgb_img)
-            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
-            np.save(output_path, data)
-            print(output_path)
-        print(i)
-
-def create_dict_data_log(input_dir, output_dir, isLdr, channels_, images_mean, log_factor_):
-    from os import path
-    output_transform = get_transforms(images_mean, channels_)
-    display_transform = get_transforms(images_mean, 3, True)
     for img_name, i in zip(os.listdir(input_dir), range(896)):
         im_path = os.path.join(input_dir, img_name)
         output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + "_" + str(log_factor_) + '.npy')
@@ -252,8 +113,8 @@ def create_dict_data_log(input_dir, output_dir, isLdr, channels_, images_mean, l
                 output_im = to_gray(rgb_img_log)
 
             # hdr_image_utils.print_image_details(np.asarray(rgb_img), "---- before "+img_name)
-            transformed_output_im = output_transform(output_im)
-            transformed_display_im = display_transform(rgb_img)
+            transformed_output_im = transforms_.gray_image_transform(output_im)
+            transformed_display_im = transforms_.rgb_display_image_transform(rgb_img)
             data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
             np.save(output_path, data)
             print(output_path)
@@ -273,7 +134,7 @@ if __name__ == '__main__':
     channels = 1
     images_mean = 0
     log_factor = 100
-    create_dict_data_log(input_hdr_dir, output_hdr_dir, False, channels, images_mean, log_factor)
+    create_dict_data_log(input_hdr_dir, output_hdr_dir, False, log_factor)
     # # # print_result(output_hdr_dir)
     # # create_test_data(input_ldr_dir, output_ldr_dir, True, channels, images_mean)
     # path = "data/hdr_data/hdr_data/belgium.hdr"

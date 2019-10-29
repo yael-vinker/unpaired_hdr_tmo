@@ -36,11 +36,13 @@ class Tester:
             im_hdr_log = g_t_utils.hdr_log_loader_factorize(im_path, 100)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+            text = TMQI.run(im_hdr_original)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,
                                         'Q': 0,
-                                        'epoch': 0})
+                                        'epoch': 0,
+                                        'text': text})
             counter += 1
         return original_hdr_images
 
@@ -134,7 +136,6 @@ class Tester:
                                          input_images_mean)
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
-        # netD, criterion, ssim_loss, b_size, num_epochs, first_b_tonemap, fake, hdr_input, epoch):
 
     def update_TMQI(self, netG, out_dir, num_epochs, epoch):
         import matplotlib.pyplot as plt
@@ -152,14 +153,15 @@ class Tester:
                 if Q > im_and_q['Q']:
                     im_and_q['Q'] = Q
                     im_and_q['epoch'] = num_epochs
-                    print("ok")
                     plt.figure(figsize=(15, 15))
                     plt.axis("off")
-                    plt.title(('Q = ', Q, " \nepoch = ", epoch))
+                    title = 'Q = ' + str(Q) + " epoch = " + str(epoch)
+                    text = "=============== TMQI ===============\n" + im_and_q["text"] + "Ours = " + str(Q)
+                    print(text)
+                    plt.title(title)
                     plt.imshow(fake_im_color)
                     plt.savefig(os.path.join(out_dir, im_and_q["im_name"]))
                     plt.close()
-                    print("ok2")
 
                 # printer.print_TMQI_summary(Q, S, N, num_epochs, epoch)
                 # self.Q_arr.append(Q)

@@ -277,17 +277,14 @@ def ours(original_im, net_path):
 def run(_L_hdr):
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
-    plt.figure(figsize=(15, 15))
+    # plt.figure(figsize=(15, 15))
+    text = ""
     for i in range(len(tone_map_methods)):
         t_m = tone_map_methods[i]
         if t_m == "None":
             tone_mapped = _L_hdr_numpy
         elif t_m == "log_100":
             tone_mapped = log_tone_map(_L_hdr_numpy, 100)
-        #     _L_ldr_log = skimage.transform.resize(_L_ldr_log, (256, 256), mode='reflect', preserve_range=False)
-        #     q = TMQI(_L_hdr, _L_ldr_log)
-        #     plt.title(t_m + " Q = " + str(q))
-        #     plt.imshow(_L_ldr_log)
         elif t_m == "Durand":
             tone_mapped = Durand_tone_map(_L_hdr_numpy)
         elif t_m == "Dargo":
@@ -301,35 +298,37 @@ def run(_L_hdr):
                                "local_skip_connection_conv/models/net.pth")
         else:
             continue
-        plt.subplot(2, 3, i + 1)
-        plt.axis("off")
-        print(t_m)
-        hdr_image_utils.print_image_details(tone_mapped, t_m)
+
+        # plt.subplot(2, 3, i + 1)
+        # plt.axis("off")
+        # print(t_m)
+        # hdr_image_utils.print_image_details(tone_mapped, t_m)
         q = TMQI(_L_hdr, tone_mapped)[0]
-        plt.title(t_m + " Q = " + str(q))
-        plt.imshow(tone_mapped)
-        print()
-    plt.show()
-    return
+        text = text + t_m + " = " + str(q) + "\n"
+        # plt.title(t_m + " Q = " + str(q))
+        # plt.imshow(tone_mapped)
+        # print()
+    # plt.show()
+    return text
 
 if __name__ == '__main__':
-    hdr_path = "data/hdr_data/hdr_data/hdr05.hdr"
+    hdr_path = "data/ldr_data/ldr_data/im_97.bmp"
     im_hdr_original = imageio.imread(hdr_path).astype('float32')
     # hdr_norm = im_hdr_original / np.max(im_hdr_original)
-    hdr_norm = im_hdr_original
-    hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
+    hdr_norm = im_hdr_original / np.max(im_hdr_original)
+    # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
     # tran_norm = hdr_transform(hdr_norm).astype('float32')
-    hdr_image_utils.print_image_details(im_hdr_original, "norm")
-    # tran_non_norm = hdr_transform(im_hdr_original)
-    # hdr_image_utils.print_tensor_details(tran_non_norm, "non norm")
-    # plt.figure(figsize=(15, 15))
-    # plt.subplot(2, 2, 1)
-    # plt.title("norm")
-    # plt.imshow(tran_norm.clone().permute(1, 2, 0).detach().cpu().numpy())
-    # plt.subplot(2, 2, 2)
-    # plt.title("non norm")
-    # plt.imshow(tran_non_norm.clone().permute(1, 2, 0).detach().cpu().numpy())
-    # plt.show()
+    hdr_image_utils.print_image_details(hdr_norm, "norm")
+    tran_non_norm = Dargo_tone_map(hdr_norm)
+    hdr_image_utils.print_image_details(tran_non_norm, "Reinhard_tone_map")
+    plt.figure(figsize=(15, 15))
+    plt.subplot(2, 2, 1)
+    plt.title("norm")
+    plt.imshow(hdr_norm)
+    plt.subplot(2, 2, 2)
+    plt.title("non norm")
+    plt.imshow(tran_non_norm)
+    plt.show()
     run(im_hdr_original)
 
 
