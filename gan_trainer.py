@@ -299,7 +299,7 @@ class GanTrainer:
 
             if epoch % 2 == 0:
                 self.save_loss_plot(epoch, output_dir)
-                self.tester.update_TMQI(self.netG, output_dir, self.num_epochs, epoch)
+                self.tester.update_TMQI(self.netG, output_dir, epoch)
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)

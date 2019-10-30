@@ -63,6 +63,7 @@ class Tester:
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,
                                         'Q': 0,
+                                        'Q_gray' : 0,
                                         'epoch': 0,
                                         'text': text})
             counter += 1
@@ -159,8 +160,9 @@ class Tester:
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
-    def update_TMQI(self, netG, out_dir, num_epochs, epoch):
+    def update_TMQI(self, netG, out_dir, epoch):
         import matplotlib.pyplot as plt
+        import numpy as np
         out_dir = os.path.join(out_dir, "tmqi")
         # netG_cpu = netG.to(torch.device("cpu"))
 
@@ -169,21 +171,34 @@ class Tester:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0)), dim=0)
+                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
                 fake_im_color = g_t_utils.back_to_color(im_hdr_original,
-                                                        fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy())
+                                                        fake_im_gray_numpy)
 
                 Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
+                Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
                 if Q > im_and_q['Q']:
                     im_and_q['Q'] = Q
-                    im_and_q['epoch'] = num_epochs
+                    im_and_q['epoch'] = epoch
                     plt.figure(figsize=(15, 15))
                     plt.axis("off")
-                    title = 'Q = ' + str(Q) + " epoch = " + str(epoch)
+                    title = 'Q = ' + str(Q) + 'S = ' + str(S) + 'N = ' + str(N) + " epoch = " + str(epoch)
                     text = "=============== TMQI ===============\n" + im_and_q["text"] + "Ours = " + str(Q)
                     print(text)
                     plt.title(title)
                     plt.imshow(fake_im_color)
                     plt.savefig(os.path.join(out_dir, im_and_q["im_name"]))
+                    plt.close()
+                if Q_gray > im_and_q['Q_gray']:
+                    im_and_q['Q_gray'] = Q_gray
+                    plt.figure(figsize=(15, 15))
+                    plt.axis("off")
+                    title = 'Q = ' + str(Q_gray) + 'S = ' + str(S_gray) + 'N = ' + str(N_gray) + " epoch = " + str(epoch)
+                    text = "=============== TMQI GRAY ===============\n" + "Ours gray = " + str(Q_gray)
+                    print(text)
+                    plt.title(title)
+                    plt.imshow(np.squeeze(fake_im_gray_numpy), cmap='gray')
+                    plt.savefig(os.path.join(out_dir, (im_and_q["im_name"]) + "_gray"))
                     plt.close()
 
                 # printer.print_TMQI_summary(Q, S, N, num_epochs, epoch)

@@ -323,7 +323,7 @@ if __name__ == '__main__':
                                                                  int(im_hdr_original.shape[1] / 2)), mode='reflect',
                                                preserve_range=False).astype("float32")
     hdr_image_utils.print_image_details(im_hdr_original,"")
-    run(im_hdr_original)
+    run(_RGBtoY(im_hdr_original))
     # hdr_norm = im_hdr_original / np.max(im_hdr_original)
     hdr_norm = im_hdr_original / np.max(im_hdr_original)
     # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
