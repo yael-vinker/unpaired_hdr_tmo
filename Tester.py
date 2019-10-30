@@ -50,17 +50,15 @@ class Tester:
                 im_hdr_original = imageio.imread(im_path, format="RAW-FI").astype('float32')
             else:
                 raise Exception('invalid hdr file format: {}'.format(file_extension))
-            print(im_hdr_original.shape)
             im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
-                                                                         int(im_hdr_original.shape[1] / 2)), mode='reflect', preserve_range=False)
-            print("after reshape")
-            print(im_hdr_original.shape)
+                                                                         int(im_hdr_original.shape[1] / 2)),
+                                                       mode='reflect', preserve_range=False).astype("float32")
             im_hdr_log = self.log_to_image(im_hdr_original, 100)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
-            print("after")
-            print(im_log_normalize_tensor.shape)
-            text = TMQI.run(im_hdr_original)
+            text = TMQI.run(im_hdr_original, img_name)
+            print(img_name)
+            print(text)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,

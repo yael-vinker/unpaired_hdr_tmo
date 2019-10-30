@@ -274,7 +274,7 @@ def ours(original_im, net_path):
     return back_to_color(original_im, ours_tone_map.clone().permute(1, 2, 0).detach().cpu().numpy())
 
 
-def run(_L_hdr):
+def run(_L_hdr, title=""):
     import os
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
@@ -284,7 +284,7 @@ def run(_L_hdr):
         t_m = tone_map_methods[i]
         if t_m == "None":
             tone_mapped = _L_hdr_numpy
-        elif t_m == "log_100":
+        elif t_m == "log100":
             tone_mapped = log_tone_map(_L_hdr_numpy, 100)
         elif t_m == "Durand":
             tone_mapped = Durand_tone_map(_L_hdr_numpy)
@@ -305,18 +305,25 @@ def run(_L_hdr):
         # print(t_m)
         # hdr_image_utils.print_image_details(tone_mapped, t_m)
         q = TMQI(_L_hdr, tone_mapped)[0]
+        # plt.imshow(tone_mapped)
+        # plt.show()
         text = text + t_m + " = " + str(q) + "\n"
         plt.title(t_m + " Q = " + str(q))
         plt.imshow(tone_mapped)
-        plt.savefig(os.path.join(str(i) + "all"))
-        plt.close()
+    plt.savefig(os.path.join(title + ".jpg"))
+    plt.close()
         # print()
     # plt.show()
     return text
 
 if __name__ == '__main__':
-    hdr_path = "data/ldr_data/ldr_data/im_97.bmp"
-    im_hdr_original = imageio.imread(hdr_path).astype('float32')
+    hdr_path = "tmqi_test_hdr/1.dng"
+    im_hdr_original = imageio.imread(hdr_path, format="RAW-FI").astype('float32')
+    im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
+                                                                 int(im_hdr_original.shape[1] / 2)), mode='reflect',
+                                               preserve_range=False).astype("float32")
+    hdr_image_utils.print_image_details(im_hdr_original,"")
+    run(im_hdr_original)
     # hdr_norm = im_hdr_original / np.max(im_hdr_original)
     hdr_norm = im_hdr_original / np.max(im_hdr_original)
     # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
