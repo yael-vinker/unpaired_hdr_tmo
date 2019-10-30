@@ -275,9 +275,10 @@ def ours(original_im, net_path):
 
 
 def run(_L_hdr):
+    import os
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
-    # plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(15, 15))
     text = ""
     for i in range(len(tone_map_methods)):
         t_m = tone_map_methods[i]
@@ -293,20 +294,22 @@ def run(_L_hdr):
             tone_mapped = Mantiuk_tone_map(_L_hdr_numpy)
         elif t_m == "Reinhard":
             tone_mapped = Reinhard_tone_map(_L_hdr_numpy)
-        elif t_m == "Ours":
-            tone_mapped = ours(_L_hdr,
-                               "local_skip_connection_conv/models/net.pth")
+        # elif t_m == "Ours":
+        #     tone_mapped = ours(_L_hdr,
+        #                        "local_skip_connection_conv/models/net.pth")
         else:
             continue
 
-        # plt.subplot(2, 3, i + 1)
-        # plt.axis("off")
+        plt.subplot(2, 3, i + 1)
+        plt.axis("off")
         # print(t_m)
         # hdr_image_utils.print_image_details(tone_mapped, t_m)
         q = TMQI(_L_hdr, tone_mapped)[0]
         text = text + t_m + " = " + str(q) + "\n"
-        # plt.title(t_m + " Q = " + str(q))
-        # plt.imshow(tone_mapped)
+        plt.title(t_m + " Q = " + str(q))
+        plt.imshow(tone_mapped)
+        plt.savefig(os.path.join(str(i) + "all"))
+        plt.close()
         # print()
     # plt.show()
     return text

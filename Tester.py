@@ -27,15 +27,39 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
 
+
+    def log_to_image(self, im_origin, range_factor):
+        import numpy as np
+        max_origin = np.max(im_origin)
+        image_new_range = (im_origin / max_origin) * range_factor
+        im_log = np.log(image_new_range + 1)
+        im = (im_log / np.log(range_factor + 1)).astype('float32')
+        return im
+
+
     def load_original_test_hdr_images(self, root):
+        import skimage
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
-            im_hdr_original = imageio.imread(im_path).astype('float32')
-            im_hdr_log = g_t_utils.hdr_log_loader_factorize(im_path, 100)
+            file_extension = os.path.splitext(img_name)[1]
+            if file_extension == ".hdr":
+                im_hdr_original = imageio.imread(im_path, format="HDR-FI").astype('float32')
+            elif file_extension == ".dng":
+                im_hdr_original = imageio.imread(im_path, format="RAW-FI").astype('float32')
+            else:
+                raise Exception('invalid hdr file format: {}'.format(file_extension))
+            print(im_hdr_original.shape)
+            im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
+                                                                         int(im_hdr_original.shape[1] / 2)), mode='reflect', preserve_range=False)
+            print("after reshape")
+            print(im_hdr_original.shape)
+            im_hdr_log = self.log_to_image(im_hdr_original, 100)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+            print("after")
+            print(im_log_normalize_tensor.shape)
             text = TMQI.run(im_hdr_original)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
@@ -140,11 +164,12 @@ class Tester:
     def update_TMQI(self, netG, out_dir, num_epochs, epoch):
         import matplotlib.pyplot as plt
         out_dir = os.path.join(out_dir, "tmqi")
+        # netG_cpu = netG.to(torch.device("cpu"))
 
         with torch.no_grad():
             for im_and_q in self.test_original_hdr_images:
                 im_hdr_original = im_and_q['im_hdr_original']
-                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor']
+                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0)), dim=0)
                 fake_im_color = g_t_utils.back_to_color(im_hdr_original,
                                                         fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy())
