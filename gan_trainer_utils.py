@@ -13,9 +13,33 @@ from PIL import Image
 import imageio
 import torch
 import tranforms as transforms_
-import hdr_image_utils
+# import hdr_image_utils
 # import Writer
 
+def read_ldr_image(path):
+    path = pathlib.Path(path)
+    im_origin = imageio.imread(path)
+    im = im_origin / 255
+    return im
+
+def read_hdr_image(path):
+    path_lib_path = pathlib.Path(path)
+    file_extension = os.path.splitext(path)[1]
+    if file_extension == ".hdr":
+        im = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
+    elif file_extension == ".dng":
+        im = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+    else:
+        raise Exception('invalid hdr file format: {}'.format(file_extension))
+    return im
+
+def hdr_log_loader_factorize(path, range_factor):
+    im_origin = read_hdr_image(path)
+    max_origin = np.max(im_origin)
+    image_new_range = (im_origin / max_origin) * range_factor
+    im_log = np.log(image_new_range + 1)
+    im = (im_log / np.log(range_factor + 1)).astype('float32')
+    return im
 
 def custom_loss(output, target):
     b_size = target.shape[0]
@@ -382,20 +406,7 @@ def load_data(train_root_npy, train_root_ldr, batch_size, testMode, title):
     printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
     return train_hdr_dataloader, train_ldr_dataloader
 
-def hdr_log_loader_factorize(path, range_factor):
-    path_lib_path = pathlib.Path(path)
-    file_extension = os.path.splitext(path)[1]
-    if file_extension == ".hdr":
-        im_origin = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
-    elif file_extension == ".dng":
-        im_origin = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
-    else:
-        raise Exception('invalid hdr file format: {}'.format(file_extension))
-    max_origin = np.max(im_origin)
-    image_new_range = (im_origin / max_origin) * range_factor
-    im_log = np.log(image_new_range + 1)
-    im = (im_log / np.log(range_factor + 1)).astype('float32')
-    return im
+
 
 def to_gray(im):
     return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')

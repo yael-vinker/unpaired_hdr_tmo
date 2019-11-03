@@ -232,11 +232,32 @@ def test1(root):
         plt.imshow(im_log_norm)
         plt.show()
 
+def show_two_images(im1, im2):
+    hdr_image_utils.print_tensor_details(im1, "no exp")
+    hdr_image_utils.print_tensor_details(im2, "exp")
+    im1 = np.squeeze(np.asarray(im1.permute(1, 2, 0).detach().cpu().numpy()))
+    im2 = np.squeeze(np.asarray(im2.permute(1, 2, 0).detach().cpu().numpy()))
+    plt.figure(figsize=(15, 15))
+    plt.subplot(2,1,1)
+    plt.imshow(im1, cmap='gray')
+    plt.subplot(2,1,2)
+    plt.imshow(im2, cmap='gray')
+    plt.show()
+    hdr_image_utils.print_image_details(im1, "no exp")
+    hdr_image_utils.print_image_details(im2, "exp")
+
+def exp_transform_test():
+    im = gan_trainer_utils.read_ldr_image("data/ldr_data/ldr_data/im_96.bmp")
+    im = gan_trainer_utils.to_gray(im)
+    im = transforms_.gray_image_transform(im)
+    exp_transform = transforms_.Exp(100)
+    im_after_exp = exp_transform(im)
+    show_two_images(gan_trainer_utils.to_0_1_range_tensor(im), im_after_exp)
+
+
+
 if __name__ == '__main__':
-    root1 = os.path.join("data/ldr_data/ldr_data")
-    root2 = os.path.join("data/hdr_data/hdr_data")
-    test1(root1)
-    test1(root2)
+    exp_transform_test()
 
 
     # transform_custom = transforms.Compose([

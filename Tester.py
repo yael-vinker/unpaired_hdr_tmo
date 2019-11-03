@@ -7,10 +7,11 @@ import gan_trainer_utils as g_t_utils
 import TMQI
 import imageio
 import tranforms
+import matplotlib.pyplot as plt
 
 class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
-                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_):
+                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_):
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             g_t_utils.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -25,17 +26,17 @@ class Tester:
         self.test_num_iter = 0
         self.transform_exp = transform_exp_
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
+        self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
 
 
-    def log_to_image(self, im_origin, range_factor):
+    def log_to_image(self, im_origin, log_factor):
         import numpy as np
         max_origin = np.max(im_origin)
-        image_new_range = (im_origin / max_origin) * range_factor
+        image_new_range = (im_origin / max_origin) * log_factor
         im_log = np.log(image_new_range + 1)
-        im = (im_log / np.log(range_factor + 1)).astype('float32')
+        im = (im_log / np.log(log_factor + 1)).astype('float32')
         return im
-
 
     def load_original_test_hdr_images(self, root):
         import skimage
@@ -53,7 +54,7 @@ class Tester:
             im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
                                                                          int(im_hdr_original.shape[1] / 2)),
                                                        mode='reflect', preserve_range=False).astype("float32")
-            im_hdr_log = self.log_to_image(im_hdr_original, 100)
+            im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
             text = TMQI.run(im_hdr_original, img_name)
@@ -62,7 +63,10 @@ class Tester:
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,
-                                        'Q': 0,
+                                        'Q_arr': [],
+                                        'N_arr': [],
+                                        'S_arr': [],
+                                        'best_Q': 0,
                                         'Q_gray' : 0,
                                         'epoch': 0,
                                         'text': text})
@@ -160,8 +164,28 @@ class Tester:
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
+    def display_graph_and_image(self, im, title, graph_Q, graph_N, graph_S, path):
+        plt.figure(figsize=(15, 15))
+        plt.subplot(2, 1, 1)
+        plt.axis("off")
+        plt.title(title)
+        plt.imshow(im)
+
+        plt.subplot(2, 1, 2)
+        plt.plot(range(len(graph_Q)), graph_Q, '-r', label='Q')
+
+        plt.plot(range(len(graph_N)), graph_N, '-b', label='N')
+        plt.plot(range(len(graph_S)), graph_S, '-y', label='S')
+
+        plt.xlabel("n iteration")
+        plt.legend(loc='upper left')
+
+        # save image
+        plt.savefig(path)  # should before show method
+        plt.close()
+
     def update_TMQI(self, netG, out_dir, epoch):
-        import matplotlib.pyplot as plt
+
         import numpy as np
         out_dir = os.path.join(out_dir, "tmqi")
         # netG_cpu = netG.to(torch.device("cpu"))
@@ -170,15 +194,30 @@ class Tester:
             for im_and_q in self.test_original_hdr_images:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
-                fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0)), dim=0)
+                fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0).detach()), dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
                 fake_im_color = g_t_utils.back_to_color(im_hdr_original,
                                                         fake_im_gray_numpy)
 
                 Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
+                if not np.isnan(Q):
+                    im_and_q['Q_arr'].append(Q)
+                else:
+                    im_and_q['Q_arr'].append(0)
+                if not np.isnan(N):
+                    im_and_q['N_arr'].append(N)
+                else:
+                    im_and_q['N_arr'].append(0)
+                if not np.isnan(S):
+                    im_and_q['S_arr'].append(S)
+                else:
+                    im_and_q['S_arr'].append(0)
+                im_title = "best Q = " + str(im_and_q['best_Q']) + " epoch = " + str(im_and_q['epoch'])
+                self.display_graph_and_image(fake_im_color, im_title, im_and_q['Q_arr'], im_and_q['N_arr'],
+                                             im_and_q['S_arr'], os.path.join(out_dir, (im_and_q["im_name"]) + "_graph_epoch=" + str(epoch) + ".png"))
                 Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
-                if Q > im_and_q['Q']:
-                    im_and_q['Q'] = Q
+                if Q > im_and_q['best_Q']:
+                    im_and_q['best_Q'] = Q
                     im_and_q['epoch'] = epoch
                     plt.figure(figsize=(15, 15))
                     plt.axis("off")
@@ -200,8 +239,3 @@ class Tester:
                     plt.imshow(np.squeeze(fake_im_gray_numpy), cmap='gray')
                     plt.savefig(os.path.join(out_dir, (im_and_q["im_name"]) + "_gray"))
                     plt.close()
-
-                # printer.print_TMQI_summary(Q, S, N, num_epochs, epoch)
-                # self.Q_arr.append(Q)
-                # self.S_arr.append(S)
-                # self.N_arr.append(N)

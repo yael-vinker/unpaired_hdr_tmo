@@ -220,10 +220,11 @@ class Exp(object):
             Tensor: Normalized Tensor image.
         """
         # import torch
+        import math
         im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
-        im_lm = im_0_1 * self.log_factor
-        im_exp = torch.exp(im_lm) - 1
-        im_end = im_exp / 1000
+        # im_lm = im_0_1 * self.log_factor
+        im_exp = torch.exp(im_0_1) - 1
+        im_end = im_exp / (math.exp(1) - 1)
         return im_end
         # return F.normalize(tensor, self.mean, self.std, self.inplace)
 

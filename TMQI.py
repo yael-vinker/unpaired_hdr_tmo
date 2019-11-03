@@ -8,7 +8,7 @@ from scipy.signal import convolve
 from scipy.stats import norm, beta
 from skimage.util import view_as_blocks
 import tranforms
-import hdr_image_utils
+# import hdr_image_utils
 
 import unet.Unet as Unet
 
@@ -184,6 +184,9 @@ def TMQI(L_hdr, L_ldr):
     S, s_local, s_maps = _StructuralFidelity(L_hdr, L_ldr, lvl, weight, window)
     Q = a * (S ** Alpha) + (1. - a) * (N ** Beta)
     # print_result(Q, S, N, s_local, s_maps)
+    # print('N=',N)
+    # print('S=',S)
+    # print('Q=',Q)
     return Q, S, N
 
     # else:
@@ -275,10 +278,10 @@ def ours(original_im, net_path):
 
 
 def run(_L_hdr, title=""):
-    import os
+    # import os
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
-    plt.figure(figsize=(15, 15))
+    # plt.figure(figsize=(15, 15))
     text = ""
     for i in range(len(tone_map_methods)):
         t_m = tone_map_methods[i]
@@ -300,45 +303,46 @@ def run(_L_hdr, title=""):
         else:
             continue
 
-        plt.subplot(2, 3, i + 1)
-        plt.axis("off")
+        # plt.subplot(2, 3, i + 1)
+        # plt.axis("off")
         # print(t_m)
         # hdr_image_utils.print_image_details(tone_mapped, t_m)
         q = TMQI(_L_hdr, tone_mapped)[0]
         # plt.imshow(tone_mapped)
         # plt.show()
         text = text + t_m + " = " + str(q) + "\n"
-        plt.title(t_m + " Q = " + str(q))
-        plt.imshow(tone_mapped)
-    plt.savefig(os.path.join(title + ".jpg"))
-    plt.close()
+        # plt.title(t_m + " Q = " + str(q))
+        # plt.imshow(tone_mapped)
+    # plt.savefig(os.path.join(title + ".jpg"))
+    # plt.close()
         # print()
     # plt.show()
     return text
 
 if __name__ == '__main__':
-    hdr_path = "tmqi_test_hdr/1.dng"
-    im_hdr_original = imageio.imread(hdr_path, format="RAW-FI").astype('float32')
+    import hdr_image_utils
+    hdr_path = "belgium.hdr"
+    im_hdr_original = imageio.imread(hdr_path, format="HDR-FI").astype('float32')
     im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
                                                                  int(im_hdr_original.shape[1] / 2)), mode='reflect',
                                                preserve_range=False).astype("float32")
     hdr_image_utils.print_image_details(im_hdr_original,"")
-    run(_RGBtoY(im_hdr_original))
-    # hdr_norm = im_hdr_original / np.max(im_hdr_original)
-    hdr_norm = im_hdr_original / np.max(im_hdr_original)
-    # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
-    # tran_norm = hdr_transform(hdr_norm).astype('float32')
-    hdr_image_utils.print_image_details(hdr_norm, "norm")
-    tran_non_norm = Dargo_tone_map(hdr_norm)
-    hdr_image_utils.print_image_details(tran_non_norm, "Reinhard_tone_map")
-    plt.figure(figsize=(15, 15))
-    plt.subplot(2, 2, 1)
-    plt.title("norm")
-    plt.imshow(hdr_norm)
-    plt.subplot(2, 2, 2)
-    plt.title("non norm")
-    plt.imshow(tran_non_norm)
-    plt.show()
     run(im_hdr_original)
+    # # hdr_norm = im_hdr_original / np.max(im_hdr_original)
+    # hdr_norm = im_hdr_original / np.max(im_hdr_original)
+    # # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max
+    # # tran_norm = hdr_transform(hdr_norm).astype('float32')
+    # hdr_image_utils.print_image_details(hdr_norm, "norm")
+    # tran_non_norm = Dargo_tone_map(hdr_norm)
+    # hdr_image_utils.print_image_details(tran_non_norm, "Reinhard_tone_map")
+    # plt.figure(figsize=(15, 15))
+    # plt.subplot(2, 2, 1)
+    # plt.title("norm")
+    # plt.imshow(hdr_norm)
+    # plt.subplot(2, 2, 2)
+    # plt.title("non norm")
+    # plt.imshow(tran_non_norm)
+    # plt.show()
+    # run(im_hdr_original)
 
 
