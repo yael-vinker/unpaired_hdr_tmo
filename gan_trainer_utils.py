@@ -422,60 +422,61 @@ if __name__ == '__main__':
     color_im = data[()]["display_image"]
     im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')
     im1 = (im1 / np.max(im1))
-
-    im_gray = np.dot(im1[..., :3], [0.299, 0.587, 0.114])
-    transform_custom_ = transforms.Compose([
-        transforms_.Scale(params.input_size),
-        transforms_.CenterCrop(params.input_size),
-        transforms_.ToTensor(),
-    ])
-    transform_custom_gray = transforms.Compose([
-        transforms_.Scale(params.input_size),
-        transforms_.CenterCrop(params.input_size),
-        transforms_.ToTensor(),
-        transforms_.Normalize(0.5, 0.5),
-    ])
-    im_transform = transform_custom_(im1)
-    gray_t = im_transform.sum(axis=0)
-    gray_fake = transform_custom_gray(im_gray)
-    gray_fake_0_1 = gray_fake + 1
-    # gray_np = gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy()[:,:,0]
-    # gray_np_gamma = torch.pow(gray_fake_0_1[0, :, :], 0.5)
-    # plt.imshow(gray_np_gamma, cmap='gray')
+    imageio.imwrite(os.path.join("","im1.png"), im1, format='PNG-FI')
+    #
+    # im_gray = np.dot(im1[..., :3], [0.299, 0.587, 0.114])
+    # transform_custom_ = transforms.Compose([
+    #     transforms_.Scale(params.input_size),
+    #     transforms_.CenterCrop(params.input_size),
+    #     transforms_.ToTensor(),
+    # ])
+    # transform_custom_gray = transforms.Compose([
+    #     transforms_.Scale(params.input_size),
+    #     transforms_.CenterCrop(params.input_size),
+    #     transforms_.ToTensor(),
+    #     transforms_.Normalize(0.5, 0.5),
+    # ])
+    # im_transform = transform_custom_(im1)
+    # gray_t = im_transform.sum(axis=0)
+    # gray_fake = transform_custom_gray(im_gray)
+    # gray_fake_0_1 = gray_fake + 1
+    # # gray_np = gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy()[:,:,0]
+    # # gray_np_gamma = torch.pow(gray_fake_0_1[0, :, :], 0.5)
+    # # plt.imshow(gray_np_gamma, cmap='gray')
+    # # plt.show()
+    # # gray_fake[0, :, :] = gray_np_gamma
+    #
+    # im5 = back_to_color(im_transform.clone().permute(1, 2, 0).detach().cpu().numpy(), gray_t, gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # plt.imshow(im5)
     # plt.show()
-    # gray_fake[0, :, :] = gray_np_gamma
-
-    im5 = back_to_color(im_transform.clone().permute(1, 2, 0).detach().cpu().numpy(), gray_t, gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy())
-    plt.imshow(im5)
-    plt.show()
-
-    im2 = im_transform.clone()
-    print(im2.shape)
-    print(gray_t.shape)
-    # im2[0, :, :].div(gray_t)
-    im2[0, :, :] = im_transform[0, :, :] / gray_t
-    im2[1, :, :] = im_transform[1, :, :] / gray_t
-    im2[2, :, :] = im_transform[2, :, :] / gray_t
-    print(im2[0,0,0])
-    print(im_transform[0,0,0] / (gray_t[0,0]))
-    im3 = torch.pow(im2, 0.4) * gray_fake_0_1
-
-    im_display = im3.clone().permute(1, 2, 0).detach().cpu().numpy()
-    im_display = to_0_1_range(im_display)
-    im2_display = (np.exp(im_display)) / (np.exp(np.max(im_display)))
-    # im3_d = im2_display / np.max(im2_display)
-    im3_d = im2_display
-    plt.imshow(im_display)
-
-    # plt.imsave("im4.jpg", im_display)
-    plt.show()
-    plt.imshow(im3_d)
-    # plt.imsave("im4.jpg", im_display)
-    plt.show()
-
-    # hdr_image_utils.print_image_details(im3, "pow")
-    # plt.imshow(im3)
+    #
+    # im2 = im_transform.clone()
+    # print(im2.shape)
+    # print(gray_t.shape)
+    # # im2[0, :, :].div(gray_t)
+    # im2[0, :, :] = im_transform[0, :, :] / gray_t
+    # im2[1, :, :] = im_transform[1, :, :] / gray_t
+    # im2[2, :, :] = im_transform[2, :, :] / gray_t
+    # print(im2[0,0,0])
+    # print(im_transform[0,0,0] / (gray_t[0,0]))
+    # im3 = torch.pow(im2, 0.4) * gray_fake_0_1
+    #
+    # im_display = im3.clone().permute(1, 2, 0).detach().cpu().numpy()
+    # im_display = to_0_1_range(im_display)
+    # im2_display = (np.exp(im_display)) / (np.exp(np.max(im_display)))
+    # # im3_d = im2_display / np.max(im2_display)
+    # im3_d = im2_display
+    # plt.imshow(im_display)
+    #
+    # # plt.imsave("im4.jpg", im_display)
     # plt.show()
+    # plt.imshow(im3_d)
+    # # plt.imsave("im4.jpg", im_display)
+    # plt.show()
+    #
+    # # hdr_image_utils.print_image_details(im3, "pow")
+    # # plt.imshow(im3)
+    # # plt.show()
 
 
 #

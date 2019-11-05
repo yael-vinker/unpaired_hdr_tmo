@@ -1,13 +1,16 @@
-import torch
-import printer
-import ProcessedDatasetFolder
-import params
 import os
-import gan_trainer_utils as g_t_utils
-import TMQI
+
 import imageio
-import tranforms
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+import TMQI
+import gan_trainer_utils as g_t_utils
+import hdr_image_utils
+import printer
+import tranforms
+
 
 class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
@@ -28,7 +31,6 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
-
 
     def log_to_image(self, im_origin, log_factor):
         import numpy as np
@@ -51,8 +53,8 @@ class Tester:
                 im_hdr_original = imageio.imread(im_path, format="RAW-FI").astype('float32')
             else:
                 raise Exception('invalid hdr file format: {}'.format(file_extension))
-            im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
-                                                                         int(im_hdr_original.shape[1] / 2)),
+            im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
+                                                                         int(im_hdr_original.shape[1] / 3)),
                                                        mode='reflect', preserve_range=False).astype("float32")
             im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
@@ -67,7 +69,7 @@ class Tester:
                                         'N_arr': [],
                                         'S_arr': [],
                                         'best_Q': 0,
-                                        'Q_gray' : 0,
+                                        'Q_gray': 0,
                                         'epoch': 0,
                                         'text': text})
             counter += 1
@@ -164,10 +166,11 @@ class Tester:
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
-    def display_graph_and_image(self, im, title, graph_Q, graph_N, graph_S, path):
+    def display_graph_and_image(self, im, im_and_q, graph_Q, graph_N, graph_S, path):
         plt.figure(figsize=(15, 15))
         plt.subplot(2, 1, 1)
         plt.axis("off")
+        title = self.get_tmqi_graph_title(im_and_q)
         plt.title(title)
         plt.imshow(im)
 
@@ -184,12 +187,57 @@ class Tester:
         plt.savefig(path)  # should before show method
         plt.close()
 
-    def update_TMQI(self, netG, out_dir, epoch):
+    @staticmethod
+    def update_tmqi_arr(im_and_q, Q, S, N):
+        if not np.isnan(Q):
+            im_and_q['Q_arr'].append(Q)
+        else:
+            im_and_q['Q_arr'].append(0)
+        if not np.isnan(N):
+            im_and_q['N_arr'].append(N)
+        else:
+            im_and_q['N_arr'].append(0)
+        if not np.isnan(S):
+            im_and_q['S_arr'].append(S)
+        else:
+            im_and_q['S_arr'].append(0)
 
-        import numpy as np
+    def get_tmqi_plt_im_title(self, Q, S, N, epoch, im):
+        title = 'Q = ' + str(Q) + 'S = ' + str(S) + 'N = ' + str(N) + " epoch = " + str(epoch) + \
+                "min = " + str(np.min(im)) + " max = " + str(np.max(im))
+        return title
+
+    def get_tmqi_graph_title(self, im_and_q):
+        return "best Q = " + str(im_and_q['best_Q']) + " epoch = " + str(im_and_q['epoch'])
+
+    def save_tmqi_plt_result(self, out_dir, im_and_q, Q, S, N, epoch, im, color='rgb'):
+        plt.figure(figsize=(15, 15))
+        plt.axis("off")
+        title = self.get_tmqi_plt_im_title(Q, S, N, epoch, im)
+        plt.title(title)
+        if color == 'gray':
+            plt.imshow(im, cmap='gray')
+        else:
+            plt.imshow(im)
+        plt.savefig(os.path.join(out_dir, im_and_q["im_name"] + "_plt_" + color))
+        plt.close()
+
+    def save_tmqi_result_imageio(self, out_dir, im_and_q, im, color):
+        file_name = self.get_rgb_imageio_im_file_name(im_and_q, color)
+        im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
+
+    def get_rgb_imageio_im_file_name(self, im_and_q, color):
+        return im_and_q["im_name"] + "_imageio_" + color + ".png"
+
+    def update_best_Q(self, im_and_q, Q, epoch, im):
+        im_and_q['best_Q'] = Q
+        im_and_q['epoch'] = epoch
+        hdr_image_utils.print_image_details(im, "fake_im_color")
+
+    def update_TMQI(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "tmqi")
         # netG_cpu = netG.to(torch.device("cpu"))
-
         with torch.no_grad():
             for im_and_q in self.test_original_hdr_images:
                 im_hdr_original = im_and_q['im_hdr_original']
@@ -200,42 +248,22 @@ class Tester:
                                                         fake_im_gray_numpy)
 
                 Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
-                if not np.isnan(Q):
-                    im_and_q['Q_arr'].append(Q)
-                else:
-                    im_and_q['Q_arr'].append(0)
-                if not np.isnan(N):
-                    im_and_q['N_arr'].append(N)
-                else:
-                    im_and_q['N_arr'].append(0)
-                if not np.isnan(S):
-                    im_and_q['S_arr'].append(S)
-                else:
-                    im_and_q['S_arr'].append(0)
-                im_title = "best Q = " + str(im_and_q['best_Q']) + " epoch = " + str(im_and_q['epoch'])
-                self.display_graph_and_image(fake_im_color, im_title, im_and_q['Q_arr'], im_and_q['N_arr'],
-                                             im_and_q['S_arr'], os.path.join(out_dir, (im_and_q["im_name"]) + "_graph_epoch=" + str(epoch) + ".png"))
-                Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
+                self.update_tmqi_arr(im_and_q, Q, S, N)
+                self.display_graph_and_image(fake_im_color, im_and_q, im_and_q['Q_arr'], im_and_q['N_arr'],
+                                             im_and_q['S_arr'], os.path.join(out_dir, (
+                        im_and_q["im_name"]) + "_graph_epoch=" + str(epoch) + ".png"))
                 if Q > im_and_q['best_Q']:
-                    im_and_q['best_Q'] = Q
-                    im_and_q['epoch'] = epoch
-                    plt.figure(figsize=(15, 15))
-                    plt.axis("off")
-                    title = 'Q = ' + str(Q) + 'S = ' + str(S) + 'N = ' + str(N) + " epoch = " + str(epoch)
-                    text = "=============== TMQI ===============\n" + im_and_q["text"] + "Ours = " + str(Q)
-                    print(text)
-                    plt.title(title)
-                    plt.imshow(fake_im_color)
-                    plt.savefig(os.path.join(out_dir, im_and_q["im_name"]))
-                    plt.close()
+                    self.update_best_Q(im_and_q, Q, epoch, fake_im_color)
+                    self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch, g_t_utils.to_0_1_range(fake_im_color), color='rgb')
+                    self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_color, color='rgb')
+                    self.save_tmqi_result_imageio(out_dir, im_and_q, g_t_utils.to_0_1_range(fake_im_color), color='stretch_rgb')
+                    printer.print_tmqi_update(im_and_q, Q, color='rgb')
+                fake_im_gray_numpy_0_1 = np.squeeze(g_t_utils.to_0_1_range(fake_im_gray_numpy))
+                Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
                 if Q_gray > im_and_q['Q_gray']:
                     im_and_q['Q_gray'] = Q_gray
-                    plt.figure(figsize=(15, 15))
-                    plt.axis("off")
-                    title = 'Q = ' + str(Q_gray) + 'S = ' + str(S_gray) + 'N = ' + str(N_gray) + " epoch = " + str(epoch)
-                    text = "=============== TMQI GRAY ===============\n" + "Ours gray = " + str(Q_gray)
-                    print(text)
-                    plt.title(title)
-                    plt.imshow(np.squeeze(fake_im_gray_numpy), cmap='gray')
-                    plt.savefig(os.path.join(out_dir, (im_and_q["im_name"]) + "_gray"))
-                    plt.close()
+                    self.save_tmqi_plt_result(out_dir, im_and_q, Q_gray, S_gray, N_gray, epoch, fake_im_gray_numpy_0_1,
+                                              color='gray')
+                    self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, color='gray')
+                    printer.print_tmqi_update(im_and_q, Q_gray, color='gray')
+                    hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")

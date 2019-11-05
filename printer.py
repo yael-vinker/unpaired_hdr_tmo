@@ -155,3 +155,7 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
         output_str = output_str + ' \tLoss_G_SSIM: %.4f'
         format_str = format_str + (errG_ssim.item(),)
     print(output_str % format_str)
+
+def print_tmqi_update(im_and_q, Q, color):
+    text = "=============== TMQI " + color + " ===============\n" + im_and_q["text"] + "Ours = " + str(Q)
+    print(text)

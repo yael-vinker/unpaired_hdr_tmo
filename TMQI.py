@@ -162,7 +162,7 @@ def TMQI(L_hdr, L_ldr):
     window = None
 
     if window is None:
-        gauss = signal.gaussian(11, 1.5)
+        gauss = signal.gaussian(5, 1.5)
         window = np.outer(gauss, gauss)
 
     # Naturalness should be calculated before rescaling
@@ -278,7 +278,7 @@ def ours(original_im, net_path):
 
 
 def run(_L_hdr, title=""):
-    # import os
+    import os
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
     # plt.figure(figsize=(15, 15))
@@ -303,18 +303,18 @@ def run(_L_hdr, title=""):
         else:
             continue
 
-        # plt.subplot(2, 3, i + 1)
-        # plt.axis("off")
-        # print(t_m)
+        plt.subplot(2, 3, i + 1)
+        plt.axis("off")
+        print(t_m)
         # hdr_image_utils.print_image_details(tone_mapped, t_m)
         q = TMQI(_L_hdr, tone_mapped)[0]
         # plt.imshow(tone_mapped)
         # plt.show()
         text = text + t_m + " = " + str(q) + "\n"
-        # plt.title(t_m + " Q = " + str(q))
-        # plt.imshow(tone_mapped)
-    # plt.savefig(os.path.join(title + ".jpg"))
-    # plt.close()
+        plt.title(t_m + " Q = " + str(q))
+        plt.imshow(tone_mapped)
+    plt.savefig(os.path.join(title + ".jpg"))
+    plt.close()
         # print()
     # plt.show()
     return text
