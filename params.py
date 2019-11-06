@@ -17,6 +17,7 @@ color_image_key = "color_im"
 models_save_path = os.path.join("models", "net.pth")
 loss_path = os.path.join("loss_plot")
 results_path = os.path.join("result_images")
+gradient_flow_path = os.path.join("gradient_flow")
 
 input_size = 256
 n_downsample = 1

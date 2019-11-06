@@ -233,7 +233,7 @@ class Tester:
     def update_best_Q(self, im_and_q, Q, epoch, im):
         im_and_q['best_Q'] = Q
         im_and_q['epoch'] = epoch
-        hdr_image_utils.print_image_details(im, "fake_im_color")
+        # hdr_image_utils.print_image_details(im, "fake_im_color")
 
     def update_TMQI(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "tmqi")
@@ -266,4 +266,4 @@ class Tester:
                                               color='gray')
                     self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, color='gray')
                     printer.print_tmqi_update(im_and_q, Q_gray, color='gray')
-                    hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")
+                    # hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")

@@ -112,6 +112,11 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     result_path = os.path.join(output_dir, result_path)
     acc_path = os.path.join(output_dir, "accuracy")
     tmqi_path = os.path.join(output_dir, "tmqi")
+    gradient_flow_path = os.path.join(output_dir, params.gradient_flow_path, "g")
+
+    if not os.path.exists(os.path.dirname(gradient_flow_path)):
+        os.makedirs(os.path.dirname(gradient_flow_path))
+        print("Directory ", gradient_flow_path, " created")
 
     if not os.path.exists(os.path.dirname(model_path)):
         os.makedirs(os.path.dirname(model_path))
@@ -406,11 +411,58 @@ def load_data(train_root_npy, train_root_ldr, batch_size, testMode, title):
     printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
     return train_hdr_dataloader, train_ldr_dataloader
 
-
-
 def to_gray(im):
     return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
 
+def plot_grad_flow(named_parameters, out_dir, epoch):
+    ave_grads = []
+    layers = []
+    for n, p in named_parameters:
+        if(p.requires_grad) and ("bias" not in n):
+            # print('name: ', n)
+            # print(type(p))
+            # print('param.shape: ', p.shape)
+            # print('param.requires_grad: ', p.requires_grad)
+            # print('p.grad.abs().mean()', p.grad.abs().mean())
+            # print('p.grad.abs()max', p.grad.abs().max())
+            # print('=====')
+            layers.append(n)
+            ave_grads.append(p.grad.abs().mean())
+    plt.plot(ave_grads, alpha=0.3, color="b")
+    plt.hlines(0, 0, len(ave_grads)+1, linewidth=1, color="k" )
+    plt.xticks(range(0,len(ave_grads), 1), layers, rotation="vertical")
+    plt.xlim(xmin=0, xmax=len(ave_grads))
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
+    # '''Plots the gradients flowing through different layers in the net during training.
+    #     Can be used for checking for possible gradient vanishing / exploding problems.
+    #
+    #     Usage: Plug this function in Trainer class after loss.backwards() as
+    #     "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow'''
+    # import matplotlib
+    # ave_grads = []
+    # max_grads = []
+    # layers = []
+    # for n, p in named_parameters:
+    #     if (p.requires_grad) and ("bias" not in n):
+    #         layers.append(n)
+    #         ave_grads.append(p.grad.abs().mean())
+    #         max_grads.append(p.grad.abs().max())
+    # plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.1, lw=1, color="c")
+    # plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.1, lw=1, color="b")
+    # plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
+    # plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
+    # plt.xlim(left=0, right=len(ave_grads))
+    # plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    # plt.xlabel("Layers")
+    # plt.ylabel("average gradient")
+    # plt.title("Gradient flow")
+    # plt.grid(True)
+    # plt.legend([matplotlib.lines.Line2D([0], [0], color="c", lw=4),
+    #             matplotlib.lines.Line2D([0], [0], color="b", lw=4),
+    #             matplotlib.lines.Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
 
 
 

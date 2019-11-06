@@ -4,6 +4,7 @@ import argparse
 import os
 
 import matplotlib
+import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
@@ -13,7 +14,7 @@ import VAE
 import unet.Unet as Unet
 import Tester
 
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import Discriminator
 import params
 import time
@@ -22,6 +23,7 @@ import ssim
 import printer
 # import Writer
 import tranforms as custom_transform
+from torchsummary import summary
 
 
 # TODO ask about init BatchNorm weights
@@ -76,6 +78,10 @@ def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_):
         new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=True).to(device_)
     elif net == "G_skip_connection_conv":
         new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
+    elif net == "G_unet3_layer":
+        import three_layers_unet.Unet as three_Unet
+        new_net = three_Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
+
     # Create the Discriminator
     elif net == "D":
         new_net = Discriminator.Discriminator(params.input_size, input_dim_, params.dim,
@@ -132,7 +138,7 @@ class GanTrainer:
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss = ssim.SSIM(window_size=5)
+        self.ssim_loss = ssim.SSIM(window_size=11)
 
         self.loss_g_d_factor = loss_g_d_factor_
         self.ssim_loss_g_factor = ssim_loss_g_factor_
@@ -262,6 +268,7 @@ class GanTrainer:
 
                 self.train_D(hdr_input, real_ldr_cpu)
                 self.train_G(label, hdr_input, hdr_input_display)
+                g_t_utils.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
 
     def verify_checkpoint(self):
@@ -291,6 +298,9 @@ class GanTrainer:
             start = time.time()
 
             self.train_epoch()
+            new_out_dir = os.path.join(output_dir, "gradient_flow")
+            plt.savefig(os.path.join(new_out_dir, "gradient_flow_epoch=" + str(epoch)))
+            plt.close()
 
             print("Single [[epoch]] iteration took [%.4f] seconds\n" % (time.time() - start))
             self.save_model(params.models_save_path, epoch)
@@ -344,7 +354,7 @@ if __name__ == '__main__':
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
         epoch_to_save = parse_arguments()
-    torch.manual_seed(params.manualSeed)
+    #torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     # device = torch.device("cpu")
     isCheckpoint = True
@@ -366,16 +376,18 @@ if __name__ == '__main__':
     print("DEVICE:", device)
     print("=====================\n")
 
+    # net_G = create_net("G_" + "unet3_layer", device, isCheckpoint, input_dim, input_images_mean)
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim, input_images_mean)
+
     print("=================  NET G  ==================")
     print(net_G)
-    # summary(net_G, (input_dim, params.input_size, params.input_size))
+    summary(net_G, (input_dim, params.input_size, params.input_size))
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim, input_images_mean)
     print("=================  NET D  ==================")
     print(net_D)
-    # summary(net_D, (input_dim, params.input_size, params.input_size))
+    summary(net_D, (input_dim, params.input_size, params.input_size))
     print()
 
     # Setup Adam optimizers for both G and D

@@ -203,6 +203,14 @@ def log_tone_map(im, range_factor):
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
+def exp_map(im):
+    import math
+    im_0_1 = (im - np.min(im)) / (np.max(im) - np.min(im))
+    # im_lm = im_0_1 * self.log_factor
+    im_exp = np.exp(im_0_1) - 1
+    im_end = im_exp / (math.exp(1) - 1)
+    return im_end
+
 def Dargo_tone_map(im):
     # im = im / np.max(im)
     # Tonemap using Drago's method to obtain 24-bit color image
@@ -281,12 +289,13 @@ def run(_L_hdr, title=""):
     import os
     _L_hdr_numpy = _L_hdr
     tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
-    # plt.figure(figsize=(15, 15))
+    plt.figure(figsize=(15, 15))
     text = ""
     for i in range(len(tone_map_methods)):
         t_m = tone_map_methods[i]
         if t_m == "None":
-            tone_mapped = _L_hdr_numpy
+            tone_mapped = log_tone_map(_L_hdr_numpy, 1000)
+            tone_mapped = exp_map(tone_mapped)
         elif t_m == "log100":
             tone_mapped = log_tone_map(_L_hdr_numpy, 100)
         elif t_m == "Durand":
