@@ -98,9 +98,9 @@ def get_loss_path(result_dir_pref, model_name, loss_graph_path):
     loss_graph_path = os.path.join(output_dir, loss_graph_path)
 
 
-def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_path):
+def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_path, model_depth):
     # output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
-    output_dir = os.path.join(result_dir_pref + "_" + model_name)
+    output_dir = os.path.join(result_dir_pref + "_" + model_name + "_depth_" + str(model_depth))
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
@@ -464,17 +464,17 @@ def plot_grad_flow(named_parameters, out_dir, epoch):
     #             matplotlib.lines.Line2D([0], [0], color="b", lw=4),
     #             matplotlib.lines.Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
 
-
-
 if __name__ == '__main__':
-    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
-    # if testMode:
-    input_im = data[()]["input_image"]
-    print(input_im.shape)
-    color_im = data[()]["display_image"]
-    im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')
-    im1 = (im1 / np.max(im1))
-    imageio.imwrite(os.path.join("","im1.png"), im1, format='PNG-FI')
+    calculate_TMQI_results_for_selected_methods("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr", "tmqi_results_ssim11")
+    #
+    # data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
+    # # if testMode:
+    # input_im = data[()]["input_image"]
+    # print(input_im.shape)
+    # color_im = data[()]["display_image"]
+    # im1 = imageio.imread("data/hdr_data/hdr_data/S0010.hdr").astype('float32')
+    # im1 = (im1 / np.max(im1))
+    # imageio.imwrite(os.path.join("","im1.png"), im1, format='PNG-FI')
     #
     # im_gray = np.dot(im1[..., :3], [0.299, 0.587, 0.114])
     # transform_custom_ = transforms.Compose([

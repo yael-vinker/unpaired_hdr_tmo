@@ -1,27 +1,17 @@
-import cv2
-import imageio
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage
 from scipy import signal
 from scipy.signal import convolve
 from scipy.stats import norm, beta
 from skimage.util import view_as_blocks
-import tranforms
-# import hdr_image_utils
-
-import unet.Unet as Unet
-
 
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
-
 
 def _RGBtoY(RGB):
     M = np.asarray([[0.2126, 0.7152, 0.0722], ])
     Y = np.dot(RGB.reshape(-1, 3), M.T)
     return Y.reshape(RGB.shape[0:2])
-
 
 def show_im(im, isTensor=False):
     if isTensor:
@@ -68,8 +58,6 @@ def StatisticalNaturalness(L_ldr, win=11):
     N = pb * pc
     return N
 
-
-
 def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     window = window / window.sum()
 
@@ -104,7 +92,6 @@ def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     s = np.mean(s_map)
     return s, s_map
 
-
 def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
     f = 32
     s_local = []
@@ -129,20 +116,6 @@ def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
     S = np.prod(np.power(s_local, weight))
     return S, s_local, s_maps
 
-
-def print_result(Q, S, N, s_local, s_maps):
-    # from scipy.misc import imsave
-    # for idx, sm in enumerate(s_maps):
-    #     filename = "%s%i.%s" % ("s_map_", idx + 1, "float32")
-    #
-    #     try:
-    #         out = sm.astype("float32")
-    #         out.tofile(filename)
-    #     except TypeError:
-    #         imsave(filename, sm)
-    print("Q = ", Q, " S = ", S, " N = ", N, "s_local = ", s_local)
-
-
 def TMQI(L_hdr, L_ldr):
     if len(L_hdr.shape) == 3:
         # Processing RGB images
@@ -152,7 +125,6 @@ def TMQI(L_hdr, L_ldr):
         L_ldr = _RGBtoY(L_ldr)
 
     # hdr_image_utils.print_image_details(L_hdr, "L_hdr AFTER GRAY SCALE")
-
     a = 0.8012
     Alpha = 0.3046
     Beta = 0.7088
@@ -162,7 +134,7 @@ def TMQI(L_hdr, L_ldr):
     window = None
 
     if window is None:
-        gauss = signal.gaussian(5, 1.5)
+        gauss = signal.gaussian(11, 1.5)
         window = np.outer(gauss, gauss)
 
     # Naturalness should be calculated before rescaling
@@ -171,172 +143,24 @@ def TMQI(L_hdr, L_ldr):
     # The images should have the same dynamic ranges, e.g. [0,255]
     factor = float(2 ** 8 - 1.)
 
-    # hdr_image_utils.print_image_details(L_ldr, "L_ldr before RE-FACTOR")
-    # hdr_image_utils.print_image_details(L_hdr, "L_hdr before RE-FACTOR")
-
     # if self.original:
     L_hdr = factor * (L_hdr - L_hdr.min()) / (L_hdr.max() - L_hdr.min())
     L_ldr = factor * (L_ldr - L_ldr.min()) / (L_ldr.max() - L_ldr.min())
 
-    # hdr_image_utils.print_image_details(L_ldr, "L_ldr AFTER RE-FACTOR")
-    # hdr_image_utils.print_image_details(L_hdr, "L_hdr AFTER RE-FACTOR")
-
     S, s_local, s_maps = _StructuralFidelity(L_hdr, L_ldr, lvl, weight, window)
     Q = a * (S ** Alpha) + (1. - a) * (N ** Beta)
-    # print_result(Q, S, N, s_local, s_maps)
-    # print('N=',N)
-    # print('S=',S)
-    # print('Q=',Q)
     return Q, S, N
 
-    # else:
-    #     # but we really should scale them similarly...
-    #     L_hdr = factor * (L_hdr - L_hdr.min()) / (L_hdr.max() - L_hdr.min())
-    #     L_ldr = factor * (L_ldr - L_ldr.min()) / (L_ldr.max() - L_ldr.min())
-    #
-
-
-def log_tone_map(im, range_factor):
-    max_origin = np.max(im)
-    image_new_range = (im / max_origin) * range_factor
-    im_log = np.log(image_new_range + 1)
-    im = (im_log / np.log(range_factor + 1)).astype('float32')
-    return im
-
-def exp_map(im):
-    import math
-    im_0_1 = (im - np.min(im)) / (np.max(im) - np.min(im))
-    # im_lm = im_0_1 * self.log_factor
-    im_exp = np.exp(im_0_1) - 1
-    im_end = im_exp / (math.exp(1) - 1)
-    return im_end
-
-def Dargo_tone_map(im):
-    # im = im / np.max(im)
-    # Tonemap using Drago's method to obtain 24-bit color image
-    tonemapDrago = cv2.createTonemapDrago(1.0, 0.7, 0.85)
-    ldrDrago = tonemapDrago.process(im)
-    # ldrDrago = 3 * ldrDrago
-    # hdr_image_utils.print_image_details(ldrDrago,"dargo")
-    return ldrDrago
-
-
-def Durand_tone_map(im):
-    # Tonemap using Durand's method obtain 24-bit color image
-    tonemapDurand = cv2.createTonemapDurand(1.5, 4, 1.0, 1, 1)
-    ldrDurand = tonemapDurand.process(im)
-    # ldrDurand = 3 * ldrDurand
-    # hdr_image_utils.print_image_details(ldrDurand,"durand")
-    return ldrDurand
-
-def Reinhard_tone_map(im):
-    # Tonemap using Reinhard's method to obtain 24-bit color image
-    tonemapReinhard = cv2.createTonemapReinhard(1.5, 0, 0, 0)
-    ldrReinhard = tonemapReinhard.process(im)
-    return ldrReinhard
-
-def Mantiuk_tone_map(im):
-    # Tonemap using Mantiuk's method to obtain 24-bit color image
-    tonemapMantiuk = cv2.createTonemapMantiuk(2.2,0.85, 1.2)
-    ldrMantiuk = tonemapMantiuk.process(im)
-    return ldrMantiuk
-
-def Durand_tone_map(im):
-    # Tonemap using Durand's method obtain 24-bit color image
-     tonemapDurand = cv2.createTonemapDurand(1.5,4,1.0,1,1)
-     ldrDurand = tonemapDurand.process(im)
-     return ldrDurand
-
-def back_to_color(im_hdr, fake):
-    im_gray_ = np.sum(im_hdr, axis=2)
-    fake = to_0_1_range(fake)
-    norm_im = np.zeros(im_hdr.shape)
-    norm_im[:, :, 0] = im_hdr[:, :, 0] / im_gray_
-    norm_im[:, :, 1] = im_hdr[:, :, 1] / im_gray_
-    norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
-    output_im = np.power(norm_im, 0.5) * fake
-    return output_im
-
-
-def ours(original_im, net_path):
-    import torch
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    G_net = Unet.UNet(1, 1, 0, bilinear=False).to(device)
-    checkpoint = torch.load(net_path)
-    state_dict = checkpoint['modelG_state_dict']
-    # G_net.load_state_dict(checkpoint['modelG_state_dict'])
-
-    from collections import OrderedDict
-    new_state_dict = OrderedDict()
-    for k, v in state_dict.items():
-        name = k[7:]  # remove `module.`
-        new_state_dict[name] = v
-    # load params
-    G_net.load_state_dict(new_state_dict)
-    G_net.eval()
-    data = np.load("data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
-    L_hdr_log = data[()]["input_image"].to(device)
-    inputs = L_hdr_log.unsqueeze(0)
-    # outputs = net(inputs)
-    # L_ldr = np.squeeze(L_ldr.clone().permute(1, 2, 0).detach().cpu().numpy())
-    # _L_ldr = to_0_1_range(L_ldr)
-    ours_tone_map = torch.squeeze(G_net(inputs), dim=0)
-    # ours_tone_map = np.squeeze(ours_tone_map, axis=0)
-    return back_to_color(original_im, ours_tone_map.clone().permute(1, 2, 0).detach().cpu().numpy())
-
-
-def run(_L_hdr, title=""):
-    import os
-    _L_hdr_numpy = _L_hdr
-    tone_map_methods = ["Reinhard", "None", "Dargo", "Mantiuk", "log100", "Durand"]
-    plt.figure(figsize=(15, 15))
-    text = ""
-    for i in range(len(tone_map_methods)):
-        t_m = tone_map_methods[i]
-        if t_m == "None":
-            tone_mapped = log_tone_map(_L_hdr_numpy, 1000)
-            tone_mapped = exp_map(tone_mapped)
-        elif t_m == "log100":
-            tone_mapped = log_tone_map(_L_hdr_numpy, 100)
-        elif t_m == "Durand":
-            tone_mapped = Durand_tone_map(_L_hdr_numpy)
-        elif t_m == "Dargo":
-            tone_mapped = Dargo_tone_map(_L_hdr_numpy)
-        elif t_m == "Mantiuk":
-            tone_mapped = Mantiuk_tone_map(_L_hdr_numpy)
-        elif t_m == "Reinhard":
-            tone_mapped = Reinhard_tone_map(_L_hdr_numpy)
-        # elif t_m == "Ours":
-        #     tone_mapped = ours(_L_hdr,
-        #                        "local_skip_connection_conv/models/net.pth")
-        else:
-            continue
-
-        plt.subplot(2, 3, i + 1)
-        plt.axis("off")
-        print(t_m)
-        # hdr_image_utils.print_image_details(tone_mapped, t_m)
-        q = TMQI(_L_hdr, tone_mapped)[0]
-        # plt.imshow(tone_mapped)
-        # plt.show()
-        text = text + t_m + " = " + str(q) + "\n"
-        plt.title(t_m + " Q = " + str(q))
-        plt.imshow(tone_mapped)
-    plt.savefig(os.path.join(title + ".jpg"))
-    plt.close()
-        # print()
-    # plt.show()
-    return text
-
 if __name__ == '__main__':
+
     import hdr_image_utils
-    hdr_path = "belgium.hdr"
-    im_hdr_original = imageio.imread(hdr_path, format="HDR-FI").astype('float32')
-    im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
-                                                                 int(im_hdr_original.shape[1] / 2)), mode='reflect',
-                                               preserve_range=False).astype("float32")
-    hdr_image_utils.print_image_details(im_hdr_original,"")
-    run(im_hdr_original)
+    hdr_path = "hdr_data/hdr_data/belgium.hdr"
+    # im_hdr_original = imageio.imread(hdr_path, format="HDR-FI").astype('float32')
+    # im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
+    #                                                              int(im_hdr_original.shape[1] / 2)), mode='reflect',
+    #                                            preserve_range=False).astype("float32")
+    # hdr_image_utils.print_image_details(im_hdr_original,"")
+    # run(im_hdr_original)
     # # hdr_norm = im_hdr_original / np.max(im_hdr_original)
     # hdr_norm = im_hdr_original / np.max(im_hdr_original)
     # # hdr_transform = tranforms.rgb_display_image_transform_numpy  # currently without im = im / max

@@ -11,25 +11,28 @@ class UNet(nn.Module):
         self.depth = depth
         self.inc = inconv(n_channels, 64)
         ch = 64
+        dilation = 2
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2)
+                down(ch, ch * 2, dilation)
             )
             ch = ch * 2
-        self.down_path.append(down(ch, ch))
+            dilation = dilation * 2
+        self.down_path.append(down(ch, ch, dilation))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
             if i == self.depth - 1:
                 self.up_path.append(
-                    up(ch * 2, ch, bilinear)
+                    up(ch * 2, ch, dilation, bilinear)
                 )
             else:
                 self.up_path.append(
-                    up(ch * 2, ch // 2, bilinear)
+                    up(ch * 2, ch // 2, dilation, bilinear)
                 )
             ch = ch // 2
+            dilation = dilation // 2
         self.outc = outconv(64, n_classes)
         if input_images_mean == 0:
             self.last_sig = nn.Tanh()

@@ -19,11 +19,14 @@ import Discriminator
 import params
 import time
 import gan_trainer_utils as g_t_utils
+import utils.plot_util as plot_util
+import utils.hdr_image_util as hdr_image_util
 import ssim
 import printer
 # import Writer
 import tranforms as custom_transform
 from torchsummary import summary
+import torus.Unet as TorusUnet
 
 
 # TODO ask about init BatchNorm weights
@@ -42,7 +45,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
+    parser.add_argument("--model", type=str, default="torus")  # up sampling is the default
+    parser.add_argument("--unet_depth", type=int, default=3)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -66,26 +70,27 @@ def parse_arguments():
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
            os.path.join(args.test_data_root_ldr), args.result_dir_prefix, args.input_dim, \
            args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp, \
-           args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save
+           args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save, args.unet_depth
 
 
-def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_):
+def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet_depth_=0):
     # Create the Generator (UNet architecture)
     # norm_layer = UnetGenerator.get_norm_layer(norm_type='batch')
     if net == "G_VAE":
         new_net = VAE.VAE(input_dim_).to(device_)
     elif net == "G_skip_connection":
-        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=True).to(device_)
+        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=True, depth=unet_depth_).to(device_)
     elif net == "G_skip_connection_conv":
-        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
+        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
+    elif net == "G_torus":
+        new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
     elif net == "G_unet3_layer":
         import three_layers_unet.Unet as three_Unet
         new_net = three_Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
 
     # Create the Discriminator
     elif net == "D":
-        new_net = Discriminator.Discriminator(params.input_size, input_dim_, params.dim,
-                                              torch.cuda.device_count()).to(device_)
+        new_net = Discriminator.Discriminator(params.input_size, input_dim_, params.dim).to(device_)
     else:
         assert 0, "Unsupported network request: {}  (creates only G or D)".format(net)
 
@@ -138,7 +143,7 @@ class GanTrainer:
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss = ssim.SSIM(window_size=11)
+        self.ssim_loss = ssim.SSIM(window_size=5)
 
         self.loss_g_d_factor = loss_g_d_factor_
         self.ssim_loss_g_factor = ssim_loss_g_factor_
@@ -268,7 +273,7 @@ class GanTrainer:
 
                 self.train_D(hdr_input, real_ldr_cpu)
                 self.train_G(label, hdr_input, hdr_input_display)
-                g_t_utils.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
+                plot_util.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
 
     def verify_checkpoint(self):
@@ -281,10 +286,10 @@ class GanTrainer:
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        g_t_utils.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.D_loss_fake,
+        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.D_loss_fake,
                                       self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
                                       (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
-        g_t_utils.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
+        plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
                                         "accuracy epoch = " + str(epoch),
                                         self.epoch, acc_path)
 
@@ -353,10 +358,10 @@ if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
-        epoch_to_save = parse_arguments()
-    #torch.manual_seed(params.manualSeed)
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # device = torch.device("cpu")
+        epoch_to_save, depth = parse_arguments()
+    torch.manual_seed(params.manualSeed)
+    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
@@ -365,6 +370,7 @@ if __name__ == '__main__':
     print("BATCH SIZE:", batch_size)
     print("EPOCHS:", num_epochs)
     print("MODEL:", model)
+    print("UNET DEPTH: ", depth)
     print("G LR: ", G_lr)
     print("D LR: ", D_lr)
     print("CHECK POINT:", isCheckpoint)
@@ -377,17 +383,17 @@ if __name__ == '__main__':
     print("=====================\n")
 
     # net_G = create_net("G_" + "unet3_layer", device, isCheckpoint, input_dim, input_images_mean)
-    net_G = create_net("G_" + model, device, isCheckpoint, input_dim, input_images_mean)
+    net_G = create_net("G_" + model, device, isCheckpoint, input_dim, input_images_mean, depth)
 
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (input_dim, params.input_size, params.input_size))
+    # summary(net_G, (input_dim, params.input_size, params.input_size), device="cuda")
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim, input_images_mean)
     print("=================  NET D  ==================")
     print(net_D)
-    summary(net_D, (input_dim, params.input_size, params.input_size))
+    # summary(net_D, (input_dim, params.input_size, params.input_size), device="cuda")
     print()
 
     # Setup Adam optimizers for both G and D
@@ -397,7 +403,7 @@ if __name__ == '__main__':
     # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
     writer = 1
     output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, params.models_save_path,
-                                      params.loss_path, params.results_path)
+                                      params.loss_path, params.results_path, depth)
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
                              test_data_root_npy, test_data_root_ldr, isCheckpoint,

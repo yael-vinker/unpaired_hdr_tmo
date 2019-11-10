@@ -3,10 +3,9 @@ import Blocks
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_size, input_dim, dim, ngpu):
+    def __init__(self, input_size, input_dim, dim):
         super(Discriminator, self).__init__()
         self.model = []
-        self.ngpu = ngpu
         self.model += [Blocks.Conv2dBlock(input_dim, dim, 4, 2, 1, norm='none', activation="leakyReLU")]
         # downsampling blocks
         n_downsample = 0

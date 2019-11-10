@@ -59,9 +59,9 @@ class Tester:
             im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
             im_log_gray = g_t_utils.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
-            text = TMQI.run(im_hdr_original, img_name)
-            print(img_name)
-            print(text)
+            # text = TMQI.run(im_hdr_original, img_name)
+            # print(img_name)
+            # print(text)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,
@@ -70,8 +70,7 @@ class Tester:
                                         'S_arr': [],
                                         'best_Q': 0,
                                         'Q_gray': 0,
-                                        'epoch': 0,
-                                        'text': text})
+                                        'epoch': 0})
             counter += 1
         return original_hdr_images
 
@@ -237,12 +236,14 @@ class Tester:
 
     def update_TMQI(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "tmqi")
-        # netG_cpu = netG.to(torch.device("cpu"))
         with torch.no_grad():
             for im_and_q in self.test_original_hdr_images:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
-                fake_im_gray = torch.squeeze(netG(im_log_normalize_tensor.unsqueeze(0).detach()), dim=0)
+                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
+                if self.use_transform_exp:
+                    fake = self.transform_exp(fake)
+                fake_im_gray = torch.squeeze(fake, dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
                 fake_im_color = g_t_utils.back_to_color(im_hdr_original,
                                                         fake_im_gray_numpy)
@@ -251,13 +252,13 @@ class Tester:
                 self.update_tmqi_arr(im_and_q, Q, S, N)
                 self.display_graph_and_image(fake_im_color, im_and_q, im_and_q['Q_arr'], im_and_q['N_arr'],
                                              im_and_q['S_arr'], os.path.join(out_dir, (
-                        im_and_q["im_name"]) + "_graph_epoch=" + str(epoch) + ".png"))
+                        im_and_q["im_name"]) + "_graph" + ".png"))
                 if Q > im_and_q['best_Q']:
                     self.update_best_Q(im_and_q, Q, epoch, fake_im_color)
                     self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch, g_t_utils.to_0_1_range(fake_im_color), color='rgb')
                     self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_color, color='rgb')
                     self.save_tmqi_result_imageio(out_dir, im_and_q, g_t_utils.to_0_1_range(fake_im_color), color='stretch_rgb')
-                    printer.print_tmqi_update(im_and_q, Q, color='rgb')
+                    printer.print_tmqi_update(Q, color='rgb')
                 fake_im_gray_numpy_0_1 = np.squeeze(g_t_utils.to_0_1_range(fake_im_gray_numpy))
                 Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
                 if Q_gray > im_and_q['Q_gray']:
@@ -265,5 +266,5 @@ class Tester:
                     self.save_tmqi_plt_result(out_dir, im_and_q, Q_gray, S_gray, N_gray, epoch, fake_im_gray_numpy_0_1,
                                               color='gray')
                     self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, color='gray')
-                    printer.print_tmqi_update(im_and_q, Q_gray, color='gray')
+                    printer.print_tmqi_update(Q_gray, color='gray')
                     # hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")

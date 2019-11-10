@@ -6,7 +6,7 @@ train_dataroot_ldr = "data/ldr_npy"
 
 test_dataroot_hdr = "data/hdr_log_data"
 test_dataroot_ldr = "data/ldr_npy"
-test_dataroot_original_hdr = "tmqi_test_hdr"
+test_dataroot_original_hdr = "data/hdr_data/hdr_data"
 apply_windows_loss = False
 
 image_key = "hdr_image"
