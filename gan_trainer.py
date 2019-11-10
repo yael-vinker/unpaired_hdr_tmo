@@ -20,7 +20,7 @@ import params
 import time
 import gan_trainer_utils as g_t_utils
 import utils.plot_util as plot_util
-import utils.hdr_image_util as hdr_image_util
+import utils.data_loader_util as data_loader_util
 import ssim
 import printer
 # import Writer
@@ -135,7 +135,7 @@ class GanTrainer:
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
 
         self.train_data_loader_npy, self.train_data_loader_ldr = \
-            g_t_utils.load_data(train_dataroot_npy, train_dataroot_ldr,
+            data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
                                 self.batch_size, testMode=False, title="train")
 
         self.input_dim = input_dim

@@ -35,7 +35,7 @@ def save_single_tone_mapped_result(output_path, title, method_name, image):
 #     # load params
 #     G_net.load_state_dict(new_state_dict)
 #     G_net.eval()
-#     data = np.load("data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
+#     data = np.load("data/hdr_log_data/hdr_log_data/belgium_10002.npy", allow_pickle=True)
 #     L_hdr_log = data[()]["input_image"].to(device)
 #     inputs = L_hdr_log.unsqueeze(0)
 #     # outputs = net(inputs)

@@ -5,7 +5,7 @@ import tranforms as transforms_
 import numpy as np
 import hdr_image_utils
 import matplotlib.pyplot as plt
-import gan_trainer_utils
+import utils.hdr_image_util as hdr_image_util
 from os import path
 
 def display_tensor(tensor_im, isgray):
@@ -36,13 +36,13 @@ def create_dict_data_log(input_dir, output_dir, isLdr, log_factor_):
         output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + "_" + str(log_factor_) + '.npy')
         if not path.exists(output_path):
             if isLdr:
-                rgb_img = gan_trainer_utils.read_ldr_image(im_path)
-                output_im = gan_trainer_utils.to_gray(rgb_img)
+                rgb_img = hdr_image_util.read_ldr_image(im_path)
+                output_im = hdr_image_util.to_gray(rgb_img)
 
             else:
-                rgb_img = gan_trainer_utils.read_hdr_image(im_path)
-                rgb_img_log = gan_trainer_utils.hdr_log_loader_factorize(im_path, log_factor_)
-                output_im = gan_trainer_utils.to_gray(rgb_img_log)
+                rgb_img = hdr_image_util.read_hdr_image(im_path)
+                rgb_img_log = hdr_image_util.hdr_log_loader_factorize(im_path, log_factor_)
+                output_im = hdr_image_util.to_gray(rgb_img_log)
 
             transformed_output_im = transforms_.gray_image_transform(output_im)
             transformed_display_im = transforms_.rgb_display_image_transform(rgb_img)

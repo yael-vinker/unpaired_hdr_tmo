@@ -7,7 +7,9 @@ import torch
 
 import TMQI
 import gan_trainer_utils as g_t_utils
-import hdr_image_utils
+import utils.plot_util as plot_util
+import utils.data_loader_util as data_loader_util
+import utils.hdr_image_util as hdr_image_util
 import printer
 import tranforms
 
@@ -16,7 +18,7 @@ class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
                  loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_):
         self.test_data_loader_npy, self.test_data_loader_ldr = \
-            g_t_utils.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
+            data_loader_util.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
@@ -57,7 +59,7 @@ class Tester:
                                                                          int(im_hdr_original.shape[1] / 3)),
                                                        mode='reflect', preserve_range=False).astype("float32")
             im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
-            im_log_gray = g_t_utils.to_gray(im_hdr_log)
+            im_log_gray = hdr_image_util.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
             # text = TMQI.run(im_hdr_original, img_name)
             # print(img_name)
@@ -128,12 +130,12 @@ class Tester:
     def save_test_loss(self, epoch, out_dir):
         acc_path = os.path.join(out_dir, "accuracy")
         loss_path = os.path.join(out_dir, "loss_plot")
-        g_t_utils.plot_general_losses(self.test_G_losses_d, self.test_G_loss_ssim,
+        plot_util.plot_general_losses(self.test_G_losses_d, self.test_G_loss_ssim,
                                       self.test_D_loss_fake, self.test_D_loss_real,
                                       "TEST epoch loss = " + str(epoch), self.test_num_iter, loss_path,
                                       (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
 
-        g_t_utils.plot_general_accuracy(self.G_accuracy_test, self.D_accuracy_fake_test, self.D_accuracy_real_test,
+        plot_util.plot_general_accuracy(self.G_accuracy_test, self.D_accuracy_fake_test, self.D_accuracy_real_test,
                                         "TEST epoch acc = " + str(epoch), epoch, acc_path)
 
     def save_test_images(self, epoch, out_dir, input_images_mean, netD, netG, criterion, ssim_loss, num_epochs):
@@ -155,11 +157,11 @@ class Tester:
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
 
         if self.use_transform_exp:
-            g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
+            plot_util.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
                                          new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                          input_images_mean)
         else:
-            g_t_utils.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
+            plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                          new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                          input_images_mean)
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
@@ -245,7 +247,7 @@ class Tester:
                     fake = self.transform_exp(fake)
                 fake_im_gray = torch.squeeze(fake, dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
-                fake_im_color = g_t_utils.back_to_color(im_hdr_original,
+                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
                                                         fake_im_gray_numpy)
 
                 Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
@@ -255,11 +257,11 @@ class Tester:
                         im_and_q["im_name"]) + "_graph" + ".png"))
                 if Q > im_and_q['best_Q']:
                     self.update_best_Q(im_and_q, Q, epoch, fake_im_color)
-                    self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch, g_t_utils.to_0_1_range(fake_im_color), color='rgb')
+                    self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch, hdr_image_util.to_0_1_range(fake_im_color), color='rgb')
                     self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_color, color='rgb')
-                    self.save_tmqi_result_imageio(out_dir, im_and_q, g_t_utils.to_0_1_range(fake_im_color), color='stretch_rgb')
+                    self.save_tmqi_result_imageio(out_dir, im_and_q, hdr_image_util.to_0_1_range(fake_im_color), color='stretch_rgb')
                     printer.print_tmqi_update(Q, color='rgb')
-                fake_im_gray_numpy_0_1 = np.squeeze(g_t_utils.to_0_1_range(fake_im_gray_numpy))
+                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
                 Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
                 if Q_gray > im_and_q['Q_gray']:
                     im_and_q['Q_gray'] = Q_gray
