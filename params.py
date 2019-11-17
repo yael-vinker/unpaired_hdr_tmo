@@ -24,7 +24,7 @@ n_downsample = 1
 n_downsamples_d = 3
 dim = 6
 # Number of workers for dataloader
-workers = 8
+workers = 1
 
 # Batch size during training
 batch_size = 28

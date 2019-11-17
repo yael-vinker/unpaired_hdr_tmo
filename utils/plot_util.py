@@ -1,21 +1,8 @@
-import torchvision.transforms as transforms
-import params
-import torchvision.utils as vutils
-import torch
-import pathlib
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from skimage import exposure
 import math
-import cv2
-from PIL import Image
-import imageio
-import torch
-import tranforms as transforms_
-# import hdr_image_utils
 import utils.hdr_image_util as hdr_image_util
-# import Writer
 
 def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss):
     if use_g_ssim_loss or use_g_d_loss:
@@ -71,22 +58,8 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
     output = []
     for i in range(b_size):
         cur_im = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        if normalization == "uint":
-            norm_im = hdr_image_util.uint_normalization(cur_im)
-        elif normalization == "0_1":
+        if normalization == "0_1":
             norm_im = hdr_image_util.to_0_1_range(cur_im)
-        elif normalization == "log100":
-            norm_im = hdr_image_util.log100_normalization(cur_im, isHDR)
-        elif normalization == "uint_0_1":
-            im = hdr_image_util.to_0_1_range(cur_im)
-            norm_im = hdr_image_util.uint_normalization(im)
-        elif normalization == "log1_uint_0_1":
-            im = np.exp(cur_im) - 1
-            im = hdr_image_util.to_0_1_range(im)
-            norm_im = hdr_image_util.uint_normalization(im)
-        elif normalization == "exp":
-            im = hdr_image_util.to_0_1_range(cur_im)
-            norm_im = hdr_image_util.exp_normalization(im)
         elif normalization == "none":
             norm_im = cur_im
         else:

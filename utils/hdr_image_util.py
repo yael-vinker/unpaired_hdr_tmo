@@ -7,14 +7,9 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 from skimage import exposure
-import math
 import cv2
-from PIL import Image
 import imageio
 import torch
-import tranforms as transforms_
-# import hdr_image_utils
-# import Writer
 
 def to_gray(im):
     return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')

@@ -90,8 +90,10 @@ def get_rgb_normalize_im_batch(batch):
     return batch_normalize
 
 if __name__ == '__main__':
+    import utils.image_quality_assessment_util as utils_
+    utils_.calculate_TMQI_results_for_selected_methods("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr", "/cs/labs/raananf/yael_vinker/NEW_TMQI")
 
-    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_10002.npy", allow_pickle=True)
+    # data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_10002.npy", allow_pickle=True)
     # # if testMode:
     # input_im = data[()]["input_image"]
     # print(input_im.shape)

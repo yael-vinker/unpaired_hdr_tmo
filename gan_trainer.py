@@ -10,9 +10,9 @@ import torch.optim as optim
 import torch.utils.data
 from torch import autograd
 
+import Tester
 import VAE
 import unet.Unet as Unet
-import Tester
 
 matplotlib.use('Agg')
 import Discriminator
@@ -25,8 +25,9 @@ import ssim
 import printer
 # import Writer
 import tranforms as custom_transform
-from torchsummary import summary
 import torus.Unet as TorusUnet
+from torch.utils.tensorboard import SummaryWriter
+# import datetime
 
 
 # TODO ask about init BatchNorm weights
@@ -83,7 +84,8 @@ def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet
     elif net == "G_skip_connection_conv":
         new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
     elif net == "G_torus":
-        new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
+        new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
+            device_)
     elif net == "G_unet3_layer":
         import three_layers_unet.Unet as three_Unet
         new_net = three_Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
@@ -136,7 +138,7 @@ class GanTrainer:
 
         self.train_data_loader_npy, self.train_data_loader_ldr = \
             data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
-                                self.batch_size, testMode=False, title="train")
+                                       self.batch_size, testMode=False, title="train")
 
         self.input_dim = input_dim
         self.input_images_mean = input_images_mean_
@@ -150,8 +152,16 @@ class GanTrainer:
         self.log_factor = log_factor_
         self.transform_exp = custom_transform.Exp(log_factor_)
         self.use_transform_exp = use_transform_exp_
-        self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size, t_device,
-                                    loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, self.transform_exp, self.log_factor)
+        self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size,
+                                    t_device, loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_,
+                                    self.transform_exp, self.log_factor)
+        self.writer = self.init_writer("writer", "a")
+
+    def init_writer(self, log_dir, run_name):
+        log_dir = os.path.join(log_dir, run_name, "train")
+        os.makedirs(log_dir)
+        writer = SummaryWriter(log_dir)
+        return writer
 
     def update_accuracy(self):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
@@ -255,7 +265,6 @@ class GanTrainer:
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
         self.update_g_d_loss(output_on_fake, label)
-        # self.writer.add_scaler('Loss/train', self.errG_d.item(), self.num_iter)
         self.update_ssim_loss(hdr_input, fake)
         self.optimizerG.step()
 
@@ -273,6 +282,12 @@ class GanTrainer:
 
                 self.train_D(hdr_input, real_ldr_cpu)
                 self.train_G(label, hdr_input, hdr_input_display)
+                # self.writer.add_scalars('Loss/train', {'err_g_ssim': self.errG_ssim.item(),
+                #                                       'err_g_d': self.errG_d.item(),
+                #                                       'err_d_real': self.errD_real.item(),
+                #                                       'err_d_fake': self.errD_fake.item()}, self.num_iter)
+
+                self.writer.add_scalar("g_d", self.errG_d.item(), self.num_iter)
                 plot_util.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
 
@@ -320,6 +335,7 @@ class GanTrainer:
             if epoch % self.epoch_to_save == 0:
                 self.save_loss_plot(epoch, output_dir)
                 self.tester.update_TMQI(self.netG, output_dir, epoch)
+        self.writer.close()
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
@@ -358,10 +374,10 @@ if __name__ == '__main__':
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
-        epoch_to_save, depth = parse_arguments()
+    epoch_to_save, depth = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
