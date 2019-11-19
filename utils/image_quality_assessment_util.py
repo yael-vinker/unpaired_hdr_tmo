@@ -10,12 +10,12 @@ import tranforms
 import torch
 import TMQI
 
-def save_text_to_image(output_path, text):
+def save_text_to_image(output_path, text, im_name=""):
     from PIL import Image, ImageDraw
     img = Image.new('RGB', (256, 256), color = (255, 255, 255))
     d = ImageDraw.Draw(img)
     d.text((5,5), text, fill=(0,0,0))
-    img.save(os.path.join(output_path, "all.png"))
+    img.save(os.path.join(output_path, im_name + "all.png"))
 
 def save_single_tone_mapped_result(output_path, title, method_name, image):
     plt.figure(figsize=(30,30))
@@ -165,52 +165,62 @@ def ours_input(im_name):
     return im_ldr
 
 
-def calculate_TMQI_results_for_selected_methods(input_path, output_path):
+def calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_output_path="", save_images=False):
+    tone_map_methods = {
+                        # "Our_torus": ours,
+                        # "ours_input": ours_input,
+                        "Reinhard": Reinhard_tone_map,
+                        "Dargo": Dargo_tone_map,
+                        "Mantiuk": Mantiuk_tone_map,
+                        "Durand": Durand_tone_map,
+                        "log100_exp": log_100_exp,
+                        "log1000_exp": log_1000_exp,
+                        "log100": log_100,
+                        "log1000": log_1000,
+                        "log": log_1}
+    methods_and_Q_results = {}
+    for method_name in tone_map_methods.keys():
+        if method_name == "ours_input":
+            tone_mapped_result = tone_map_methods[method_name](os.path.splitext(img_name)[0])
+        else:
+            tone_mapped_result = tone_map_methods[method_name](im_hdr_original)
+        Q, S, N = TMQI.TMQI(im_hdr_original, tone_mapped_result)
+        methods_and_Q_results[method_name] = Q
+        title = method_name + "\nQ = " + str(Q) + "\nS = " + str(S) + "\n" + "N = " + str(N) + "\n" + "max = " \
+                + str(np.max(tone_mapped_result)) + "   min = " + str(np.min(tone_mapped_result))
+        if save_images:
+            save_single_tone_mapped_result(new_output_path, title, method_name, tone_mapped_result)
+
+    sorted_methods_and_Q_results_by_Q = sorted(methods_and_Q_results.items(), key=operator.itemgetter(1))[::-1]
+    text = ""
+    for method_and_q_tuple in sorted_methods_and_Q_results_by_Q:
+        subtitle = method_and_q_tuple[0] + " : " + str(method_and_q_tuple[1]) + "\n"
+        text += subtitle
+    return text
+
+
+
+def calaulate_and_save_TMQI_from_path(input_path, output_path):
     for img_name in os.listdir(input_path):
         hdr_path = os.path.join(input_path, img_name)
         im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
-        print("original : ",im_hdr_original.shape)
         im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 4),
                                                                      int(im_hdr_original.shape[1] / 4)), mode='reflect',
                                                    preserve_range=False).astype("float32")
-        print("new : ",im_hdr_original.shape)
         new_output_path = os.path.join(output_path, os.path.splitext(img_name)[0])
         if not os.path.exists(new_output_path):
             os.makedirs(new_output_path)
-        tone_map_methods = {
-                            # "Our_torus": ours,
-                            "ours_input": ours_input,
-                            "Reinhard": Reinhard_tone_map,
-                            "Dargo": Dargo_tone_map,
-                            "Mantiuk": Mantiuk_tone_map,
-                            "Durand": Durand_tone_map,
-                            "log100_exp": log_100_exp,
-                            "log1000_exp": log_1000_exp,
-                            "log100": log_100,
-                            "log1000": log_1000,
-                            "log": log_1}
-        methods_and_Q_results = {}
-        for method_name in tone_map_methods.keys():
-            if method_name == "ours_input":
-                tone_mapped_result = tone_map_methods[method_name](os.path.splitext(img_name)[0])
-            else:
-                tone_mapped_result = tone_map_methods[method_name](im_hdr_original)
-            Q, S, N = TMQI.TMQI(im_hdr_original, tone_mapped_result)
-            methods_and_Q_results[method_name] = Q
-            title = method_name + "\nQ = " + str(Q) + "\nS = " + str(S) + "\n" + "N = " + str(N) + "\n" + "max = " \
-                    + str(np.max(tone_mapped_result)) + "   min = " + str(np.min(tone_mapped_result))
-            save_single_tone_mapped_result(new_output_path, title, method_name, tone_mapped_result)
-
-        sorted_methods_and_Q_results_by_Q = sorted(methods_and_Q_results.items(), key=operator.itemgetter(1))[::-1]
-        text = ""
-        for method_and_q_tuple in sorted_methods_and_Q_results_by_Q:
-            subtitle = method_and_q_tuple[0] + " : " + str(method_and_q_tuple[1]) + "\n"
-            text += subtitle
-        save_text_to_image(new_output_path, text)
+        result_text = calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_output_path)
+        save_text_to_image(new_output_path, result_text)
 
 if __name__ == '__main__':
-    calculate_TMQI_results_for_selected_methods("/cs/labs/raananf/yael_vinker/NEW_TMQI/source", "/cs/labs/raananf/yael_vinker/NEW_TMQI/results")
-
+    # calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
+    path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
+    im = imageio.imread(path)
+    hdr_image_util.print_image_details(im, "")
+    im2 = (((im - np.min(im)) / (np.max(im) - np.min(im))) * 255).astype('uint8')
+    hdr_image_util.print_image_details(im2, "")
+    imageio.imwrite(os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/", "ours_strtch_imageio.png"), im2, format='PNG-FI')
     # hdr_path = "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr/0030_20151008_090054_301.dng"
     # ldr_path = "/cs/usr/yael_vinker/2.png"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)

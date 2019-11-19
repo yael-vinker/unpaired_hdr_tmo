@@ -10,6 +10,7 @@ import gan_trainer_utils as g_t_utils
 import utils.plot_util as plot_util
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
+import utils.image_quality_assessment_util as image_quality_assessment_util
 import printer
 import tranforms
 
@@ -48,22 +49,14 @@ class Tester:
         counter = 1
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
-            file_extension = os.path.splitext(img_name)[1]
-            if file_extension == ".hdr":
-                im_hdr_original = imageio.imread(im_path, format="HDR-FI").astype('float32')
-            elif file_extension == ".dng":
-                im_hdr_original = imageio.imread(im_path, format="RAW-FI").astype('float32')
-            else:
-                raise Exception('invalid hdr file format: {}'.format(file_extension))
+            im_hdr_original = hdr_image_util.read_hdr_image(im_path)
             im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
                                                                          int(im_hdr_original.shape[1] / 3)),
                                                        mode='reflect', preserve_range=False).astype("float32")
             im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
             im_log_gray = hdr_image_util.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
-            # text = TMQI.run(im_hdr_original, img_name)
-            # print(img_name)
-            # print(text)
+            text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,
@@ -72,7 +65,8 @@ class Tester:
                                         'S_arr': [],
                                         'best_Q': 0,
                                         'Q_gray': 0,
-                                        'epoch': 0})
+                                        'epoch': 0,
+                                        'other_results': text})
             counter += 1
         return original_hdr_images
 
@@ -250,11 +244,13 @@ class Tester:
                 fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
                                                         fake_im_gray_numpy)
 
-                Q, S, N = TMQI.TMQI(im_hdr_original, fake_im_color)
+                Q, S, N = TMQI.TMQI(im_hdr_original, hdr_image_util.to_0_1_range(fake_im_color))
                 self.update_tmqi_arr(im_and_q, Q, S, N)
                 self.display_graph_and_image(fake_im_color, im_and_q, im_and_q['Q_arr'], im_and_q['N_arr'],
                                              im_and_q['S_arr'], os.path.join(out_dir, (
                         im_and_q["im_name"]) + "_graph" + ".png"))
+                image_quality_assessment_util.save_text_to_image(out_dir,
+                        im_and_q['other_results'], im_and_q["im_name"])
                 if Q > im_and_q['best_Q']:
                     self.update_best_Q(im_and_q, Q, epoch, fake_im_color)
                     self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch, hdr_image_util.to_0_1_range(fake_im_color), color='rgb')

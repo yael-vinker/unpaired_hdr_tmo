@@ -11,6 +11,14 @@ import cv2
 import imageio
 import torch
 
+def print_image_details(im, title):
+    print(title)
+    print("shape : ", im.shape)
+    print("max : ", np.max(im), "  min : ", np.min(im), "mean : ", np.mean(im))
+    print("type : ", im.dtype)
+    print("unique values : ", np.unique(im).shape[0])
+    print()
+
 def to_gray(im):
     return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
 

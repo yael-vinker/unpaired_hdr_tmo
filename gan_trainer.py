@@ -26,7 +26,7 @@ import printer
 # import Writer
 import tranforms as custom_transform
 import torus.Unet as TorusUnet
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 # import datetime
 
 
@@ -46,8 +46,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="torus")  # up sampling is the default
-    parser.add_argument("--unet_depth", type=int, default=3)
+    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
+    parser.add_argument("--unet_depth", type=int, default=1)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -155,12 +155,12 @@ class GanTrainer:
         self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size,
                                     t_device, loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_,
                                     self.transform_exp, self.log_factor)
-        self.writer = self.init_writer("writer", "a")
+        # self.writer = self.init_writer("writer", "a")
 
     def init_writer(self, log_dir, run_name):
         log_dir = os.path.join(log_dir, run_name, "train")
         os.makedirs(log_dir)
-        writer = SummaryWriter(log_dir)
+        # writer = SummaryWriter(log_dir)
         return writer
 
     def update_accuracy(self):
@@ -287,7 +287,7 @@ class GanTrainer:
                 #                                       'err_d_real': self.errD_real.item(),
                 #                                       'err_d_fake': self.errD_fake.item()}, self.num_iter)
 
-                self.writer.add_scalar("g_d", self.errG_d.item(), self.num_iter)
+                # self.writer.add_scalar("g_d", self.errG_d.item(), self.num_iter)
                 plot_util.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
 
@@ -335,7 +335,7 @@ class GanTrainer:
             if epoch % self.epoch_to_save == 0:
                 self.save_loss_plot(epoch, output_dir)
                 self.tester.update_TMQI(self.netG, output_dir, epoch)
-        self.writer.close()
+        # self.writer.close()
 
     def save_model(self, path, epoch):
         path = os.path.join(output_dir, path)
