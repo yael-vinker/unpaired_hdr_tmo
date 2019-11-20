@@ -34,6 +34,7 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
+        self.normalize = tranforms.Normalize(0.5, 0.5)
 
     def log_to_image(self, im_origin, log_factor):
         import numpy as np
@@ -82,7 +83,7 @@ class Tester:
 
             fake_label = torch.full((b_size,), self.fake_label, device=self.device)
             if self.use_transform_exp:
-                output_on_fake = netD(self.transform_exp(fake.detach())).view(-1)
+                output_on_fake = netD(self.normalize(fake.detach())).view(-1)
             else:
                 output_on_fake = netD(fake.detach()).view(-1)
             self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
@@ -151,13 +152,10 @@ class Tester:
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
 
         if self.use_transform_exp:
-            plot_util.save_groups_images(test_hdr_batch, test_real_batch, self.transform_exp(fake), fake_ldr,
-                                         new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                         input_images_mean)
-        else:
-            plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
-                                         new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
-                                         input_images_mean)
+            fake = self.transform_exp(fake)
+        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
+                                     new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
+                                     input_images_mean)
         self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 

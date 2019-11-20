@@ -153,6 +153,7 @@ class GanTrainer:
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.log_factor = log_factor_
         self.transform_exp = custom_transform.Exp(log_factor_)
+        self.normalize = custom_transform.Normalize(0.5, 0.5)
         self.use_transform_exp = use_transform_exp_
         self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size,
                                     t_device, loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_,
@@ -201,6 +202,7 @@ class GanTrainer:
         # Generate fake image batch with G
         if self.use_transform_exp:
             fake = self.transform_exp(self.netG(hdr_input))
+            fake = self.normalize(fake)
         else:
             fake = self.netG(hdr_input)
         label.fill_(self.fake_label)
@@ -262,13 +264,13 @@ class GanTrainer:
         self.netG.zero_grad()
         label.fill_(self.real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
-        fake = self.netG(hdr_input)
-        printer.print_g_progress(fake)
-
         if self.use_transform_exp:
-            output_on_fake = self.netD(self.transform_exp(fake)).view(-1)
+            fake = self.transform_exp(self.netG(hdr_input))
+            fake = self.normalize(fake)
         else:
-            output_on_fake = self.netD(fake).view(-1)
+            fake = self.netG(hdr_input)
+        printer.print_g_progress(fake)
+        output_on_fake = self.netD(fake).view(-1)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
