@@ -12,7 +12,7 @@ import TMQI
 
 def save_text_to_image(output_path, text, im_name=""):
     from PIL import Image, ImageDraw
-    img = Image.new('RGB', (256, 256), color = (255, 255, 255))
+    img = Image.new('RGB', (256, 256), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
     d.text((5,5), text, fill=(0,0,0))
     img.save(os.path.join(output_path, im_name + "all.png"))
@@ -214,13 +214,14 @@ def calaulate_and_save_TMQI_from_path(input_path, output_path):
         save_text_to_image(new_output_path, result_text)
 
 if __name__ == '__main__':
-    # calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
-    path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
-    im = imageio.imread(path)
-    hdr_image_util.print_image_details(im, "")
-    im2 = (((im - np.min(im)) / (np.max(im) - np.min(im))) * 255).astype('uint8')
-    hdr_image_util.print_image_details(im2, "")
-    imageio.imwrite(os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/", "ours_strtch_imageio.png"), im2, format='PNG-FI')
+    calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
+    # path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
+    # im = imageio.imread(path)
+    # hdr_image_util.print_image_details(im, "")
+    # im2 = (((im - np.min(im)) / (np.max(im) - np.min(im))) * 255).astype('uint8')
+    # hdr_image_util.print_image_details(im2, "")
+    # imageio.imwrite(os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/", "ours_strtch_imageio.png"), im2, format='PNG-FI')
+
     # hdr_path = "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr/0030_20151008_090054_301.dng"
     # ldr_path = "/cs/usr/yael_vinker/2.png"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)

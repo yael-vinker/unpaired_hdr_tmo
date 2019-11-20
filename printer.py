@@ -159,3 +159,6 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
 def print_tmqi_update(Q, color):
     text = "=============== TMQI " + color + " ===============\n" + "Ours = " + str(Q)
     print(text)
+
+def print_best_g_error(best_errG, epoch):
+    print("================ EPOCH [%d] BEST ERR G [%.4f] ===================\n" % (epoch, best_errG))

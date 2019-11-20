@@ -21,6 +21,7 @@ import time
 import gan_trainer_utils as g_t_utils
 import utils.plot_util as plot_util
 import utils.data_loader_util as data_loader_util
+import utils.model_save_util as model_save_util
 import ssim
 import printer
 # import Writer
@@ -129,6 +130,7 @@ class GanTrainer:
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
 
         self.errG_d, self.errG_ssim = None, None
+        self.best_errG = 10
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -244,6 +246,12 @@ class GanTrainer:
             self.errG_ssim.backward()
             self.G_loss_ssim.append(self.errG_ssim.item())
 
+    def update_best_G_error(self):
+        if self.errG_d + self.errG_ssim < self.best_errG:
+            self.best_errG = self.errG_d + self.errG_ssim
+            printer.print_best_g_error(self.best_errG, self.epoch)
+            model_save_util.save_best_model(self.netG, output_dir, self.optimizerG)
+
     def train_G(self, label, hdr_input, hdr_input_display):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
@@ -266,6 +274,7 @@ class GanTrainer:
         # updates all G's losses
         self.update_g_d_loss(output_on_fake, label)
         self.update_ssim_loss(hdr_input, fake)
+        self.update_best_G_error()
         self.optimizerG.step()
 
     def train_epoch(self):
@@ -323,7 +332,8 @@ class GanTrainer:
             plt.close()
 
             print("Single [[epoch]] iteration took [%.4f] seconds\n" % (time.time() - start))
-            self.save_model(params.models_save_path, epoch)
+            model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
+                                       self.netD, self.optimizerD)
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
@@ -336,27 +346,6 @@ class GanTrainer:
                 self.save_loss_plot(epoch, output_dir)
                 self.tester.update_TMQI(self.netG, output_dir, epoch)
         # self.writer.close()
-
-    def save_model(self, path, epoch):
-        path = os.path.join(output_dir, path)
-        torch.save({
-            'epoch': epoch,
-            'modelD_state_dict': self.netD.state_dict(),
-            'modelG_state_dict': self.netG.state_dict(),
-            'optimizerD_state_dict': self.optimizerD.state_dict(),
-            'optimizerG_state_dict': self.optimizerG.state_dict(),
-        }, path)
-
-        if epoch == 2:
-            models_250_save_path = os.path.join("models_250", "models_250_net.pth")
-            path_250 = os.path.join(output_dir, models_250_save_path)
-            torch.save({
-                'epoch': epoch,
-                'modelD_state_dict': self.netD.state_dict(),
-                'modelG_state_dict': self.netG.state_dict(),
-                'optimizerD_state_dict': self.optimizerD.state_dict(),
-                'optimizerG_state_dict': self.optimizerG.state_dict(),
-            }, path_250)
 
     def load_model(self):
         if self.isCheckpoint:
