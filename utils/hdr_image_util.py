@@ -96,12 +96,12 @@ def back_to_color(im_hdr, fake):
 def reshape_image(rgb_im):
     h, w = rgb_im.shape[0], rgb_im.shape[1]
     if min(h,w) > 3000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
-                                                                         int(rgb_im.shape[1] / 3)),
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
+                                                       int(rgb_im.shape[1] / 4)),
                                                        mode='reflect', preserve_range=False).astype("float32")
     elif min(h,w) > 2000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 2),
-                                                         int(rgb_im.shape[1] / 2)),
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+                                                       int(rgb_im.shape[1] / 3)),
                                                mode='reflect', preserve_range=False).astype("float32")
     return rgb_im
 

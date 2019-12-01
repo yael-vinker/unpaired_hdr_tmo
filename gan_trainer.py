@@ -253,6 +253,8 @@ class GanTrainer:
             self.best_accG = self.accG
             printer.print_best_acc_error(self.best_accG, self.epoch)
             model_save_util.save_best_model(self.netG, output_dir, self.optimizerG)
+            self.tester.save_images_for_best_model(self, self.netG, output_dir, self.epoch)
+
 
     def train_G(self, label, hdr_input, hdr_input_display):
         """

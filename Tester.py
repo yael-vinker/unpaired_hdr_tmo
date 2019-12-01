@@ -45,15 +45,12 @@ class Tester:
         return im
 
     def load_original_test_hdr_images(self, root):
-        import skimage
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
             im_hdr_original = hdr_image_util.read_hdr_image(im_path)
-            im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
-                                                                         int(im_hdr_original.shape[1] / 3)),
-                                                       mode='reflect', preserve_range=False).astype("float32")
+            im_hdr_original = hdr_image_util.reshape_image(im_hdr_original)
             im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
             im_log_gray = hdr_image_util.to_gray(im_hdr_log)
             im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
@@ -220,6 +217,11 @@ class Tester:
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
+    def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
+        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
+        im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
+
     def get_rgb_imageio_im_file_name(self, im_and_q, color):
         return im_and_q["im_name"] + "_imageio_" + color + ".png"
 
@@ -264,3 +266,20 @@ class Tester:
                     self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, color='gray')
                     printer.print_tmqi_update(Q_gray, color='gray')
                     # hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")
+
+    def save_images_for_best_model(self, netG, out_dir, epoch):
+        out_dir = os.path.join(out_dir, "best_acc_images")
+        with torch.no_grad():
+            for im_and_q in self.test_original_hdr_images:
+                im_hdr_original = im_and_q['im_hdr_original']
+                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
+                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
+                if self.use_transform_exp:
+                    fake = self.transform_exp(fake)
+                fake_im_gray = torch.squeeze(fake, dim=0)
+                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
+                                                             fake_im_gray_numpy)
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
+                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
