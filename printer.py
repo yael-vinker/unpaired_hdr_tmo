@@ -156,6 +156,11 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
         format_str = format_str + (errG_ssim.item(),)
     print(output_str % format_str)
 
+def print_epoch_acc_summary(epoch, num_epochs, accDfake, accDreal, accG, best_accG):
+    output_str = '[%d/%d]\tAcc_D_fake: %.4f \tAcc_D_real: %.4f \tAcc_G: %.4f \tbest_Acc_G: %.4f'
+    format_str = (epoch, num_epochs, accDfake, accDreal, accG, best_accG)
+    print(output_str % format_str)
+
 def print_tmqi_update(Q, color):
     text = "=============== TMQI " + color + " ===============\n" + "Ours = " + str(Q)
     print(text)
