@@ -1,6 +1,10 @@
 from __future__ import print_function
 import argparse
 import os
+
+import imageio
+import skimage
+
 import tranforms as transforms_
 import numpy as np
 import hdr_image_utils
@@ -64,39 +68,67 @@ def split_test_data(output_train_dir, output_test_dir, selected_test_images, log
                 os.rename(im_path, im_new_path)
                 break
 
+def reshape_hdr_test_images():
+    input_dir = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"
+    output_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images_reshaped"
+    for img_name in os.listdir(input_dir):
+        im_path = os.path.join(input_dir, img_name)
+        rgb_img = hdr_image_util.read_hdr_image(im_path)
+        h, w = rgb_img.shape[0], rgb_img.shape[1]
+        print("before ", img_name)
+        print(rgb_img.shape)
+        if min(h,w) > 3000:
+            rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 3),
+                                                                         int(rgb_img.shape[1] / 3)),
+                                                       mode='reflect', preserve_range=False).astype("float32")
+        elif min(h,w) > 2000:
+            rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 2),
+                                                         int(rgb_img.shape[1] / 2)),
+                                               mode='reflect', preserve_range=False).astype("float32")
+        file_extension = os.path.splitext(img_name)[1]
+        if file_extension == ".hdr":
+            format = "HDR-FI"
+            imageio.imwrite(os.path.join(output_path, os.path.splitext(img_name)[0]), rgb_img, format=format)
+        elif file_extension == ".dng":
+            format = "RAW-FI"
+            imageio.imwrite(os.path.join(output_path, os.path.splitext(img_name)[0]), rgb_img, format=format)
+        print("after")
+        print(rgb_img.shape)
+
 
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/dng_collection"))
-    parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
-    parser.add_argument("--output_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/hdrplus_log10/hdrplus_log10"))
-    parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict/ldr_flicker_dict"))
-    parser.add_argument("--hdr_test_dir", type=str, default=os.path.join(
-        "/cs/labs/raananf/yael_vinker/data/test/hdrplus_log10/hdrplus_log10"))
-    parser.add_argument("--log_factor", type=int, default=1)
-
-    # parser.add_argument("--root_hdr", type=str, default=os.path.join("data/hdr_data/hdr_data"))
+    reshape_hdr_test_images()
+    # parser = argparse.ArgumentParser(description="Parser for gan network")
+    # parser.add_argument("--root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/dng_collection"))
     # parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
-    # parser.add_argument("--output_hdr", type=str, default=os.path.join("data/hdr_log_data/hdr_log_data"))
+    # parser.add_argument("--output_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/hdrplus_log10/hdrplus_log10"))
     # parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict/ldr_flicker_dict"))
-    args = parser.parse_args()
-    input_hdr_dir = os.path.join(args.root_hdr)
-    input_ldr_dir = os.path.join(args.root_ldr)
-    output_hdr_dir = os.path.join(args.output_hdr)
-    output_ldr_dir = os.path.join(args.output_ldr)
-    hdr_test_dir = os.path.join(args.hdr_test_dir)
-    channels = 1
-    images_mean = 0
-    log_factor = args.log_factor
-    print("log factor = ", log_factor)
-    # create_dict_data_log(input_hdr_dir, output_hdr_dir, False, log_factor)
-    # print_result(output_hdr_dir)
-    selected_test_images_list = ['merged_JN34_20150324_141124_427', 'merged_9bf4_20150818_173321_675',
-                                 'merged_6G7M_20150328_160426_633', 'merged_0155_20160817_141742_989',
-                                 'merged_0043_20160831_082253_094', 'merged_0030_20151008_090054_301',
-                                 'merged_4742_20150918_185622_484', 'belgium', 'cathedral', 'synagogue',
-                                 'merged_0006_20160724_095820_954', 'merged_0009_20160702_164047_896']
-    split_test_data(output_hdr_dir, hdr_test_dir, selected_test_images_list, log_factor)
-    # print_result(output_hdr_dir)
+    # parser.add_argument("--hdr_test_dir", type=str, default=os.path.join(
+    #     "/cs/labs/raananf/yael_vinker/data/test/hdrplus_log10/hdrplus_log10"))
+    # parser.add_argument("--log_factor", type=int, default=1)
+    #
+    # # parser.add_argument("--root_hdr", type=str, default=os.path.join("data/hdr_data/hdr_data"))
+    # # parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
+    # # parser.add_argument("--output_hdr", type=str, default=os.path.join("data/hdr_log_data/hdr_log_data"))
+    # # parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict/ldr_flicker_dict"))
+    # args = parser.parse_args()
+    # input_hdr_dir = os.path.join(args.root_hdr)
+    # input_ldr_dir = os.path.join(args.root_ldr)
+    # output_hdr_dir = os.path.join(args.output_hdr)
+    # output_ldr_dir = os.path.join(args.output_ldr)
+    # hdr_test_dir = os.path.join(args.hdr_test_dir)
+    # channels = 1
+    # images_mean = 0
+    # log_factor = args.log_factor
+    # print("log factor = ", log_factor)
+    # # create_dict_data_log(input_hdr_dir, output_hdr_dir, False, log_factor)
+    # # print_result(output_hdr_dir)
+    # selected_test_images_list = ['merged_JN34_20150324_141124_427', 'merged_9bf4_20150818_173321_675',
+    #                              'merged_6G7M_20150328_160426_633', 'merged_0155_20160817_141742_989',
+    #                              'merged_0043_20160831_082253_094', 'merged_0030_20151008_090054_301',
+    #                              'merged_4742_20150918_185622_484', 'belgium', 'cathedral', 'synagogue',
+    #                              'merged_0006_20160724_095820_954', 'merged_0009_20160702_164047_896']
+    # split_test_data(output_hdr_dir, hdr_test_dir, selected_test_images_list, log_factor)
+    # # print_result(output_hdr_dir)

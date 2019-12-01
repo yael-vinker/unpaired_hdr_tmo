@@ -160,5 +160,5 @@ def print_tmqi_update(Q, color):
     text = "=============== TMQI " + color + " ===============\n" + "Ours = " + str(Q)
     print(text)
 
-def print_best_g_error(best_errG, epoch):
-    print("================ EPOCH [%d] BEST ERR G [%.4f] ===================\n" % (epoch, best_errG))
+def print_best_acc_error(best_errG, epoch):
+    print("================ EPOCH [%d] BEST ACC G [%.4f] ===================\n" % (epoch, best_errG))

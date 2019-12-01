@@ -198,6 +198,32 @@ def calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_o
         text += subtitle
     return text
 
+def create_tone_mapped_datasets_for_fid(input_path, output_path):
+    tone_map_methods = {
+        "Reinhard": Reinhard_tone_map,
+        "Dargo": Dargo_tone_map,
+        "Mantiuk": Mantiuk_tone_map,
+        "Durand": Durand_tone_map,
+        "log100_exp": log_100_exp,
+        "log1000_exp": log_1000_exp,
+        "log100": log_100,
+        "log1000": log_1000,
+        "log": log_1}
+    for method_name in tone_map_methods.keys():
+        method_output_path = os.path.join(output_path, method_name)
+        if not os.path.exists(method_output_path):
+            os.mkdir(method_output_path)
+        for img_name in os.listdir(input_path):
+            im_path = os.path.join(input_path, img_name)
+            original_im = hdr_image_util.read_hdr_image(im_path)
+            original_im = skimage.transform.resize(original_im, (299, 299),
+                                                   mode='reflect', preserve_range=False).astype("float32")
+            tone_mapped_result = tone_map_methods[method_name](original_im)
+            tone_mapped_result = tone_mapped_result / np.max(tone_mapped_result)
+            im = (tone_mapped_result * 255).astype('uint8')
+            imageio.imwrite(os.path.join(method_output_path, os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
+
+
 
 
 def calaulate_and_save_TMQI_from_path(input_path, output_path):
@@ -213,8 +239,32 @@ def calaulate_and_save_TMQI_from_path(input_path, output_path):
         result_text = calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_output_path)
         save_text_to_image(new_output_path, result_text)
 
+def log_to_image(im_origin, log_factor):
+    import numpy as np
+    max_origin = np.max(im_origin)
+    image_new_range = (im_origin / max_origin) * log_factor
+    im_log = np.log(image_new_range + 1)
+    im = (im_log / np.log(log_factor + 1)).astype('float32')
+    return im
+
+def load_original_test_hdr_images(root, log_factor):
+    import skimage
+    original_hdr_images = []
+    counter = 1
+    for img_name in os.listdir(root):
+        im_path = os.path.join(root, img_name)
+        im_hdr_original = hdr_image_util.read_hdr_image(im_path)
+        im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
+                                                                     int(im_hdr_original.shape[1] / 3)),
+                                                   mode='reflect', preserve_range=False).astype("float32")
+        im_hdr_log = log_to_image(im_hdr_original, log_factor)
+        im_log_gray = hdr_image_util.to_gray(im_hdr_log)
+        im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+
+
 if __name__ == '__main__':
-    calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
+    create_tone_mapped_datasets_for_fid(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data"), os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"))
+    # calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
     # path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
     # im = imageio.imread(path)
     # hdr_image_util.print_image_details(im, "")

@@ -259,3 +259,7 @@ tmqi_input_transforms = torch_transforms.Compose([
     ToTensor(),
     Normalize(0.5, 0.5),
             ])
+
+hdr_im_transform = torch_transforms.Compose([
+    ToTensor(),
+            ])

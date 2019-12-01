@@ -1,7 +1,6 @@
 import torchvision.transforms as transforms
 import params
 import torchvision.utils as vutils
-import torch
 import pathlib
 import matplotlib.pyplot as plt
 import os
@@ -10,6 +9,7 @@ from skimage import exposure
 import cv2
 import imageio
 import torch
+import skimage
 
 def print_image_details(im, title):
     print(title)
@@ -92,6 +92,18 @@ def back_to_color(im_hdr, fake):
     norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
     output_im = np.power(norm_im, 0.5) * fake
     return output_im
+
+def reshape_image(rgb_im):
+    h, w = rgb_im.shape[0], rgb_im.shape[1]
+    if min(h,w) > 3000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+                                                                         int(rgb_im.shape[1] / 3)),
+                                                       mode='reflect', preserve_range=False).astype("float32")
+    elif min(h,w) > 2000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 2),
+                                                         int(rgb_im.shape[1] / 2)),
+                                               mode='reflect', preserve_range=False).astype("float32")
+    return rgb_im
 
 def back_to_color_batch(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
