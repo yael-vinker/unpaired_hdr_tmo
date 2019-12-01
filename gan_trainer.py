@@ -253,7 +253,7 @@ class GanTrainer:
             self.best_accG = self.accG
             printer.print_best_acc_error(self.best_accG, self.epoch)
             model_save_util.save_best_model(self.netG, output_dir, self.optimizerG)
-            self.tester.save_images_for_best_model(self, self.netG, output_dir, self.epoch)
+            self.tester.save_images_for_best_model(self.netG, output_dir, self.epoch)
 
 
     def train_G(self, label, hdr_input, hdr_input_display):
@@ -367,8 +367,8 @@ if __name__ == '__main__':
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
     epoch_to_save, depth = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # device = torch.device("cpu")
+    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False

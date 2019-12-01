@@ -35,7 +35,7 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
 
-    best_acc_path = os.path.join(output_dir, "best_acc_images")
+    best_acc_path = os.path.join(output_dir, params.best_acc_images_path)
     model_path = os.path.join(output_dir, model_path)
     models_250_save_path = os.path.join("models_250", "models_250_net.pth")
     model_path_250 = os.path.join(output_dir, models_250_save_path)
@@ -47,8 +47,8 @@ def create_dir(result_dir_pref, model_name, model_path, loss_graph_path, result_
     tmqi_path = os.path.join(output_dir, "tmqi")
     gradient_flow_path = os.path.join(output_dir, params.gradient_flow_path, "g")
 
-    if not os.path.exists(os.path.dirname(best_acc_path)):
-        os.makedirs(os.path.dirname(best_acc_path))
+    if not os.path.exists(best_acc_path):
+        os.mkdir(best_acc_path)
         print("Directory ", best_acc_path, " created")
 
     if not os.path.exists(os.path.dirname(gradient_flow_path)):
