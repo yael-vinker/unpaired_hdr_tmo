@@ -302,7 +302,8 @@ class GanTrainer:
                 # self.writer.add_scalar("g_d", self.errG_d.item(), self.num_iter)
                 plot_util.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
-        self.update_best_G_acc()
+        if self.epoch > 20:
+            self.update_best_G_acc()
 
     def verify_checkpoint(self):
         if isCheckpoint:
