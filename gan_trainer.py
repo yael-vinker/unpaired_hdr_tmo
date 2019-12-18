@@ -77,23 +77,23 @@ def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet
     # Create the Generator (UNet architecture)
     if net == "G_skip_connection":
         new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
-                                  con_operator="original_unet", filters=64, bilinear=True).to(device_)
+                                  con_operator="original_unet", filters=64, bilinear=True, network="unet").to(device_)
     elif net == "G_skip_connection_conv":
         new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
-                                  con_operator="original_unet", filters=64, bilinear=False).to(device_)
+                                  con_operator="original_unet", filters=64, bilinear=False, network="unet").to(device_)
         # new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
     elif net == "G_torus":
         new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
             device_)
     elif net == "G_square_root_and_square_3layer_unet":
         new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=4,
-                                  con_operator="square_and_square_root", filters=16, bilinear=False).to(device_)
+                                  con_operator="square_and_square_root", filters=16, bilinear=False, network="unet").to(device_)
     elif net == "G_square_2layer_unet":
         new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
-                                  con_operator="square", filters=16, bilinear=False).to(device_)
+                                  con_operator="square", filters=16, bilinear=False, network="unet").to(device_)
     elif net == "G_square_root_2layer_unet":
         new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
-                                  con_operator="square_root", filters=16, bilinear=False).to(device_)
+                                  con_operator="square_root", filters=16, bilinear=False, network="unet").to(device_)
 
     # Create the Discriminator
     elif net == "D":

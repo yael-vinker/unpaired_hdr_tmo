@@ -41,6 +41,7 @@ class UNet(nn.Module):
             self.last_sig = nn.Sigmoid()
         else:
             raise Exception('ERROR: Invalid images range')
+
     def forward(self, x):
         next_x = self.inc(x)
         x_results = [next_x]

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .unet_parts import *
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear):
+    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear, network, dilation):
         super(UNet, self).__init__()
         self.con_operator = con_operator
         down_ch = filters
@@ -15,20 +15,20 @@ class UNet(nn.Module):
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2)
+                down(ch, ch * 2, network, dilation=dilation)
             )
             ch = ch * 2
-        self.down_path.append(down(ch, ch))
+        self.down_path.append(down(ch, ch, network))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
             if i >= self.depth - 2:
                 self.up_path.append(
-                    up(ch * layer_factor, down_ch, bilinear, layer_factor)
+                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network, dilation=dilation)
                 )
             else:
                 self.up_path.append(
-                    up(ch * layer_factor, ch // 2, bilinear, layer_factor)
+                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network, dilation=dilation)
                 )
             ch = ch // 2
         self.outc = outconv(down_ch, n_classes)

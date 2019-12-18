@@ -54,11 +54,14 @@ class inconv(nn.Module):
 
 
 class down(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, network, dilation=0):
         super(down, self).__init__()
+        if network == "unet":
+            self.down_sample = nn.MaxPool2d(2)
+        else:  # for torus
+            self.down_sample = nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
         self.mpconv = nn.Sequential(
-            # nn.Conv2d(in_ch // 2, in_ch // 2, 2, stride=2),
-            nn.MaxPool2d(2),
+            self.down_sample,
             double_conv(in_ch, out_ch)
         )
 
@@ -68,19 +71,23 @@ class down(nn.Module):
 
 
 class up(nn.Module):
-    def __init__(self, in_ch, out_ch, layer_factor, bilinear):
+    def __init__(self, in_ch, out_ch, layer_factor, bilinear, network, dilation):
         super(up, self).__init__()
 
         #  would be a nice idea if the upsampling could be learned too,
         #  but my machine do not have enough memory to handle all those weights
-        if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        else:
-            self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
+        if network == "unet":
+            if bilinear:
+                self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            else:
+                self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
+
+        else:  # for torus
+            self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0, dilation=dilation)
 
         self.conv = double_conv_traspose(in_ch, out_ch)
 
-    def forward(self, x1, x2, con_operator):
+    def forward(self, x1, x2, con_operator, network):
         x1 = self.up(x1)
 
         # input is CHW
@@ -93,7 +100,7 @@ class up(nn.Module):
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        if con_operator == "original_unet":
+        if con_operator == "original_unet" or con_operator == "torus":
             x = torch.cat([x2, x1], dim=1)
         elif con_operator == "square":
             square_x = torch.pow(x2, 2)
