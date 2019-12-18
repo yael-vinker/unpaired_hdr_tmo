@@ -346,6 +346,7 @@ class GanTrainer:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
+            printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG, self.best_accG)
             printer.print_best_acc_error(self.best_accG, self.epoch)
             if epoch % self.epoch_to_save == 0:
                 model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
