@@ -12,8 +12,7 @@ from torch import autograd
 from torchsummary import summary
 
 import Tester
-import VAE
-import unet.Unet as Unet
+# import unet.Unet as Unet
 
 matplotlib.use('Agg')
 import Discriminator
@@ -25,13 +24,9 @@ import utils.data_loader_util as data_loader_util
 import utils.model_save_util as model_save_util
 import ssim
 import printer
-# import Writer
 import tranforms as custom_transform
 import torus.Unet as TorusUnet
-# from torch.utils.tensorboard import SummaryWriter
-# import datetime
-import three_layers_unet.Unet as three_Unet
-import squre_layer_unet.Unet as squre_unet
+import unet_multi_filters.Unet as squre_unet
 
 
 # TODO ask about init BatchNorm weights
@@ -50,8 +45,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="squre_layer_unet")  # up sampling is the default
-    parser.add_argument("--unet_depth", type=int, default=3)
+    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
+    parser.add_argument("--unet_depth", type=int, default=4)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -80,20 +75,25 @@ def parse_arguments():
 
 def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet_depth_=0):
     # Create the Generator (UNet architecture)
-    # norm_layer = UnetGenerator.get_norm_layer(norm_type='batch')
-    if net == "G_VAE":
-        new_net = VAE.VAE(input_dim_).to(device_)
-    elif net == "G_skip_connection":
-        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=True, depth=unet_depth_).to(device_)
+    if net == "G_skip_connection":
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
+                                  con_operator="original_unet", filters=64, bilinear=True).to(device_)
     elif net == "G_skip_connection_conv":
-        new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
+                                  con_operator="original_unet", filters=64, bilinear=False).to(device_)
+        # new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
     elif net == "G_torus":
         new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
             device_)
-    elif net == "G_unet3_layer":
-        new_net = three_Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
-    elif net == "G_squre_layer_unet":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
+    elif net == "G_square_root_and_square_3layer_unet":
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=4,
+                                  con_operator="square_and_square_root", filters=16, bilinear=False).to(device_)
+    elif net == "G_square_2layer_unet":
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
+                                  con_operator="square", filters=16, bilinear=False).to(device_)
+    elif net == "G_square_root_2layer_unet":
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
+                                  con_operator="square_root", filters=16, bilinear=False).to(device_)
 
     # Create the Discriminator
     elif net == "D":
@@ -259,7 +259,6 @@ class GanTrainer:
             model_save_util.save_best_model(self.netG, output_dir, self.optimizerG)
             self.tester.save_images_for_best_model(self.netG, output_dir, self.epoch)
 
-
     def train_G(self, label, hdr_input, hdr_input_display):
         """
 
@@ -346,7 +345,8 @@ class GanTrainer:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
-            printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG, self.best_accG)
+            printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG,
+                                            self.best_accG)
             printer.print_best_acc_error(self.best_accG, self.epoch)
             if epoch % self.epoch_to_save == 0:
                 model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
