@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import params
 
 
 class double_conv(nn.Module):
@@ -11,10 +12,10 @@ class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -23,23 +24,6 @@ class double_conv(nn.Module):
         x = self.conv(x)
         return x
 
-class double_conv_traspose(nn.Module):
-    '''(conv => BN => ReLU) * 2'''
-
-    def __init__(self, in_ch, out_ch):
-        super(double_conv_traspose, self).__init__()
-        self.conv = nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        x = self.conv(x)
-        return x
 
 class inconv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -74,10 +58,9 @@ class up(nn.Module):
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         else:
-            self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
-        # self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        # self.conv = double_conv(in_ch, out_ch)
-        self.conv = double_conv_traspose(in_ch, out_ch)
+            self.up = nn.ConvTranspose2d(in_ch // 3, in_ch // 3, 2, stride=2)
+
+        self.conv = double_conv(in_ch, out_ch)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
@@ -93,7 +76,7 @@ class up(nn.Module):
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
 
-        x = torch.cat([x2, x1], dim=1)
+        x = torch.cat([x2, x1, torch.pow(x2, 2)], dim=1)
         x = self.conv(x)
         return x
 

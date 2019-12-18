@@ -11,10 +11,10 @@ class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.Conv2d(in_ch, out_ch, 3, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.Conv2d(out_ch, out_ch, 3, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -23,6 +23,23 @@ class double_conv(nn.Module):
         x = self.conv(x)
         return x
 
+class double_conv_traspose(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+
+    def __init__(self, in_ch, out_ch):
+        super(double_conv_traspose, self).__init__()
+        self.conv = nn.Sequential(
+            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
 
 class inconv(nn.Module):
     def __init__(self, in_ch, out_ch):
@@ -38,7 +55,7 @@ class down(nn.Module):
     def __init__(self, in_ch, out_ch, dilation):
         super(down, self).__init__()
         self.mpconv = nn.Sequential(
-            nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=2, dilation=dilation),
+            nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
             # nn.MaxPool2d(2),
             double_conv(in_ch, out_ch)
         )
@@ -54,8 +71,8 @@ class up(nn.Module):
 
         #  would be a nice idea if the upsampling could be learned too,
         #  but my machine do not have enough memory to handle all those weights
-        self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 3, stride=1, padding=2, dilation=dilation)
-        self.conv = double_conv(in_ch, out_ch)
+        self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 3, stride=1, padding=0, dilation=dilation)
+        self.conv = double_conv_traspose(in_ch, out_ch)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)

@@ -1,8 +1,8 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "/cs/labs/raananf/yael_vinker/11_03/lab/data/hdr_log_data"
-train_dataroot_ldr = "/cs/labs/raananf/yael_vinker/11_03/lab/data/ldr_npy"
+train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data"
+train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy"
 
 test_dataroot_hdr = "data/hdr_log_data"
 test_dataroot_ldr = "data/ldr_npy"
@@ -14,7 +14,7 @@ window_image_key = "binary_windows"
 gray_input_image_key = "input_im"
 color_image_key = "color_im"
 
-models_save_path = os.path.join("models", "net.pth")
+models_save_path = os.path.join("models")
 loss_path = os.path.join("loss_plot")
 best_acc_images_path = os.path.join("best_acc_images")
 results_path = os.path.join("result_images")

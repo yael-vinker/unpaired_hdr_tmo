@@ -20,7 +20,9 @@ import tranforms
 
 
 def save_model(path, epoch, output_dir, netG, optimizerG, netD, optimizerD):
-    path = os.path.join(output_dir, path)
+    path = os.path.join(output_dir, path, "net_epoch_" + str(epoch) + ".pth")
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
     torch.save({
         'epoch': epoch,
         'modelD_state_dict': netD.state_dict(),

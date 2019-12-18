@@ -6,7 +6,6 @@ import numpy as np
 import torch
 
 import TMQI
-import gan_trainer_utils as g_t_utils
 import utils.plot_util as plot_util
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util

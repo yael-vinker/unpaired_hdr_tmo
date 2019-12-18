@@ -255,9 +255,37 @@ def exp_transform_test():
     show_two_images(gan_trainer_utils.to_0_1_range_tensor(im), im_after_exp)
 
 
+def tmqi_test(input_path, im_hdr_path):
+    import TMQI
+    import utils.hdr_image_util as hdr_image_util
+    im_hdr = imageio.imread(im_hdr_path, format="HDR-FI")
+    tmqi_res = []
+    names = []
+    for img_name in os.listdir(input_path):
+        if os.path.splitext(img_name)[1] == ".png":
+            im_path = os.path.join(input_path, img_name)
+            print(img_name)
+            rgb_img = imageio.imread(im_path)
+            print(rgb_img.dtype)
+            tmqi_cur = TMQI.TMQI(im_hdr, rgb_img)[0]
+            tmqi_res.append(tmqi_cur)
+            names.append(os.path.splitext(img_name)[0])
+    plt.figure()
+    plt.plot(np.arange(9), tmqi_res, "-r.")
+    plt.xticks(np.arange(9), names, rotation=45)
+    # plt.margins(0.2)
+    # Tweak spacing to prevent clipping of tick-labels
+    # plt.subplots_adjust(bottom=0.15)
+    plt.savefig("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/res")
+
+
+
 
 if __name__ == '__main__':
-    exp_transform_test()
+    tmqi_test("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", "/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/original.hdr")
+    # im = imageio.imread("1 .dng", format="RAW-FI")
+    # print(im.shape)
+    # print(im.dtype)
 
 
     # transform_custom = transforms.Compose([

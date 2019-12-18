@@ -263,7 +263,17 @@ def load_original_test_hdr_images(root, log_factor):
 
 
 if __name__ == '__main__':
-    create_tone_mapped_datasets_for_fid(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data"), os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"))
+    im_hdr_original = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/belgium.hdr", format="HDR-FI").astype('float32')
+    im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
+                                                                 int(im_hdr_original.shape[1] / 3)),
+                                               mode='reflect', preserve_range=False).astype("float32")
+    # imageio.imsave("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", im_hdr_original, format="HDR-FI")
+    # im_hdr_original = imageio.imread("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", format="HDR-FI")
+    # print(im_hdr_original.shape)
+    # print(im_hdr_original.dtype)
+
+    calculate_TMQI_results_for_selected_methods(im_hdr_original, "belgium", new_output_path="/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", save_images=True)
+    # create_tone_mapped_datasets_for_fid(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data"), os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"))
     # calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
     # path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
     # im = imageio.imread(path)

@@ -9,8 +9,9 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         self.padding = 0
         self.depth = depth
-        self.inc = inconv(n_channels, 64)
-        ch = 64
+        down_ch = 32
+        self.inc = inconv(n_channels, down_ch)
+        ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
@@ -30,7 +31,7 @@ class UNet(nn.Module):
                     up(ch * 2, ch // 2, bilinear)
                 )
             ch = ch // 2
-        self.outc = outconv(64, n_classes)
+        self.outc = outconv(down_ch, n_classes)
         if input_images_mean == 0:
             self.last_sig = nn.Tanh()
         elif input_images_mean == 0.5:

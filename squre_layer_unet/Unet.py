@@ -18,7 +18,7 @@ class UNet(nn.Module):
         # self.up3 = up(256 * 2, 64, bilinear)
         # self.up4 = up(128 * 2, 64, bilinear)
         # self.outc = outconv(64, n_classes)
-        down_ch = 32
+        down_ch = 64
         self.inc = inconv(n_channels, down_ch)
         ch = down_ch
         self.down1 = down(ch, ch * 2)
@@ -28,15 +28,16 @@ class UNet(nn.Module):
         self.down3 = down(ch, ch * 2)
         ch = ch * 2
         self.down4 = down(ch, ch)
-        ch = ch * 2
+        # ch = ch * 3
         print(ch)
-        self.up1 = up(ch * 2, int(ch / 4), bilinear)
+        self.up1 = up(ch * 3, int(ch / 3), bilinear)
+        ch = int(ch / 3)
+        print(ch)
+        self.up2 = up(ch * 3, int(ch / 3), bilinear)
         ch = int(ch / 2)
-        self.up2 = up(ch * 2, int(ch / 4), bilinear)
+        self.up3 = up(ch * 3, int(down_ch), bilinear)
         ch = int(ch / 2)
-        self.up3 = up(ch * 2, int(down_ch), bilinear)
-        ch = int(ch / 2)
-        self.up4 = up(ch * 2, down_ch, bilinear)
+        self.up4 = up(ch * 3, down_ch, bilinear)
         self.outc = outconv(down_ch, n_classes)
         if input_images_mean == 0:
             self.last_sig = nn.Tanh()

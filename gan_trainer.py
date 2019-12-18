@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
 from torch import autograd
+from torchsummary import summary
 
 import Tester
 import VAE
@@ -29,6 +30,8 @@ import tranforms as custom_transform
 import torus.Unet as TorusUnet
 # from torch.utils.tensorboard import SummaryWriter
 # import datetime
+import three_layers_unet.Unet as three_Unet
+import squre_layer_unet.Unet as squre_unet
 
 
 # TODO ask about init BatchNorm weights
@@ -47,8 +50,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
-    parser.add_argument("--unet_depth", type=int, default=1)
+    parser.add_argument("--model", type=str, default="squre_layer_unet")  # up sampling is the default
+    parser.add_argument("--unet_depth", type=int, default=3)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -88,8 +91,9 @@ def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet
         new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
             device_)
     elif net == "G_unet3_layer":
-        import three_layers_unet.Unet as three_Unet
         new_net = three_Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
+    elif net == "G_squre_layer_unet":
+        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False).to(device_)
 
     # Create the Discriminator
     elif net == "D":
@@ -258,6 +262,7 @@ class GanTrainer:
 
     def train_G(self, label, hdr_input, hdr_input_display):
         """
+
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
         :param fake: (Tensor) result of G on hdr_data
@@ -302,7 +307,8 @@ class GanTrainer:
                 # self.writer.add_scalar("g_d", self.errG_d.item(), self.num_iter)
                 plot_util.plot_grad_flow(self.netG.named_parameters(), output_dir, 1)
         self.update_accuracy()
-        self.update_best_G_acc()
+        if self.epoch > 20:
+            self.update_best_G_acc()
 
     def verify_checkpoint(self):
         if isCheckpoint:
@@ -336,13 +342,14 @@ class GanTrainer:
             plt.close()
 
             print("Single [[epoch]] iteration took [%.4f] seconds\n" % (time.time() - start))
-            model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
-                                       self.netD, self.optimizerD)
+
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
                                                self.ssim_loss_g_factor, self.errG_ssim)
             printer.print_best_acc_error(self.best_accG, self.epoch)
             if epoch % self.epoch_to_save == 0:
+                model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
+                                           self.netD, self.optimizerD)
                 self.tester.save_test_images(epoch, output_dir, self.input_images_mean, self.netD, self.netG,
                                              self.criterion, self.ssim_loss, self.num_epochs)
                 self.save_loss_plot(epoch, output_dir)
@@ -393,14 +400,14 @@ if __name__ == '__main__':
     net_G = create_net("G_" + model, device, isCheckpoint, input_dim, input_images_mean, depth)
 
     print("=================  NET G  ==================")
-    print(net_G)
-    # summary(net_G, (input_dim, params.input_size, params.input_size), device="cuda")
+    # print(net_G)
+    summary(net_G, (input_dim, 256, 256), device="cpu")
     print()
 
     net_D = create_net("D", device, isCheckpoint, input_dim, input_images_mean)
     print("=================  NET D  ==================")
     print(net_D)
-    # summary(net_D, (input_dim, params.input_size, params.input_size), device="cuda")
+    summary(net_D, (input_dim, 256, 256), device="cpu")
     print()
 
     # Setup Adam optimizers for both G and D
@@ -412,10 +419,10 @@ if __name__ == '__main__':
     output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, params.models_save_path,
                                       params.loss_path, params.results_path, depth)
 
-    gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
-                             test_dataroot_original_hdr, epoch_to_save)
+    # gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
+    #                          test_data_root_npy, test_data_root_ldr, isCheckpoint,
+    #                          net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
+    #                          ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
+    #                          test_dataroot_original_hdr, epoch_to_save)
 
-    gan_trainer.train(output_dir)
+    # gan_trainer.train(output_dir)

@@ -10,6 +10,7 @@ import cv2
 import imageio
 import torch
 import skimage
+import tranforms
 
 def print_image_details(im, title):
     print(title)
@@ -168,3 +169,16 @@ def display_tensor(tensor):
     im_display = to_0_1_range(im_display)
     plt.imshow(im_display)
     plt.show()
+
+def log_1000(im, range_factor=1000):
+    max_origin = np.max(im)
+    image_new_range = (im / max_origin) * range_factor
+    im_log = np.log(image_new_range + 1)
+    im = (im_log / np.log(range_factor + 1)).astype('float32')
+    return im
+
+def apply_preproccess_for_hdr_im(hdr_im):
+    im_hdr_log = log_1000(hdr_im)
+    im_log_gray = to_gray(im_hdr_log)
+    im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+    return im_log_normalize_tensor
