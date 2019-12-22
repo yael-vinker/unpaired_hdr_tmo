@@ -11,10 +11,10 @@ class double_conv(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -29,10 +29,10 @@ class double_conv_traspose(nn.Module):
     def __init__(self, in_ch, out_ch):
         super(double_conv_traspose, self).__init__()
         self.conv = nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=1),
+            nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True)
         )
@@ -77,7 +77,7 @@ class up(nn.Module):
             self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
         # self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         # self.conv = double_conv(in_ch, out_ch)
-        self.conv = double_conv(in_ch, out_ch)
+        self.conv = double_conv_traspose(in_ch, out_ch)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)

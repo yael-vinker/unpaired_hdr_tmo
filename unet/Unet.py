@@ -9,7 +9,7 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         self.padding = 0
         self.depth = depth
-        down_ch = 64
+        down_ch = 32
         self.inc = inconv(n_channels, down_ch)
         ch = down_ch
         self.down_path = nn.ModuleList()

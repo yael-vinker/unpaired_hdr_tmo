@@ -50,9 +50,7 @@ class Tester:
             im_path = os.path.join(root, img_name)
             im_hdr_original = hdr_image_util.read_hdr_image(im_path)
             im_hdr_original = hdr_image_util.reshape_image(im_hdr_original)
-            im_hdr_log = self.log_to_image(im_hdr_original, self.log_factor)
-            im_log_gray = hdr_image_util.to_gray(im_hdr_log)
-            im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+            im_log_normalize_tensor = image_quality_assessment_util.apply_preproccess_for_hdr_im(im_hdr_original)
             text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,

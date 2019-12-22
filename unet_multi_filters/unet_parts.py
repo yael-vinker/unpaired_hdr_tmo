@@ -56,14 +56,18 @@ class inconv(nn.Module):
 class down(nn.Module):
     def __init__(self, in_ch, out_ch, network, dilation=0):
         super(down, self).__init__()
-        if network == "unet":
-            self.down_sample = nn.MaxPool2d(2)
-        else:  # for torus
-            self.down_sample = nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
-        self.mpconv = nn.Sequential(
-            self.down_sample,
-            double_conv(in_ch, out_ch)
-        )
+        if network == params.unet_network:
+            self.mpconv = nn.Sequential(
+                nn.MaxPool2d(2),
+                double_conv(in_ch, out_ch)
+            )
+        elif network == params.torus_network:  # for torus
+            self.mpconv = nn.Sequential(
+                nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
+                double_conv(in_ch, out_ch)
+            )
+        else:
+            assert 0, "Unsupported network request: {}".format(self.network)
 
     def forward(self, x):
         x = self.mpconv(x)
@@ -71,19 +75,21 @@ class down(nn.Module):
 
 
 class up(nn.Module):
-    def __init__(self, in_ch, out_ch, layer_factor, bilinear, network, dilation):
+    def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation):
         super(up, self).__init__()
 
         #  would be a nice idea if the upsampling could be learned too,
         #  but my machine do not have enough memory to handle all those weights
-        if network == "unet":
+        if network == params.unet_network:
             if bilinear:
                 self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
             else:
                 self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
 
-        else:  # for torus
+        elif network == params.torus_network:  # for torus
             self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0, dilation=dilation)
+        else:
+            assert 0, "Unsupported network request: {}".format(network)
 
         self.conv = double_conv_traspose(in_ch, out_ch)
 
@@ -100,18 +106,20 @@ class up(nn.Module):
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
-        if con_operator == "original_unet" or con_operator == "torus":
+        if con_operator == params.original_unet:
             x = torch.cat([x2, x1], dim=1)
-        elif con_operator == "square":
+        elif con_operator == params.square:
             square_x = torch.pow(x2, 2)
             x = torch.cat([x2, x1, square_x], dim=1)
-        elif con_operator == "square_root":
+        elif con_operator == params.square_root:
             square_root_x = torch.pow(x2 + params.epsilon, 0.5)
             x = torch.cat([x2, x1, square_root_x], dim=1)
-        else:  # square & square root
+        elif con_operator == params.square_and_square_root:
             square_x = torch.pow(x2, 2)
             square_root_x = torch.pow(x2 + params.epsilon, 0.5)
             x = torch.cat([x2, x1, square_x, square_root_x], dim=1)
+        else:
+            assert 0, "Unsupported con_operator request: {}".format(con_operator)
         x = self.conv(x)
         return x
 

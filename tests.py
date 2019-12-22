@@ -279,10 +279,34 @@ def tmqi_test(input_path, im_hdr_path):
     plt.savefig("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/res")
 
 
+def model_test():
+    import unet_multi_filters.Unet as squre_unet
+    import torus.Unet as TorusUnet
+    import unet.Unet as Unet
+    from torchsummary import summary
+
+    # new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
+    #     device_)
+    unet_bilinear = Unet.UNet(1, 1, 0, bilinear=True, depth=4)
+    unet_conv = Unet.UNet(1, 1, 0, bilinear=False, depth=4)
+    torus = TorusUnet.UNet(1, 1, 0, bilinear=False, depth=3)
+
+    layer_factor = gan_trainer.get_layer_factor(params.original_unet)
+    new_unet_conv = squre_unet.UNet(1, 1, 0, depth=4, layer_factor=layer_factor,
+                              con_operator=params.original_unet, filters=32, bilinear=False, network=params.unet_network, dilation=0)
+
+    new_torus = squre_unet.UNet(1, 1, 0, depth=3, layer_factor=layer_factor,
+                              con_operator=params.original_unet, filters=32, bilinear=False, network=params.torus_network, dilation=2)
+    print(unet_conv)
+    summary(unet_conv, (1, 256, 256), device="cpu")
+
+    print(new_unet_conv)
+    summary(new_unet_conv, (1, 256, 256), device="cpu")
 
 
 if __name__ == '__main__':
-    tmqi_test("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", "/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/original.hdr")
+    model_test()
+    # tmqi_test("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", "/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/original.hdr")
     # im = imageio.imread("1 .dng", format="RAW-FI")
     # print(im.shape)
     # print(im.dtype)

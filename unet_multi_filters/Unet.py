@@ -8,6 +8,7 @@ class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear, network, dilation):
         super(UNet, self).__init__()
         self.con_operator = con_operator
+        self.network = network
         down_ch = filters
         self.depth = depth
         self.inc = inconv(n_channels, down_ch)
@@ -18,7 +19,9 @@ class UNet(nn.Module):
                 down(ch, ch * 2, network, dilation=dilation)
             )
             ch = ch * 2
-        self.down_path.append(down(ch, ch, network))
+            if network == params.torus_network:
+                dilation = dilation * 2
+        self.down_path.append(down(ch, ch, network, dilation=dilation))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
@@ -31,6 +34,8 @@ class UNet(nn.Module):
                     up(ch * layer_factor, ch // 2, bilinear, layer_factor, network, dilation=dilation)
                 )
             ch = ch // 2
+            if network == params.torus_network:
+                dilation = dilation // 2
         self.outc = outconv(down_ch, n_classes)
         if input_images_mean == 0:
             self.last_sig = nn.Tanh()
@@ -38,6 +43,8 @@ class UNet(nn.Module):
             self.last_sig = nn.Sigmoid()
         else:
             raise Exception('ERROR: Invalid images range')
+
+
     def forward(self, x):
         next_x = self.inc(x)
         x_results = [next_x]
@@ -47,7 +54,7 @@ class UNet(nn.Module):
 
         up_x = x_results[(self.depth)]
         for i, up_layer in enumerate(self.up_path):
-            up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator)
+            up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
         x = self.outc(up_x)
         x = self.last_sig(x)
         return x

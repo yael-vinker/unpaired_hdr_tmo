@@ -92,7 +92,7 @@ def back_to_color(im_hdr, fake):
     norm_im[:, :, 1] = im_hdr[:, :, 1] / im_gray_
     norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
     output_im = np.power(norm_im, 0.5) * fake
-    return output_im
+    return to_0_1_range(output_im)
 
 def reshape_image(rgb_im):
     h, w = rgb_im.shape[0], rgb_im.shape[1]

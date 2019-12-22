@@ -72,11 +72,13 @@ def ours(original_im, net_path="/cs/labs/raananf/yael_vinker/11_06/results/ssim2
     # ours_tone_map = np.squeeze(ours_tone_map, axis=0)
     return ours_tone_map_rgb
 
+
 def apply_preproccess_for_hdr_im(hdr_im):
     im_hdr_log = log_1000(hdr_im)
     im_log_gray = hdr_image_util.to_gray(im_hdr_log)
     im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
     return im_log_normalize_tensor
+
 
 def net_G_pipeline(im_log_normalize_tensor, hdr_im):
     transform_exp = tranforms.Exp(1000)
@@ -260,6 +262,20 @@ def load_original_test_hdr_images(root, log_factor):
         im_hdr_log = log_to_image(im_hdr_original, log_factor)
         im_log_gray = hdr_image_util.to_gray(im_hdr_log)
         im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+
+
+def create_hdr_dataset_from_dng(dng_path, output_hdr_path):
+    if not os.path.exists(output_hdr_path):
+        os.mkdir(output_hdr_path)
+    for img_name in os.listdir(dng_path):
+        print(img_name)
+        im_path = os.path.join(dng_path, img_name)
+        original_im = hdr_image_util.read_hdr_image(im_path)
+        original_im = hdr_image_util.reshape_image(original_im)
+        im_bgr = cv2.cvtColor(original_im, cv2.COLOR_RGB2BGR)
+        hdr_name = os.path.splitext(img_name)[0] + ".hdr"
+        cv2.imwrite(os.path.join(output_hdr_path, hdr_name), im_bgr)
+
 
 
 if __name__ == '__main__':

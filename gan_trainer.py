@@ -25,28 +25,17 @@ import utils.model_save_util as model_save_util
 import ssim
 import printer
 import tranforms as custom_transform
-import torus.Unet as TorusUnet
-import unet_multi_filters.Unet as squre_unet
-
-
-# TODO ask about init BatchNorm weights
-def weights_init(m):
-    """custom weights initialization called on netG and netD"""
-    classname = m.__class__.__name__
-    if (classname.find('Conv') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-
+# import torus.Unet as TorusUnet
+import unet_multi_filters.Unet as Generator
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default="skip_connection_conv")  # up sampling is the default
-    parser.add_argument("--unet_depth", type=int, default=4)
+    parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
+    parser.add_argument("--con_operator", type=str, default=params.original_unet)
+    parser.add_argument("--filters", type=int, default=params.filters)
+    parser.add_argument("--unet_depth", type=int, default=2)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -62,55 +51,15 @@ def parse_arguments():
     parser.add_argument("--ssim_loss_g_factor", type=float, default=1)
     # if 0, images are in [-1, 1] range, if 0.5 then [0,1]
     parser.add_argument("--input_images_mean", type=float, default=0)
-    parser.add_argument("--log_factor", type=int, default=100)
+    parser.add_argument("--log_factor", type=int, default=1000)
     parser.add_argument("--use_transform_exp", type=int, default=1)  # int(False) = 0
     parser.add_argument("--epoch_to_save", type=int, default=2)
     args = parser.parse_args()
-    return args.batch, args.epochs, args.model, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
+    return args.batch, args.epochs, args.model, args.con_operator, args.filters, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
            os.path.join(args.test_data_root_ldr), args.result_dir_prefix, args.input_dim, \
            args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp, \
            args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save, args.unet_depth
-
-
-def create_net(net, device_, is_checkpoint, input_dim_, input_images_mean_, unet_depth_=0):
-    # Create the Generator (UNet architecture)
-    if net == "G_skip_connection":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
-                                  con_operator="original_unet", filters=64, bilinear=True, network="unet").to(device_)
-    elif net == "G_skip_connection_conv":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=2,
-                                  con_operator="original_unet", filters=64, bilinear=False, network="unet").to(device_)
-        # new_net = Unet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(device_)
-    elif net == "G_torus":
-        new_net = TorusUnet.UNet(input_dim_, input_dim_, input_images_mean_, bilinear=False, depth=unet_depth_).to(
-            device_)
-    elif net == "G_square_root_and_square_3layer_unet":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=4,
-                                  con_operator="square_and_square_root", filters=16, bilinear=False, network="unet").to(device_)
-    elif net == "G_square_2layer_unet":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
-                                  con_operator="square", filters=16, bilinear=False, network="unet").to(device_)
-    elif net == "G_square_root_2layer_unet":
-        new_net = squre_unet.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=3,
-                                  con_operator="square_root", filters=16, bilinear=False, network="unet").to(device_)
-
-    # Create the Discriminator
-    elif net == "D":
-        new_net = Discriminator.Discriminator(params.input_size, input_dim_, params.dim).to(device_)
-    else:
-        assert 0, "Unsupported network request: {}  (creates only G or D)".format(net)
-
-    # Handle multi-gpu if desired
-    if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
-        print("Using [%d] GPUs" % torch.cuda.device_count())
-        new_net = nn.DataParallel(new_net, list(range(torch.cuda.device_count())))
-
-    # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
-    if not is_checkpoint:
-        new_net.apply(weights_init)
-        print("Weights for " + net + " were initialized successfully")
-    return new_net
 
 
 class GanTrainer:
@@ -354,7 +303,7 @@ class GanTrainer:
                 self.tester.save_test_images(epoch, output_dir, self.input_images_mean, self.netD, self.netG,
                                              self.criterion, self.ssim_loss, self.num_epochs)
                 self.save_loss_plot(epoch, output_dir)
-                self.tester.update_TMQI(self.netG, output_dir, epoch)
+                # self.tester.update_TMQI(self.netG, output_dir, epoch)
         # self.writer.close()
 
     def load_model(self):
@@ -370,13 +319,13 @@ class GanTrainer:
 
 
 if __name__ == '__main__':
-    batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
+    batch_size, num_epochs, model, con_operator, filters, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
     epoch_to_save, depth = parse_arguments()
     torch.manual_seed(params.manualSeed)
-    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # device = torch.device("cpu")
     isCheckpoint = True
     if isCheckpoint_str == 'no':
         isCheckpoint = False
@@ -384,7 +333,7 @@ if __name__ == '__main__':
     print("=====================")
     print("BATCH SIZE:", batch_size)
     print("EPOCHS:", num_epochs)
-    print("MODEL:", model)
+    print("MODEL:", model, con_operator)
     print("UNET DEPTH: ", depth)
     print("G LR: ", G_lr)
     print("D LR: ", D_lr)
@@ -398,14 +347,14 @@ if __name__ == '__main__':
     print("=====================\n")
 
     # net_G = create_net("G_" + "unet3_layer", device, isCheckpoint, input_dim, input_images_mean)
-    net_G = create_net("G_" + model, device, isCheckpoint, input_dim, input_images_mean, depth)
+    net_G = model_save_util.create_net("G", model, device, isCheckpoint, input_dim, input_images_mean, filters, con_operator, depth)
 
     print("=================  NET G  ==================")
-    # print(net_G)
+    print(net_G)
     summary(net_G, (input_dim, 256, 256), device="cpu")
     print()
 
-    net_D = create_net("D", device, isCheckpoint, input_dim, input_images_mean)
+    net_D = model_save_util.create_net("D", "D", device, isCheckpoint, input_dim, input_images_mean)
     print("=================  NET D  ==================")
     print(net_D)
     summary(net_D, (input_dim, 256, 256), device="cpu")
@@ -417,13 +366,13 @@ if __name__ == '__main__':
 
     # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
     writer = 1
-    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, params.models_save_path,
+    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
                                       params.loss_path, params.results_path, depth)
 
-    # gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-    #                          test_data_root_npy, test_data_root_ldr, isCheckpoint,
-    #                          net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-    #                          ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
-    #                          test_dataroot_original_hdr, epoch_to_save)
+    gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
+                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
+                             net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
+                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
+                             test_dataroot_original_hdr, epoch_to_save)
 
-    # gan_trainer.train(output_dir)
+    gan_trainer.train(output_dir)
