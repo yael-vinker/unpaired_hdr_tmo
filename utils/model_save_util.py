@@ -95,6 +95,24 @@ def save_model(path, epoch, output_dir, netG, optimizerG, netD, optimizerD):
             'optimizerG_state_dict': optimizerG.state_dict(),
         }, path_250)
 
+def save_discriminator_model(path, epoch, output_dir, netD, optimizerD):
+    path = os.path.join(output_dir, path, "net_epoch_" + str(epoch) + ".pth")
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+    torch.save({
+        'epoch': epoch,
+        'modelD_state_dict': netD.state_dict(),
+        'optimizerD_state_dict': optimizerD.state_dict(),
+    }, path)
+
+    if epoch == 50:
+        models_250_save_path = os.path.join("models_250", "models_250_net.pth")
+        path_250 = os.path.join(output_dir, models_250_save_path)
+        torch.save({
+            'epoch': epoch,
+            'modelD_state_dict': netD.state_dict(),
+            'optimizerD_state_dict': optimizerD.state_dict(),
+        }, path_250)
 
 def save_best_model(netG, output_dir, optimizerG):
     best_model_save_path = os.path.join("best_model", "best_model.pth")

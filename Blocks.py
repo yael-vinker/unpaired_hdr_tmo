@@ -25,8 +25,8 @@ class Conv2dBlock(nn.Module):
     def forward(self, x):
         y = x.float()
         out = self.conv(y)
-        # if self.norm:
-        #     x = self.norm(x)
+        if self.norm:
+            out = self.norm(out)
         out1 = self.activation(out)
         return out1
 

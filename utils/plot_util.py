@@ -35,6 +35,16 @@ def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, 
     plt.savefig(os.path.join(path, title + ".png"))  # should before show method
     plt.close()
 
+def plot_discriminator_losses(loss_D_fake, loss_D_real, title, iters_n, path):
+    plt.figure()
+    plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+    plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+    plt.xlabel("n iteration")
+    plt.legend(loc='upper left')
+    plt.title(title)
+    # save image
+    plt.savefig(os.path.join(path, title + "all.png"))  # should before show method
+    plt.close()
 
 def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
     plt.figure()
@@ -149,13 +159,13 @@ def plot_grad_flow(named_parameters, out_dir, epoch):
     layers = []
     for n, p in named_parameters:
         if(p.requires_grad) and ("bias" not in n):
-            # print('name: ', n)
-            # print(type(p))
-            # print('param.shape: ', p.shape)
-            # print('param.requires_grad: ', p.requires_grad)
-            # print('p.grad.abs().mean()', p.grad.abs().mean())
-            # print('p.grad.abs()max', p.grad.abs().max())
-            # print('=====')
+            print('name: ', n)
+            print(type(p))
+            print('param.shape: ', p.shape)
+            print('param.requires_grad: ', p.requires_grad)
+            print('p.grad.abs().mean()', p.grad.abs().mean())
+            print('p.grad.abs().max', p.grad.abs().max())
+            print('=====')
             layers.append(n)
             ave_grads.append(p.grad.abs().mean())
     plt.plot(ave_grads, alpha=0.3, color="b")
