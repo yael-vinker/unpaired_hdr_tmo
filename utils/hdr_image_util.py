@@ -88,9 +88,9 @@ def back_to_color(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
     fake = to_0_1_range(fake)
     norm_im = np.zeros(im_hdr.shape)
-    norm_im[:, :, 0] = im_hdr[:, :, 0] / im_gray_
-    norm_im[:, :, 1] = im_hdr[:, :, 1] / im_gray_
-    norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
+    norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
+    norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
+    norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
     output_im = np.power(norm_im, 0.5) * fake
     return to_0_1_range(output_im)
 

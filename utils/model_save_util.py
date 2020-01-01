@@ -108,7 +108,8 @@ def save_best_model(netG, output_dir, optimizerG):
 def load_g_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     G_net = create_net("G", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
-    checkpoint = torch.load(net_path)
+    checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+    # checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
     # if device.type == 'cpu':
     from collections import OrderedDict
@@ -174,17 +175,47 @@ def save_fake_images_for_fid():
 
 def save_fake_images_for_fid_hdr_input():
     # input_images_path = "/cs/labs/raananf/yael_vinker/dng_collection"
-    input_images_path = "/cs/labs/raananf/yael_vinker/fid/inception/hdr_from_dng_res"
+    input_images_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/openExr"
     #output_path = "/cs/labs/raananf/yael_vinker/fid/inception/fake_data_our"
-    output_path = "/cs/labs/raananf/yael_vinker/fid/inception/net_res_with_exp"
-    net_path = "/cs/labs/raananf/yael_vinker/12_01/results/with_exp_log_1000_skip_connection_conv_depth_4/models_250/models_250_net.pth"
+    output_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_results"
+    net_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_epoch_35.pth"
 
     model = params.unet_network
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    filters = params.filters
-    con_operator = params.original_unet
-    model_depth = 4
+    filters = 32
+    con_operator = params.square
+    model_depth = 3
     run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path, output_path)
+
+def get_bump(im):
+    import numpy as np
+    tmp = im
+    tmp[(tmp > 200) != 0] = 255
+    tmp = tmp.astype('uint8')
+
+    hist, bins = np.histogram(tmp, bins=255)
+
+    a0 = np.mean(hist[0:64])
+    a1 = np.mean(hist[65:200])
+    return a1 / a0
+
+def find_f(im):
+    import numpy as np
+    im = im / np.max(im) * 255
+    big = 1.1
+    f = 1.0
+
+    for i in range(1000):
+        print(i)
+        print(f)
+        r = get_bump(im * f)
+        print(r)
+        if r < big:
+            f = f * 1.01
+        else:
+            if r > 1 / big:
+                break
+    return f
 
 
 def run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path, output_images_path):
@@ -193,9 +224,12 @@ def run_model_on_path(model, device, filters, con_operator, model_depth, net_pat
     for img_name in os.listdir(input_images_path):
         print(img_name)
         im_path = os.path.join(input_images_path, img_name)
-        original_im = hdr_image_util.reshape_image(hdr_image_util.read_hdr_image(im_path))
-        print(original_im.shape)
-        run_model_on_single_image(net_G, original_im, device, os.path.splitext(img_name)[0], output_images_path)
+        if os.path.splitext(img_name)[1] == ".hdr":
+            original_im = hdr_image_util.reshape_image(hdr_image_util.read_hdr_image(im_path))
+            # f = 10760.730115410688
+            # print(f)
+            # original_im = original_im * 255 * f
+            run_model_on_single_image(net_G, original_im, device, os.path.splitext(img_name)[0], output_images_path)
 
 
 def compare_best_models():

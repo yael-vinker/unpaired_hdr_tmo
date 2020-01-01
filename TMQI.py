@@ -154,8 +154,38 @@ def TMQI(L_hdr, L_ldr):
 if __name__ == '__main__':
 
     import hdr_image_utils
-    hdr_path = "hdr_data/hdr_data/belgium.hdr"
-    # im_hdr_original = imageio.imread(hdr_path, format="HDR-FI").astype('float32')
+    import imageio
+    import os
+    import matplotlib.pyplot as plt
+    names = ["durand", "dargo", "reinhard"]
+
+    durand_path = "/Users/yaelvinker/Documents/MATLAB/new_image_quality/type1_durand_with_gamma"
+    dargo_path = "/Users/yaelvinker/Documents/MATLAB/new_image_quality/type1_dargo"
+    reinhard_path = "/Users/yaelvinker/Documents/MATLAB/new_image_quality/type1_reinhard_with_gamma"
+
+    tmqi_res = [0, 0, 0]
+    input_path = "/Users/yaelvinker/Documents/MATLAB/new_image_quality/type1hdr"
+    for img_name in os.listdir(input_path):
+        im_path = os.path.join(input_path, img_name)
+        im_name_no_ext = os.path.splitext(img_name)[0]
+        hdr_im = imageio.imread(os.path.join(input_path, img_name), format="HDR-FI")
+        for i, name in zip(range(len(names)), names):
+            if name == "durand":
+                tmo_im = imageio.imread(os.path.join(durand_path, im_name_no_ext + ".jpg"))
+            if name == "dargo":
+                tmo_im = imageio.imread(os.path.join(dargo_path, im_name_no_ext + ".jpg"))
+            if name == "reinhard":
+                tmo_im = imageio.imread(os.path.join(reinhard_path, im_name_no_ext + ".jpg"))
+            q, s, n = TMQI(hdr_im, tmo_im)
+            tmqi_res[i] += q
+
+    x = range(1, len(names), len(names))
+    for i in range(len(tmqi_res)):
+        tmqi_res[i] = tmqi_res[i] / len(os.listdir(input_path))
+    plt.plot(np.arange(len(names)), tmqi_res, "-r.")
+    plt.xticks(np.arange(len(names)), names, rotation=45)
+    plt.title("type1_with_gamma")
+    plt.show()
     # im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 2),
     #                                                              int(im_hdr_original.shape[1] / 2)), mode='reflect',
     #                                            preserve_range=False).astype("float32")
