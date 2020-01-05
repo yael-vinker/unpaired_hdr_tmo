@@ -306,7 +306,62 @@ def model_test():
 
 
 if __name__ == '__main__':
-    model_test()
+    import numpy as np
+    import cv2
+    n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
+    # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
+    print(n_img.shape)
+    print(np.max(n_img))
+    print(np.min(n_img))
+    # Apply log transform.
+    # c = 255 / (np.log(1 + np.max(n_img)))
+    # n_img = c * np.log(1 + n_img)
+
+    # histr = cv2.calcHist([n_img], [0], None)
+    # n_img = n_img.astype('uint8')
+    print(np.unique(n_img).shape[0])
+    bins = np.unique(n_img).shape[0]
+    hist, bin_edges = np.histogram(n_img, bins=bins)
+    print(hist, bin_edges)
+    plt.subplot(2, 1, 1)
+    plt.bar(bin_edges[:-1], hist, width=1.5,color='#0504aa',alpha=0.7)
+    # plt.hist(n_img.ravel(),density=True, bins=256,color='#0504aa')  # calculating histogram
+    # plt.plot(histr)
+    plt.subplot(2,1,2)
+    plt.imshow(n_img, cmap='gray')
+    plt.show()
+
+    # im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr",  format="HDR-FI")
+    # print(im.dtype)
+    # im_ldr = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data/im_97.bmp", as_gray=True)
+    # im_ldr = im_ldr / np.max(im_ldr)
+    # ax = plt.hist(im.ravel())
+    # plt.show()
+    # im = im / np.max(im)
+    # ax = plt.hist(im.ravel())
+    # plt.show()
+    # plt.imshow(im_ldr)
+    # plt.show()
+    # print(im_ldr.dtype)
+    # print(np.max(im_ldr))
+    # histogram, bin_edges = np.histogram(im_ldr, bins=256, range=(0, 255))
+    # plt.figure()
+    # plt.title("Grayscale Histogram")
+    # plt.xlabel("grayscale value")
+    # plt.ylabel("pixels")
+    # plt.xlim([0, 255])  # <- named arguments do not work here
+    #
+    # plt.plot(bin_edges[0:-1], histogram)  # <- or here
+    # plt.show()
+    # print()
+    # np.histogram([1, 2, 1], bins=[0, 1, 2, 3])
+    # rng = np.random.RandomState(10)  # deterministic random data
+    # a = np.hstack((rng.normal(size=1000), rng.normal(loc=5, scale=2, size=1000)))
+    # _ = plt.hist(a, bins='auto')  # arguments are passed to np.histogram
+    # plt.title("Histogram with 'auto' bins")
+    # plt.text(0.5, 1.0, "Histogram with 'auto' bins")
+    # plt.show()
+    # model_test()
     # tmqi_test("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", "/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/original.hdr")
     # im = imageio.imread("1 .dng", format="RAW-FI")
     # print(im.shape)
