@@ -14,7 +14,7 @@ from torchsummary import summary
 import Tester
 # import unet.Unet as Unet
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import Discriminator
 import params
 import time
@@ -32,7 +32,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
+    parser.add_argument("--model", type=str, default=params.torus_network)  # up sampling is the default
     parser.add_argument("--con_operator", type=str, default=params.original_unet)
     parser.add_argument("--filters", type=int, default=params.filters)
     parser.add_argument("--unet_depth", type=int, default=2)
@@ -360,19 +360,19 @@ if __name__ == '__main__':
     summary(net_D, (input_dim, 256, 256), device="cpu")
     print()
 
-    # Setup Adam optimizers for both G and D
-    optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
-    optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
-
-    # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
-    writer = 1
-    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
-                                      params.loss_path, params.results_path, depth)
-
-    gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
-                             test_dataroot_original_hdr, epoch_to_save)
-
-    gan_trainer.train(output_dir)
+    # # Setup Adam optimizers for both G and D
+    # optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
+    # optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
+    #
+    # # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
+    # writer = 1
+    # output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
+    #                                   params.loss_path, params.results_path, depth)
+    #
+    # gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
+    #                          test_data_root_npy, test_data_root_ldr, isCheckpoint,
+    #                          net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
+    #                          ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
+    #                          test_dataroot_original_hdr, epoch_to_save)
+    #
+    # gan_trainer.train(output_dir)
