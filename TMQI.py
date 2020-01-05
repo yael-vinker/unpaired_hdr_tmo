@@ -60,6 +60,7 @@ def StatisticalNaturalness(L_ldr, win=11):
 
 def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     window = window / window.sum()
+    # print(window)
 
     mu1 = convolve(window, img1, 'valid')
     mu2 = convolve(window, img2, 'valid')
@@ -90,6 +91,9 @@ def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     s_map = ((2 * sigma1p * sigma2p + C1) / (sigma1p ** 2 + sigma2p ** 2 + C1)
              * ((sigma12 + C2) / (sigma1 * sigma2 + C2)))
     s = np.mean(s_map)
+    print("ssim tmqi")
+    print(s_map)
+    print(s)
     return s, s_map
 
 def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
@@ -128,7 +132,7 @@ def TMQI(L_hdr, L_ldr):
     a = 0.8012
     Alpha = 0.3046
     Beta = 0.7088
-    lvl = 5  # levels
+    lvl = 1  # levels
     weight = [0.0448, 0.2856, 0.3001, 0.2363, 0.1333]
     # M, N = L_hdr.shape
     window = None
@@ -136,6 +140,7 @@ def TMQI(L_hdr, L_ldr):
     if window is None:
         gauss = signal.gaussian(11, 1.5)
         window = np.outer(gauss, gauss)
+        # print(window)
 
     # Naturalness should be calculated before rescaling
     N = StatisticalNaturalness(L_ldr)

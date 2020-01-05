@@ -304,32 +304,56 @@ def model_test():
     print(new_torus)
     summary(new_torus, (1, 256, 256), device="cpu")
 
+def to_gray(im):
+    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+
+def to_0_1_range(im):
+    return (im - np.min(im)) / (np.max(im) - np.min(im))
+
+def ssim_test():
+    import ssim
+    import TMQI
+    im_tone_mapped = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dargo/belgium.jpg")
+    im_tone_mapped = to_gray(im_tone_mapped)
+    im_tone_mapped = to_0_1_range(im_tone_mapped)
+    im_tone_mapped_tensor = torch.from_numpy(im_tone_mapped)
+    im_tone_mapped_tensor = im_tone_mapped_tensor[None, None, :, :]
+
+    hdr_im = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dng_collection_hdr/belgium.hdr", format="HDR-FI")
+    hdr_im = to_gray(hdr_im)
+    hdr_im = to_0_1_range(hdr_im)
+    hdr_im_tensor = torch.from_numpy(hdr_im)
+    hdr_im_tensor = hdr_im_tensor[None, None, :, :]
+    ssim.ssim(hdr_im_tensor, im_tone_mapped_tensor)
+    print("tmqi")
+    print(TMQI.TMQI(hdr_im, im_tone_mapped))
 
 if __name__ == '__main__':
-    import numpy as np
-    import cv2
-    n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
-    # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
-    print(n_img.shape)
-    print(np.max(n_img))
-    print(np.min(n_img))
-    # Apply log transform.
-    # c = 255 / (np.log(1 + np.max(n_img)))
-    # n_img = c * np.log(1 + n_img)
-
-    # histr = cv2.calcHist([n_img], [0], None)
-    # n_img = n_img.astype('uint8')
-    print(np.unique(n_img).shape[0])
-    bins = np.unique(n_img).shape[0]
-    hist, bin_edges = np.histogram(n_img, bins=bins)
-    print(hist, bin_edges)
-    plt.subplot(2, 1, 1)
-    plt.bar(bin_edges[:-1], hist, width=1.5,color='#0504aa',alpha=0.7)
-    # plt.hist(n_img.ravel(),density=True, bins=256,color='#0504aa')  # calculating histogram
-    # plt.plot(histr)
-    plt.subplot(2,1,2)
-    plt.imshow(n_img, cmap='gray')
-    plt.show()
+    ssim_test()
+    # import numpy as np
+    # import cv2
+    # n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
+    # # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
+    # print(n_img.shape)
+    # print(np.max(n_img))
+    # print(np.min(n_img))
+    # # Apply log transform.
+    # # c = 255 / (np.log(1 + np.max(n_img)))
+    # # n_img = c * np.log(1 + n_img)
+    #
+    # # histr = cv2.calcHist([n_img], [0], None)
+    # # n_img = n_img.astype('uint8')
+    # print(np.unique(n_img).shape[0])
+    # bins = np.unique(n_img).shape[0]
+    # hist, bin_edges = np.histogram(n_img, bins=bins)
+    # print(hist, bin_edges)
+    # plt.subplot(2, 1, 1)
+    # plt.bar(bin_edges[:-1], hist, width=1.5,color='#0504aa',alpha=0.7)
+    # # plt.hist(n_img.ravel(),density=True, bins=256,color='#0504aa')  # calculating histogram
+    # # plt.plot(histr)
+    # plt.subplot(2,1,2)
+    # plt.imshow(n_img, cmap='gray')
+    # plt.show()
 
     # im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr",  format="HDR-FI")
     # print(im.dtype)

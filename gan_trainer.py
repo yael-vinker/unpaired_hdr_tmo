@@ -14,7 +14,7 @@ from torchsummary import summary
 import Tester
 # import unet.Unet as Unet
 
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import Discriminator
 import params
 import time
@@ -100,7 +100,7 @@ class GanTrainer:
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss = ssim.SSIM(window_size=5)
+        self.ssim_loss = ssim.TMQI_SSIM(window_size=11)
 
         self.loss_g_d_factor = loss_g_d_factor_
         self.ssim_loss_g_factor = ssim_loss_g_factor_
@@ -360,19 +360,19 @@ if __name__ == '__main__':
     summary(net_D, (input_dim, 256, 256), device="cpu")
     print()
 
-    # # Setup Adam optimizers for both G and D
-    # optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
-    # optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
-    #
-    # # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
-    # writer = 1
-    # output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
-    #                                   params.loss_path, params.results_path, depth)
-    #
-    # gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-    #                          test_data_root_npy, test_data_root_ldr, isCheckpoint,
-    #                          net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-    #                          ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
-    #                          test_dataroot_original_hdr, epoch_to_save)
-    #
-    # gan_trainer.train(output_dir)
+    # Setup Adam optimizers for both G and D
+    optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
+    optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
+
+    # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
+    writer = 1
+    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
+                                      params.loss_path, params.results_path, depth)
+
+    gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
+                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
+                             net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
+                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
+                             test_dataroot_original_hdr, epoch_to_save)
+
+    gan_trainer.train(output_dir)

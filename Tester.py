@@ -51,7 +51,8 @@ class Tester:
             im_hdr_original = hdr_image_util.read_hdr_image(im_path)
             im_hdr_original = hdr_image_util.reshape_image(im_hdr_original)
             im_log_normalize_tensor = image_quality_assessment_util.apply_preproccess_for_hdr_im(im_hdr_original)
-            text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
+            # text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
+            text = ""
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': im_hdr_original,
                                         'im_log_normalize_tensor': im_log_normalize_tensor,

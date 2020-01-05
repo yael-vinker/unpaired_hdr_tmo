@@ -159,13 +159,13 @@ def plot_grad_flow(named_parameters, out_dir, epoch):
     layers = []
     for n, p in named_parameters:
         if(p.requires_grad) and ("bias" not in n):
-            print('name: ', n)
-            print(type(p))
-            print('param.shape: ', p.shape)
-            print('param.requires_grad: ', p.requires_grad)
-            print('p.grad.abs().mean()', p.grad.abs().mean())
-            print('p.grad.abs().max', p.grad.abs().max())
-            print('=====')
+            # print('name: ', n)
+            # print(type(p))
+            # print('param.shape: ', p.shape)
+            # print('param.requires_grad: ', p.requires_grad)
+            # print('p.grad.abs().mean()', p.grad.abs().mean())
+            # print('p.grad.abs().max', p.grad.abs().max())
+            # print('=====')
             layers.append(n)
             ave_grads.append(p.grad.abs().mean())
     plt.plot(ave_grads, alpha=0.3, color="b")
