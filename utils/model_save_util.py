@@ -4,7 +4,11 @@ import skimage
 
 import imageio
 import torch
-import params
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+import params 
 import torch
 # import torus.Unet as TorusUnet
 import torch.nn as nn
@@ -126,8 +130,8 @@ def save_best_model(netG, output_dir, optimizerG):
 def load_g_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     G_net = create_net("G", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
-    checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
-    # checkpoint = torch.load(net_path)
+    #checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+    checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
     # if device.type == 'cpu':
     from collections import OrderedDict
@@ -136,7 +140,7 @@ def load_g_model(model, device, filters, con_operator, model_depth, net_path="/U
         name = k[7:]  # remove `module.`
         new_state_dict[name] = v
     # else:
-    # new_state_dict = state_dict
+    new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
@@ -191,19 +195,87 @@ def save_fake_images_for_fid():
                        model_path, 16)
 
 
-def save_fake_images_for_fid_hdr_input():
+#def save_fake_images_for_fid_hdr_input():
     # input_images_path = "/cs/labs/raananf/yael_vinker/dng_collection"
-    input_images_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/openExr"
+    #input_images_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/openExr"
     #output_path = "/cs/labs/raananf/yael_vinker/fid/inception/fake_data_our"
-    output_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_results"
-    net_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_epoch_35.pth"
+   # output_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_results"
+    #net_path = "/Users/yaelvinker/Documents/university/lab/12_25/32_filters__log_1000_unet_square_depth_3/net_epoch_35.pth"
+
+   # model = params.unet_network
+   # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+   # filters = 32
+  #  con_operator = params.square
+   # model_depth = 3
+   # run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path, output_path)
+
+def save_fake_images_for_fid_hdr_input_old():
+    input_images_path = "/cs/labs/raananf/yael_vinker/data/groups_for_tmqi_best_model_dng"
+    output_path = "/cs/labs/raananf/yael_vinker/12_25/run/results/32_filters__log_1000_unet_original_unet_depth_4/new_net_results"
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    net_path = "/cs/labs/raananf/yael_vinker/12_25/run/results/32_filters__log_1000_unet_original_unet_depth_4/models"
 
     model = params.unet_network
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     filters = 32
-    con_operator = params.square
-    model_depth = 3
-    run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path, output_path)
+    con_operator = params.original_unet
+    model_depth = 4
+
+    models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+    for m in models_epoch:
+        net_name = "net_epoch_" + str(m) + ".pth"
+        cur_net_path = os.path.join(net_path, net_name)
+        cur_output_path = os.path.join(output_path, str(m))
+        if not os.path.exists(cur_output_path):
+            os.mkdir(cur_output_path)
+        run_model_on_path(model, device, filters, con_operator, model_depth, cur_net_path, input_images_path, cur_output_path)
+
+
+def save_fake_images_for_fid_hdr_input():
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    input_images_path = "/cs/labs/raananf/yael_vinker/data/groups_for_tmqi_best_model_dng"
+    arch_dir = "/cs/labs/raananf/yael_vinker/12_25/run/results"
+
+    filters = [32,
+               32, 32, 32, 32,
+               32, 32, 64, 32, 32, 32]
+    models = [params.unet_network,
+             params.unet_network, params.unet_network, params.unet_network, params.unet_network,
+             params.unet_network, params.unet_network, params.unet_network, params.torus_network, params.torus_network, params.torus_network]
+    con_operators = [params.original_unet,
+                    params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
+                    params.square, params.square_root, params.original_unet, params.original_unet, params.original_unet, params.square]
+    depths = [3,
+              4, 3, 4, 3,
+              4, 3, 3,3, 4, 3]
+
+    models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+
+    for i in range(len(filters)):
+        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(depths[i])
+        print("cur model = ", model_name)
+        cur_model_path = os.path.join(arch_dir, model_name)
+        if os.path.exists(cur_model_path):
+            output_path = os.path.join(cur_model_path, "new_net_results")
+            if not os.path.exists(output_path):
+                os.mkdir(output_path)
+            net_path = os.path.join(cur_model_path, "models")
+            for m in models_epoch:
+                print(m)
+                net_name = "net_epoch_" + str(m) + ".pth"
+                cur_net_path = os.path.join(net_path, net_name)
+                if os.path.exists(cur_net_path):
+                    cur_output_path = os.path.join(output_path, str(m))
+                    if not os.path.exists(cur_output_path):
+                        os.mkdir(cur_output_path)
+                    run_model_on_path(models[i], device, filters[i], con_operators[i], depths[i], cur_net_path, input_images_path,
+                                      cur_output_path)
+                else:
+                    print("model path does not exists: ", cur_output_path)
+        else:
+            print("model path does not exists")
+
 
 def get_bump(im):
     import numpy as np
@@ -240,9 +312,9 @@ def run_model_on_path(model, device, filters, con_operator, model_depth, net_pat
     net_G = load_g_model(model, device, filters, con_operator, model_depth, net_path)
     print("model " + model + " was loaded successfully")
     for img_name in os.listdir(input_images_path):
-        print(img_name)
+        #print(img_name)
         im_path = os.path.join(input_images_path, img_name)
-        if os.path.splitext(img_name)[1] == ".hdr":
+        if os.path.splitext(img_name)[1] == ".dng":
             original_im = hdr_image_util.reshape_image(hdr_image_util.read_hdr_image(im_path))
             # f = 10760.730115410688
             # print(f)
