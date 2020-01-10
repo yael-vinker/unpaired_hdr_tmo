@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 from math import exp
+import params
 
 
 def gaussian(window_size, sigma):
@@ -27,17 +28,55 @@ def _ssim(img1, img2, window, window_size, channel, size_average=True):
 
     sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
     sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+
     sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
 
     C1 = 0.01 ** 2
     C2 = 0.03 ** 2
 
     ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-
     if size_average:
         return ssim_map.mean()
     else:
         return ssim_map.mean(1).mean(1).mean(1)
+
+def _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average=True):
+    factor = float(2 ** 8 - 1.)
+    window = window / window.sum()
+    # if self.original:
+    img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
+    img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min())
+    C1 = 0.01
+    C2 = 10.
+    mu1 = F.conv2d(img1, window, padding=0, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=0, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+    mu1_mu2 = mu1 * mu2
+
+    sigma1_sq = F.conv2d(img1 * img1, window, padding=0, groups=channel) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, padding=0, groups=channel) - mu2_sq
+
+    sigma12 = F.conv2d(img1 * img2, window, padding=0, groups=channel) - mu1_mu2
+
+    sigma1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
+    sigma2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq))+ params.epsilon, 0.5)
+
+    CSF = 100.0 * 2.6 * (0.0192 + 0.114 * 16) * np.exp(- (0.114 * 16) ** 1.1)
+    u_hdr = 128 / (1.4 * CSF)
+    sig_hdr = u_hdr / 3.
+    sigma1p = torch.distributions.normal.Normal(loc=u_hdr, scale=sig_hdr).cdf(sigma1)
+    u_ldr = u_hdr
+    sig_ldr = u_ldr / 3.
+
+    sigma2p = torch.distributions.normal.Normal(loc=u_ldr, scale=sig_ldr).cdf(sigma2)
+    s_map = ((2 * sigma1p * sigma2p + C1) / (sigma1p ** 2 + sigma2p ** 2 + C1)
+             * ((sigma12 + C2) / (sigma1 * sigma2 + C2)))
+    if size_average:
+        return s_map.mean()
+    else:
+        return s_map.mean(1).mean(1).mean(1)
 
 
 class SSIM(torch.nn.Module):
@@ -65,6 +104,31 @@ class SSIM(torch.nn.Module):
 
         return _ssim(img1, img2, window, self.window_size, channel, self.size_average)
 
+class TMQI_SSIM(torch.nn.Module):
+    def __init__(self, window_size=11, size_average=True):
+        super(TMQI_SSIM, self).__init__()
+        self.window_size = window_size
+        self.size_average = size_average
+        self.channel = 1
+        self.window = create_window(window_size, self.channel)
+
+    def forward(self, img1, img2):
+        (_, channel, _, _) = img1.size()
+
+        if channel == self.channel and self.window.data.type() == img1.data.type():
+            window = self.window
+        else:
+            window = create_window(self.window_size, channel)
+
+            if img1.is_cuda:
+                window = window.cuda(img1.get_device())
+            window = window.type_as(img1)
+
+            self.window = window
+            self.channel = channel
+
+        return _ssim_from_tmqi(img1, img2, window, self.window_size, channel, self.size_average)
+
 
 def ssim(img1, img2, window_size=11, size_average=True):
     (_, channel, _, _) = img1.size()
@@ -73,8 +137,11 @@ def ssim(img1, img2, window_size=11, size_average=True):
     if img1.is_cuda:
         window = window.cuda(img1.get_device())
     window = window.type_as(img1)
+    _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average)
+    print("_ssim")
+    print(_ssim(img1, img2, window, window_size, channel, size_average))
+    return
 
-    return _ssim(img1, img2, window, window_size, channel, size_average)
 
 
 #

@@ -4,18 +4,19 @@ import skimage
 
 import imageio
 import torch
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 import params
 import torch
-# import torus.Unet as TorusUnet
 import torch.nn as nn
-# import unet.Unet as Unet
 import utils.image_quality_assessment_util as tmqi
 import matplotlib.pyplot as plt
 import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
 # import three_layers_unet.Unet as three_Unet
 import tranforms
-import unet_multi_filters.Unet as generator
 import unet_multi_filters.Unet as Generator
 import Discriminator
 
@@ -126,8 +127,8 @@ def save_best_model(netG, output_dir, optimizerG):
 def load_g_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     G_net = create_net("G", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
-    checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
-    # checkpoint = torch.load(net_path)
+    #checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+    checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
     # if device.type == 'cpu':
     from collections import OrderedDict
@@ -136,7 +137,7 @@ def load_g_model(model, device, filters, con_operator, model_depth, net_path="/U
         name = k[7:]  # remove `module.`
         new_state_dict[name] = v
     # else:
-    # new_state_dict = state_dict
+    new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
@@ -144,8 +145,8 @@ def load_g_model(model, device, filters, con_operator, model_depth, net_path="/U
 def load_d_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     D_net = create_net("D", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
-    checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
-    # checkpoint = torch.load(net_path)
+    # checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+    checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelD_state_dict']
     # if device.type == 'cpu':
     from collections import OrderedDict
@@ -154,7 +155,7 @@ def load_d_model(model, device, filters, con_operator, model_depth, net_path="/U
         name = k[7:]  # remove `module.`
         new_state_dict[name] = v
     # else:
-    # new_state_dict = state_dict
+    new_state_dict = state_dict
     D_net.load_state_dict(new_state_dict)
     D_net.eval()
     return D_net
@@ -291,6 +292,9 @@ def run_model_on_path(model, device, filters, con_operator, model_depth, net_pat
         im_path = os.path.join(input_images_path, img_name)
         if os.path.splitext(img_name)[1] == ".hdr":
             original_im = hdr_image_util.reshape_image(hdr_image_util.read_hdr_image(im_path))
+            # f = 10760.730115410688
+            # print(f)
+            # original_im = original_im * 255 * f
             run_model_on_single_image(net_G, original_im, device, os.path.splitext(img_name)[0], output_images_path)
 
 def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_path, train_data_loader_hdr,
@@ -314,7 +318,7 @@ def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_p
         output_on_log = net_D(hdr_input).view(-1)
         # Real label = 1, so we count the samples on which D was right
         accDlog_counter += (output_on_log <= 0.5).sum().item()
-    return accDreal_counter / (num_iter * 4), accDlog_counter / (num_iter * 4)
+    return accDreal_counter / (num_iter * 16), accDlog_counter / (num_iter * 16)
 
 
 
@@ -335,20 +339,35 @@ def compare_best_models():
 
 def run_discriminator_on_data():
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_hdr_images_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data"
-    input_ldr_images_path = "/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy"
+    # device = torch.device("cpu")
+    input_hdr_images_path = "/cs/labs/raananf/yael_vinker/data/train/hdrplus_dict_log1000"
+    input_ldr_images_path = "/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict"
     train_data_loader_hdr, train_data_loader_ldr = \
         data_loader_util.load_data(input_hdr_images_path, input_ldr_images_path,
-                                   4, testMode=False, title="train")
-    arch_dir = "/Users/yaelvinker/Documents/university/lab/12_25/"
+                                   16, testMode=False, title="train")
+    arch_dir = "/cs/labs/raananf/yael_vinker/12_25/run/results/"
 
-    filters = [32]
-    models = [params.unet_network]
-    con_operators = [params.square]
-    depths = [3]
+    filters = [32, 32, 32, 32,
+               32, 32, 32, 32,
+               32, 32, 64]
+    models = [params.torus_network, params.torus_network, params.torus_network, params.unet_network,
+              params.unet_network, params.unet_network, params.unet_network, params.unet_network,
+              params.unet_network, params.unet_network, params.unet_network]
+    con_operators = [params.original_unet, params.original_unet, params.square, params.original_unet,
+                     params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
+                     params.square, params.square_root, params.original_unet]
+    depths = [3, 4, 3, 3,
+              4, 3, 4, 3,
+              4, 3, 3]
 
+    models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+    # models_epoch = [0]
 
-    models_epoch = [0, 35]
+    # filters = [32]
+    # models = [params.unet_network]
+    # con_operators = [params.square]
+    # depths = [3]
+
     acc_ldr_list = []
     acc_log_list = []
     for i in range(len(filters)):

@@ -11,9 +11,6 @@ import torch.utils.data
 from torch import autograd
 from torchsummary import summary
 
-import Tester
-# import unet.Unet as Unet
-
 matplotlib.use('Agg')
 import Discriminator
 import params

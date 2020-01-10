@@ -304,6 +304,29 @@ def model_test():
     print(new_torus)
     summary(new_torus, (1, 256, 256), device="cpu")
 
+def to_gray(im):
+    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+
+def to_0_1_range(im):
+    return (im - np.min(im)) / (np.max(im) - np.min(im))
+
+def ssim_test():
+    import ssim
+    import TMQI
+    im_tone_mapped = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dargo/belgium.jpg")
+    im_tone_mapped = to_gray(im_tone_mapped)
+    im_tone_mapped = to_0_1_range(im_tone_mapped)
+    im_tone_mapped_tensor = torch.from_numpy(im_tone_mapped)
+    im_tone_mapped_tensor = im_tone_mapped_tensor[None, None, :, :]
+
+    hdr_im = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dng_collection_hdr/belgium.hdr", format="HDR-FI")
+    hdr_im = to_gray(hdr_im)
+    hdr_im = to_0_1_range(hdr_im)
+    hdr_im_tensor = torch.from_numpy(hdr_im)
+    hdr_im_tensor = hdr_im_tensor[None, None, :, :]
+    ssim.ssim(hdr_im_tensor, im_tone_mapped_tensor)
+    print("tmqi")
+    print(TMQI.TMQI(hdr_im, im_tone_mapped))
 
 def to_gray(im):
     return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')

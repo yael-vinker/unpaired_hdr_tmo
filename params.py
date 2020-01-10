@@ -1,8 +1,8 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data"
-train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy"
+train_dataroot_hdr = "/cs/labs/raananf/yael_vinker/01_01/code/data/hdr_log_data"
+train_dataroot_ldr = "/cs/labs/raananf/yael_vinker/01_01/code/data/ldr_npy"
 
 test_dataroot_hdr = "data/hdr_log_data"
 test_dataroot_ldr = "data/ldr_npy"
