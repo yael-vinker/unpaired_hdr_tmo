@@ -305,31 +305,57 @@ def model_test():
     summary(new_torus, (1, 256, 256), device="cpu")
 
 
+def to_gray(im):
+    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+
 if __name__ == '__main__':
     import numpy as np
-    import cv2
-    n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
-    # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
-    print(n_img.shape)
-    print(np.max(n_img))
-    print(np.min(n_img))
-    # Apply log transform.
-    # c = 255 / (np.log(1 + np.max(n_img)))
-    # n_img = c * np.log(1 + n_img)
-
-    # histr = cv2.calcHist([n_img], [0], None)
-    # n_img = n_img.astype('uint8')
-    print(np.unique(n_img).shape[0])
-    bins = np.unique(n_img).shape[0]
-    hist, bin_edges = np.histogram(n_img, bins=bins)
-    print(hist, bin_edges)
+    a = np.array([[1],[2]])
+    print(np.tile(a,(1,5)))
+    # import cv2
+    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data/im_97.bmp")
+    im = to_gray(im)
+    print(im.shape)
+    first_row = im[0, :]
+    last_row = im[-1, :]
+    print(first_row.shape)
+    new_first_rows = np.tile(first_row, (40, 1))
+    new_last_rows = np.tile(last_row, (40, 1))
+    new_im = np.copy(im)
+    new_im = np.vstack((new_first_rows, new_im))
+    new_im = np.vstack((new_im, new_last_rows))
+    new_left_row = np.tile(new_im[:, 0], (1, 40))
+    print(new_left_row.shape)
+    print(new_im.shape)
+    new_im = np.hstack(([new_im[:, -1]], new_im))
+    print(new_im.shape)
     plt.subplot(2, 1, 1)
-    plt.bar(bin_edges[:-1], hist, width=1.5,color='#0504aa',alpha=0.7)
+    plt.imshow(im, cmap='gray')
+    plt.subplot(2,1,2)
+    plt.imshow(new_im, cmap='gray')
+    plt.show()
+    # n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
+    # # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
+    # print(n_img.shape)
+    # print(np.max(n_img))
+    # print(np.min(n_img))
+    # # Apply log transform.
+    # # c = 255 / (np.log(1 + np.max(n_img)))
+    # # n_img = c * np.log(1 + n_img)
+    #
+    # # histr = cv2.calcHist([n_img], [0], None)
+    # # n_img = n_img.astype('uint8')
+    # print(np.unique(n_img).shape[0])
+    # bins = np.unique(n_img).shape[0]
+    # hist, bin_edges = np.histogram(n_img, bins=bins)
+    # print(hist, bin_edges)
+    # plt.subplot(2, 1, 1)
+    # plt.bar(bin_edges[:-1], hist, width=1.5,color='#0504aa',alpha=0.7)
     # plt.hist(n_img.ravel(),density=True, bins=256,color='#0504aa')  # calculating histogram
     # plt.plot(histr)
-    plt.subplot(2,1,2)
-    plt.imshow(n_img, cmap='gray')
-    plt.show()
+    # plt.subplot(2,1,2)
+    # plt.imshow(n_img, cmap='gray')
+    # plt.show()
 
     # im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr",  format="HDR-FI")
     # print(im.dtype)
