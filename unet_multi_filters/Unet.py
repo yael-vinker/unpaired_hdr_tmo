@@ -5,8 +5,9 @@ import torch.nn.functional as F
 from .unet_parts import *
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear, network, dilation):
+    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear, network, dilation, to_crop=False):
         super(UNet, self).__init__()
+        self.to_crop = to_crop
         self.con_operator = con_operator
         self.network = network
         down_ch = filters
@@ -53,8 +54,25 @@ class UNet(nn.Module):
             x_results.append(next_x)
 
         up_x = x_results[(self.depth)]
+        # up_x_results = []
         for i, up_layer in enumerate(self.up_path):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
+            # up_x_results.append(up_x)
         x = self.outc(up_x)
         x = self.last_sig(x)
+
+        # print("down res")
+        # for d_x in x_results:
+        #     print(d_x.shape)
+        # print("up res")
+        # for cur_x in up_x_results:
+        #     print(cur_x.shape)
+        if self.to_crop:
+            b, c, h, w = x.shape
+            th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
+            i = int(round((h - th) / 2.))
+            j = int(round((w - tw) / 2.))
+            i, j, h, w = i, j, th, tw
+            x = x[:, :, i: i + h, j:j + w]
+            return x
         return x

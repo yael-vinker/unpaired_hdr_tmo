@@ -44,16 +44,16 @@ def get_layer_factor(con_operator):
         assert 0, "Unsupported con_operator request: {}".format(con_operator)
 
 
-def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean_, filters=64, con_operator="", unet_depth_=0):
+def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean_, filters=64, con_operator="", unet_depth_=0, add_frame=False):
     # Create the Generator (UNet architecture)
     if net == "G":
         layer_factor = get_layer_factor(con_operator)
         if model == params.unet_network:
             new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=layer_factor,
-                                      con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0).to(device_)
+                                      con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0, to_crop=add_frame).to(device_)
         elif model == params.torus_network:
             new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=layer_factor,
-                                      con_operator=con_operator, filters=filters, bilinear=False, network=params.torus_network, dilation=2).to(device_)
+                                      con_operator=con_operator, filters=filters, bilinear=False, network=params.torus_network, dilation=2, to_crop=add_frame).to(device_)
 
     # Create the Discriminator
     elif net == "D":

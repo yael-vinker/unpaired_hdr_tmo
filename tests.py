@@ -1,7 +1,7 @@
+import numpy as np
 import pathlib
 import imageio
 import os
-import numpy as np
 import torch
 import params
 import ssim
@@ -9,13 +9,19 @@ import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 import tranforms as transforms_
 import torchvision.transforms as transforms
-import torchvision.transforms.functional as F
+import torchvision.transforms.functional as F1
+import torch.nn.functional as F
 import hdr_image_utils
 import gan_trainer_utils
 from old_files import HdrImageFolder
 
 import torchvision.datasets as dset
 import gan_trainer
+from torch.autograd import Variable
+import numpy as np
+from math import exp
+import ssim
+import TMQI
 
 
 def print_im_details(im, title, disply=False):
@@ -257,7 +263,6 @@ def exp_transform_test():
 
 def tmqi_test(input_path, im_hdr_path):
     import TMQI
-    import utils.hdr_image_util as hdr_image_util
     im_hdr = imageio.imread(im_hdr_path, format="HDR-FI")
     tmqi_res = []
     names = []
@@ -281,8 +286,8 @@ def tmqi_test(input_path, im_hdr_path):
 
 def model_test():
     import unet_multi_filters.Unet as squre_unet
-    import torus.Unet as TorusUnet
-    import unet.Unet as Unet
+    import old_files.torus.Unet as TorusUnet
+    import old_files.unet.Unet as Unet
     from torchsummary import summary
     import utils.model_save_util as msu
 
@@ -310,16 +315,17 @@ def to_gray(im):
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
+def to_0_1_range_tensor(im):
+    return (im - im.min()) / (im.max() - im.min())
+
 def ssim_test():
-    import ssim
-    import TMQI
-    im_tone_mapped = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dargo/belgium.jpg")
+    im_tone_mapped = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/local_log_1000_unet_original_unet_depth_2/model_results/1/1_epoch_1_rgb.png")
     im_tone_mapped = to_gray(im_tone_mapped)
     im_tone_mapped = to_0_1_range(im_tone_mapped)
     im_tone_mapped_tensor = torch.from_numpy(im_tone_mapped)
     im_tone_mapped_tensor = im_tone_mapped_tensor[None, None, :, :]
 
-    hdr_im = imageio.imread("/cs/labs/raananf/yael_vinker/fid/inception/tone_map_operators_2/from_matlab/dng_collection_hdr/belgium.hdr", format="HDR-FI")
+    hdr_im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/S0010.hdr", format="HDR-FI")
     hdr_im = to_gray(hdr_im)
     hdr_im = to_0_1_range(hdr_im)
     hdr_im_tensor = torch.from_numpy(hdr_im)
@@ -328,35 +334,211 @@ def ssim_test():
     print("tmqi")
     print(TMQI.TMQI(hdr_im, im_tone_mapped))
 
-def to_gray(im):
-    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+def to_numpy_display(im):
+    im = im.clone().permute(1, 2, 0).detach().cpu().numpy()
+    return np.squeeze(im)
+
+def frame_test():
+    SHAPE_ADDITION = 45
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy/ldr_npy/im_96_one_dim.npy", allow_pickle=True)
+    input_im = data[()]["input_image"]
+    hdr_image_utils.print_tensor_details(input_im, "im")
+    input_im = to_0_1_range_tensor(input_im)
+    input_im = torch.squeeze(input_im)
+
+    first_row = input_im[0].repeat(SHAPE_ADDITION, 1)
+    im = torch.cat((first_row, input_im), 0)
+    last_row = input_im[-1].repeat(SHAPE_ADDITION, 1)
+    im = torch.cat((im, last_row), 0)
+
+    left_col = torch.t(im[:, 0].repeat(SHAPE_ADDITION, 1))
+
+    im = torch.cat((left_col, im), 1)
+
+    right_col = torch.t(im[:, -1].repeat(SHAPE_ADDITION, 1))
+    im = torch.cat((im, right_col), 1)
+    im = torch.unsqueeze(im, dim=0)
+    c, h, w = im.shape
+    th, tw = 256, 256
+    i = int(round((h - th) / 2.))
+    j = int(round((w - tw) / 2.))
+    i, j, h, w = i, j, th, tw
+    im = im[:, i:i + h, j:j + w]
+    print(im.shape)
+    plt.imshow(to_numpy_display(im), cmap='gray')
+    plt.show()
+
+def gaussian(window_size, sigma):
+    gauss = torch.Tensor([exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
+    return gauss / gauss.sum()
+
+def create_window(window_size, channel):
+    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+    return window
+
+def our_custom_ssim_test():
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy/ldr_npy/im_96_one_dim.npy", allow_pickle=True)
+    img1 = data[()]["input_image"]
+    img2 = img1 + 5
+    # im_tone_mapped = imageio.imread(
+    #     "/Users/yaelvinker/PycharmProjects/lab/local_log_1000_unet_original_unet_depth_2/model_results/1/1_epoch_1_rgb.png")
+    # im_tone_mapped = to_gray(im_tone_mapped)
+    # im_tone_mapped = to_0_1_range(im_tone_mapped)
+    # im_tone_mapped_tensor = torch.from_numpy(im_tone_mapped)
+    im_tone_mapped_tensor_tensor_b = torch.zeros([2, img1.shape[0], img1.shape[1], img1.shape[2]])
+    im_tone_mapped_tensor_tensor_b[0] = img1
+    im_tone_mapped_tensor_tensor_b[1] = img1
+
+    im_tone_mapped_tensor_tensor_b2 = torch.zeros([2, img1.shape[0], img1.shape[1], img1.shape[2]])
+    im_tone_mapped_tensor_tensor_b2[0] = img2
+    im_tone_mapped_tensor_tensor_b2[1] = img2
+    # im_tone_mapped_tensor = im_tone_mapped_tensor[None, None, :, :]
+
+    hdr_im = imageio.imread(
+        "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/S0010.hdr",
+        format="HDR-FI")
+    hdr_im = to_gray(hdr_im)
+    hdr_im = to_0_1_range(hdr_im)
+    hdr_im_tensor = torch.from_numpy(hdr_im)
+    hdr_im_tensor_b = torch.zeros([2, 1, hdr_im_tensor.shape[0], hdr_im_tensor.shape[1]])
+    hdr_im_tensor_b[0, :] = hdr_im_tensor
+    hdr_im_tensor_b[1, :] = hdr_im_tensor
+    our_ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=5)
+    print(our_ssim_loss(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
+    print(our_ssim_loss(im_tone_mapped_tensor_tensor_b, im_tone_mapped_tensor_tensor_b))
+    print(ssim.ssim(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
+    # print(our_ssim_loss(im_tone_mapped_tensor, im_tone_mapped_tensor * 2))
 
 if __name__ == '__main__':
-    import numpy as np
-    a = np.array([[1],[2]])
-    print(np.tile(a,(1,5)))
-    # import cv2
-    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data/im_97.bmp")
-    im = to_gray(im)
-    print(im.shape)
-    first_row = im[0, :]
-    last_row = im[-1, :]
-    print(first_row.shape)
-    new_first_rows = np.tile(first_row, (40, 1))
-    new_last_rows = np.tile(last_row, (40, 1))
-    new_im = np.copy(im)
-    new_im = np.vstack((new_first_rows, new_im))
-    new_im = np.vstack((new_im, new_last_rows))
-    new_left_row = np.tile(new_im[:, 0], (1, 40))
-    print(new_left_row.shape)
-    print(new_im.shape)
-    new_im = np.hstack(([new_im[:, -1]], new_im))
-    print(new_im.shape)
-    plt.subplot(2, 1, 1)
-    plt.imshow(im, cmap='gray')
-    plt.subplot(2,1,2)
-    plt.imshow(new_im, cmap='gray')
-    plt.show()
+    our_custom_ssim_test()
+    ssim_test()
+    a = torch.tensor([1,0,-1,-3])
+    b = a<=0
+    print(b.sum())
+    print(b.count(True))
+    print(len([a<=0]))
+    # data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy/ldr_npy/im_96_one_dim.npy", allow_pickle=True)
+    # img1 = data[()]["input_image"]
+    # img2 = img1 * 0.5
+    # # img1 = (img1 - img1.min()) / (img1.std())
+    # factor = float(2 ** 8 - 1.)
+    # # factor = 1
+    # img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
+    # img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min())
+    # # img2 = (img2 - img2.min()) / (img2.std())
+    # # torch.nn.MSELoss(size_average=None, reduce=None, reduction='mean')
+    # window = create_window(11,1).type_as(img1)
+    # window = window / window.sum()
+    # img1 = img1.unsqueeze(0)
+    # mu1 = F.conv2d(img1, window, padding=11 // 2, groups=1)
+    #
+    # var_ = img1 * img1 - 2 * mu1 * img1 + mu1 * mu1
+    # # var_ = var_ * var_
+    # var_ = F.conv2d(var_, window, padding=11 // 2, groups=1)
+    #
+    # mu1_sq = mu1.pow(2)
+    # sigma1_sq = F.conv2d(img1 * img1, window, padding=11 // 2, groups=1) - mu1_sq
+    # std1 = (sigma1_sq).pow(0.5)
+    # hdr_image_utils.print_tensor_details(std1, "std1")
+    # norm_im = (img1 - mu1) / std1
+    # norm_im = torch.div(torch.add(img1, -mu1), std1)
+    # hdr_image_utils.print_tensor_details(var_, "var_")
+    # hdr_image_utils.print_tensor_details(norm_im, "norm_im")
+    # loss = torch.nn.MSELoss(reduction='mean')
+    #
+    # img2 = img1 * 0.5
+    # mu1 = F.conv2d(img2, window, padding=11 // 2, groups=1)
+    #
+    # var_ = img2 * img2 - 2 * mu1 * img1 + mu1 * mu1
+    # # var_ = var_ * var_
+    # var_ = F.conv2d(var_, window, padding=11 // 2, groups=1)
+    #
+    # mu1_sq = mu1.pow(2)
+    # sigma1_sq = F.conv2d(img2 * img2, window, padding=11 // 2, groups=1) - mu1_sq
+    # std1 = (sigma1_sq).pow(0.5)
+    # hdr_image_utils.print_tensor_details(std1, "std1")
+    # norm_im2 = (img2 - mu1) / std1
+    # hdr_image_utils.print_tensor_details(var_, "var_")
+    # hdr_image_utils.print_tensor_details(norm_im2, "norm_im")
+    # # loss = torch.nn.MSELoss(reduction='mean')
+    #
+    # # norm_im2 = norm_im * 0.5
+    # print(loss(norm_im, norm_im2))
+    # print((norm_im - norm_im2).pow(2).mean())
+    # print(ssim.ssim(img1, img1 * 0.5))
+    # hdr_image_utils.print_tensor_details(norm_im, "norm_im")
+    # hdr_image_utils.print_tensor_details(img1, "img1")
+    # plt.subplot(1,3,1)
+    # plt.imshow(to_numpy_display(norm_im[0,:,:,:]), cmap='gray')
+    # plt.subplot(1, 3, 2)
+    # plt.imshow(to_numpy_display(img1[0, :, :, :]), cmap='gray')
+    # plt.subplot(1, 3, 3)
+    # im = (img1 - img1.mean()) / img1.std()
+    # hdr_image_utils.print_tensor_details(im, "im")
+    # plt.imshow(to_numpy_display(im[0, :, :, :]), cmap='gray')
+    #
+    # plt.show()
+    # mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+    #
+    # mu1_sq = mu1.pow(2)
+    # mu2_sq = mu2.pow(2)
+    # mu1_mu2 = mu1 * mu2
+    #
+    # sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+    # sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+    #
+    # sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
+    #
+    # C1 = 0.01 ** 2
+    # C2 = 0.03 ** 2
+    #
+    # ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+    # if size_average:
+    #     return ssim_map.mean()
+    # else:
+    #     return ssim_map.mean(1).mean(1).mean(1)
+
+
+
+    # print(im.shape)
+    # first_row = im[0, :]
+    # new_first_row = np.tile(first_row, (45, 1))
+    # new_im = np.vstack((new_first_row, im))
+    # last_row = im[-1, :]
+    # new_last_row = np.tile(last_row, (45, 1))
+    # new_im = np.vstack((new_im, new_last_row))
+    # plt.imshow(new_im)
+    # plt.show()
+    #
+    # left_col = new_im[:, 0:1]
+    # new_left_col = np.tile(left_col, (1, 45))
+    # new_im = np.hstack((new_im, new_left_col))
+    #
+    # right_col = new_im[:, -2:-1]
+    # new_right_col = np.tile(right_col, (1, 45))
+    # new_im = np.hstack((new_right_col, new_im))
+    # print(new_im.shape)
+    # plt.imshow(new_im)
+    # plt.show()
+
+    # print(first_row.shape)
+    # new_first_rows = np.tile(first_row, (40, 1))
+    # new_last_rows = np.tile(last_row, (40, 1))
+    # new_im = np.copy(im)
+    # new_im = np.vstack((new_first_rows, new_im))
+    # new_im = np.vstack((new_im, new_last_rows))
+    # new_left_row = np.tile(new_im[:, 0], (1, 40))
+    # print(new_left_row.shape)
+    # print(new_im.shape)
+    # new_im = np.hstack(([new_im[:, -1]], new_im))
+    # print(new_im.shape)
+    # plt.subplot(2, 1, 1)
+    # plt.imshow(im, cmap='gray')
+    # plt.subplot(2,1,2)
+    # plt.imshow(new_im, cmap='gray')
+    # plt.show()
     # n_img = cv2.imread("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/belgium.hdr", cv2.IMREAD_ANYDEPTH) #reads image data
     # # n_img = cv2.cvtColor(n_img, cv2.COLOR_BGR2GRAY)
     # print(n_img.shape)

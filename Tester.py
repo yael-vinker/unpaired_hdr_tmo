@@ -16,9 +16,10 @@ import tranforms
 
 class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
-                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_):
+                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_, addFrame_):
+        self.to_crop = addFrame_
         self.test_data_loader_npy, self.test_data_loader_ldr = \
-            data_loader_util.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, testMode=True, title="test")
+            data_loader_util.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, addFrame=addFrame_, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
@@ -50,7 +51,7 @@ class Tester:
             im_path = os.path.join(root, img_name)
             im_hdr_original = hdr_image_util.read_hdr_image(im_path)
             im_hdr_original = hdr_image_util.reshape_image(im_hdr_original)
-            im_log_normalize_tensor = image_quality_assessment_util.apply_preproccess_for_hdr_im(im_hdr_original)
+            im_log_normalize_tensor = image_quality_assessment_util.apply_preproccess_for_hdr_im(im_hdr_original, self.to_crop)
             # text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
             text = ""
             original_hdr_images.append({'im_name': str(counter),
@@ -94,7 +95,11 @@ class Tester:
             test_errGd = criterion(output_on_fake, real_label)
             self.test_G_losses_d.append(test_errGd.item())
             if self.ssim_loss_g_factor != 0:
-                test_errGssim = self.ssim_loss_g_factor * (1 - ssim_loss(fake, hdr_input))
+                if self.to_crop:
+                    hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+                fake_rgb_n = fake + 1
+                hdr_input_rgb_n = hdr_input + 1
+                test_errGssim = self.ssim_loss_g_factor * (1 - ssim_loss(fake_rgb_n, hdr_input_rgb_n))
                 self.test_G_loss_ssim.append(test_errGssim.item())
             self.update_accuracy()
             printer.print_test_epoch_losses_summary(num_epochs, epoch, test_loss_D, test_errGd, self.accDreal_test,
@@ -281,3 +286,24 @@ class Tester:
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
                 fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
+
+    def save_images_for_model(self, netG, out_dir, epoch):
+        out_dir = os.path.join(out_dir, "model_results", str(epoch))
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+            print("Directory ", out_dir, " created")
+        with torch.no_grad():
+            for im_and_q in self.test_original_hdr_images:
+                im_hdr_original = im_and_q['im_hdr_original']
+                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
+                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
+                if self.use_transform_exp:
+                    fake = self.transform_exp(fake)
+                fake_im_gray = torch.squeeze(fake, dim=0)
+                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
+                                                             fake_im_gray_numpy)
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
+                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
+

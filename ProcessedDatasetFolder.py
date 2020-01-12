@@ -7,16 +7,28 @@ import numpy as np
 IMG_EXTENSIONS_local = ('.npy')
 
 
-def npy_loader(path, testMode):
+def npy_loader(path, addFrame, hdrMode):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
     :param path: image path
     :return:
     """
+
     data = np.load(path, allow_pickle=True)
-    # if testMode:
     input_im = data[()]["input_image"]
     color_im = data[()]["display_image"]
+    if addFrame and hdrMode:
+        input_im = torch.squeeze(input_im)
+        first_row = input_im[0].repeat(params.shape_addition, 1)
+        im = torch.cat((first_row, input_im), 0)
+        last_row = input_im[-1].repeat(params.shape_addition, 1)
+        im = torch.cat((im, last_row), 0)
+        left_col = torch.t(im[:, 0].repeat(params.shape_addition, 1))
+        im = torch.cat((left_col, im), 1)
+        right_col = torch.t(im[:, -1].repeat(params.shape_addition, 1))
+        im = torch.cat((im, right_col), 1)
+        im = torch.unsqueeze(im, dim=0)
+        return im, color_im
     return input_im, color_im
     # if data.ndim == 2:
     #     data = data[:, :, None]
@@ -34,13 +46,14 @@ class ProcessedDatasetFolder(DatasetFolder):
     of numpy arrays that represents hdr_images and window_binary_images.
     """
 
-    def __init__(self, root, testMode, transform=None, target_transform=None,
+    def __init__(self, root, addFrame, hdrMode, transform=None, target_transform=None,
                  loader=npy_loader):
         super(ProcessedDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                                      transform=transform,
                                                      target_transform=target_transform)
         self.imgs = self.samples
-        self.test_mode = testMode
+        self.addFrame = addFrame
+        self.hdrMode = hdrMode
 
     def __getitem__(self, index):
         """
@@ -53,7 +66,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         path, target = self.samples[index]
         # if self.test_mode:
         # input_im, color_im = self.loader(path, self.test_mode)
-        input_im, color_im = self.loader(path, True)
+        input_im, color_im = self.loader(path, self.addFrame, self.hdrMode)
         return {"input_im": input_im, "color_im": color_im}
         # else:
         #     input_im = self.loader(path, self.test_mode)

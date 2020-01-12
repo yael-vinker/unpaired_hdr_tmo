@@ -1,8 +1,8 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "/cs/labs/raananf/yael_vinker/01_01/code/data/hdr_log_data"
-train_dataroot_ldr = "/cs/labs/raananf/yael_vinker/01_01/code/data/ldr_npy"
+train_dataroot_hdr = "data/hdr_log_data"
+train_dataroot_ldr = "data/ldr_npy"
 
 test_dataroot_hdr = "data/hdr_log_data"
 test_dataroot_ldr = "data/ldr_npy"
@@ -19,7 +19,9 @@ loss_path = os.path.join("loss_plot")
 best_acc_images_path = os.path.join("best_acc_images")
 results_path = os.path.join("result_images")
 gradient_flow_path = os.path.join("gradient_flow")
+models_images = os.path.join("model_results")
 
+shape_addition = 45
 input_size = 256
 n_downsample = 1
 n_downsamples_d = 3
@@ -65,5 +67,8 @@ square_root = "square_root"
 square_and_square_root = "square_and_square_root"
 
 filters = 64
+
+ssim_tmqi = "ssim_tmqi"
+ssim_custom = "ssim_custom"
 
 

@@ -14,7 +14,7 @@ from torchsummary import summary
 import Tester
 # import unet.Unet as Unet
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import Discriminator
 import params
 import time
@@ -32,10 +32,11 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--batch", type=int, default=4)
     parser.add_argument("--epochs", type=int, default=params.num_epochs)
-    parser.add_argument("--model", type=str, default=params.torus_network)  # up sampling is the default
+    parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
     parser.add_argument("--con_operator", type=str, default=params.original_unet)
     parser.add_argument("--filters", type=int, default=params.filters)
-    parser.add_argument("--unet_depth", type=int, default=2)
+    parser.add_argument("--unet_depth", type=int, default=4)
+    parser.add_argument("--add_frame", type=int, default=1) # int(False) = 0
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -49,6 +50,8 @@ def parse_arguments():
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument("--ssim_loss_g_factor", type=float, default=1)
+    parser.add_argument("--ssim_loss", type=str, default=params.ssim_custom)
+    parser.add_argument("--ssim_window_size", type=int, default=11)
     # if 0, images are in [-1, 1] range, if 0.5 then [0,1]
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument("--log_factor", type=int, default=1000)
@@ -59,7 +62,8 @@ def parse_arguments():
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
            os.path.join(args.test_data_root_ldr), args.result_dir_prefix, args.input_dim, \
            args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp, \
-           args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save, args.unet_depth
+           args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save, args.unet_depth, args.add_frame, \
+           args.ssim_loss, args.ssim_window_size
 
 
 class GanTrainer:
@@ -67,7 +71,8 @@ class GanTrainer:
                  train_dataroot_ldr, test_dataroot_npy, test_dataroot_ldr, t_isCheckpoint, t_netG, t_netD,
                  t_optimizerG, t_optimizerD, input_dim, loss_g_d_factor_, ssim_loss_g_factor_,
                  input_images_mean_, writer_, use_transform_exp_, log_factor_, test_dataroot_original_hdr,
-                 epoch_to_save_):
+                 epoch_to_save_, add_frame_, ssim_loss_, ssim_window_size_):
+        self.to_crop = add_frame_
         self.writer = writer_
         self.batch_size = t_batch_size
         self.num_epochs = t_num_epochs
@@ -76,7 +81,6 @@ class GanTrainer:
         self.netD = t_netD
         self.optimizerD = t_optimizerD
         self.optimizerG = t_optimizerG
-        self.criterion = nn.BCELoss()
         self.epoch_to_save = epoch_to_save_
 
         self.real_label, self.fake_label = 1, 0
@@ -93,14 +97,18 @@ class GanTrainer:
 
         self.train_data_loader_npy, self.train_data_loader_ldr = \
             data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
-                                       self.batch_size, testMode=False, title="train")
+                                       self.batch_size, addFrame=add_frame_, title="train")
 
         self.input_dim = input_dim
         self.input_images_mean = input_images_mean_
         self.isCheckpoint = t_isCheckpoint
         self.checkpoint = None
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss = ssim.TMQI_SSIM(window_size=11)
+        self.ssim_loss_name = ssim_loss_
+        if ssim_loss_ == params.ssim_tmqi:
+            self.ssim_loss = ssim.TMQI_SSIM(window_size=ssim_window_size_)
+        else:
+            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=ssim_window_size_)
 
         self.loss_g_d_factor = loss_g_d_factor_
         self.ssim_loss_g_factor = ssim_loss_g_factor_
@@ -110,7 +118,7 @@ class GanTrainer:
         self.use_transform_exp = use_transform_exp_
         self.tester = Tester.Tester(test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, t_batch_size,
                                     t_device, loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_,
-                                    self.transform_exp, self.log_factor)
+                                    self.transform_exp, self.log_factor, add_frame_)
         # self.writer = self.init_writer("writer", "a")
 
     def init_writer(self, log_dir, run_name):
@@ -147,7 +155,6 @@ class GanTrainer:
         self.accDreal_counter += (output_on_real > 0.5).sum().item()
 
         # Calculate loss on all-real batch
-        # self.errD_real = self.criterion(output_on_real, label)
         self.errD_real = self.mse_loss(output_on_real, label)
         self.errD_real.backward()
 
@@ -164,7 +171,6 @@ class GanTrainer:
         # Fake label = 0, so we count the samples on which D was right
         self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
         # Calculate D's loss on the all-fake batch
-        # self.errD_fake = self.criterion(output_on_fake, label)
         self.errD_fake = self.mse_loss(output_on_fake, label)
         # Calculate the gradients for this batch
         self.errD_fake.backward()
@@ -177,14 +183,10 @@ class GanTrainer:
         self.D_loss_real.append(self.errD_real.item())
 
     def update_g_d_loss(self, output_on_fake, label):
-        if self.loss_g_d_factor != 0:
-            # self.errG_d = self.loss_g_d_factor * (self.criterion(output_on_fake, label))
-            self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
-            self.errG_d.backward(retain_graph=True)
-            self.G_loss_d.append(self.errG_d.item())
-        else:
-            self.errG_d = self.criterion(output_on_fake, label)
-            self.G_loss_d.append(self.errG_d.item())
+        self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
+        self.errG_d.backward(retain_graph=True)
+        self.G_loss_d.append(self.errG_d.item())
+
 
     def update_ssim_loss(self, hdr_input, fake):
         if self.ssim_loss_g_factor != 0:
@@ -197,7 +199,11 @@ class GanTrainer:
             else:
                 fake_rgb_n = fake + 1
                 hdr_input_rgb_n = hdr_input + 1
-            self.errG_ssim = self.ssim_loss_g_factor * (1 - self.ssim_loss(fake_rgb_n, hdr_input_rgb_n))
+            if self.ssim_loss_name == params.ssim_custom:
+                self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake_rgb_n, hdr_input_rgb_n)
+                print(self.errG_ssim.item())
+            else:
+                self.errG_ssim = self.ssim_loss_g_factor * (1 - self.ssim_loss(fake_rgb_n, hdr_input_rgb_n))
             self.errG_ssim.backward()
             self.G_loss_ssim.append(self.errG_ssim.item())
 
@@ -207,6 +213,8 @@ class GanTrainer:
             printer.print_best_acc_error(self.best_accG, self.epoch)
             model_save_util.save_best_model(self.netG, output_dir, self.optimizerG)
             self.tester.save_images_for_best_model(self.netG, output_dir, self.epoch)
+
+
 
     def train_G(self, label, hdr_input, hdr_input_display):
         """
@@ -230,6 +238,8 @@ class GanTrainer:
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
         self.update_g_d_loss(output_on_fake, label)
+        if self.to_crop:
+            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
         self.update_ssim_loss(hdr_input, fake)
         self.optimizerG.step()
 
@@ -244,7 +254,6 @@ class GanTrainer:
                 hdr_input_display = data_hdr[params.color_image_key].to(self.device)
                 b_size = hdr_input.size(0)
                 label = torch.full((b_size,), self.real_label, device=self.device)
-
                 self.train_D(hdr_input, real_ldr_cpu)
                 self.train_G(label, hdr_input, hdr_input_display)
                 # self.writer.add_scalars('Loss/train', {'err_g_ssim': self.errG_ssim.item(),
@@ -301,8 +310,9 @@ class GanTrainer:
                 model_save_util.save_model(params.models_save_path, epoch, output_dir, self.netG, self.optimizerG,
                                            self.netD, self.optimizerD)
                 self.tester.save_test_images(epoch, output_dir, self.input_images_mean, self.netD, self.netG,
-                                             self.criterion, self.ssim_loss, self.num_epochs)
+                                             self.mse_loss, self.ssim_loss, self.num_epochs)
                 self.save_loss_plot(epoch, output_dir)
+                self.tester.save_images_for_model(self.netG, output_dir, self.epoch)
                 # self.tester.update_TMQI(self.netG, output_dir, epoch)
         # self.writer.close()
 
@@ -322,7 +332,7 @@ if __name__ == '__main__':
     batch_size, num_epochs, model, con_operator, filters, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, result_dir_pref, input_dim, loss_g_d_factor, \
     ssim_loss_factor, input_images_mean, use_transform_exp, log_factor, test_dataroot_original_hdr, \
-    epoch_to_save, depth = parse_arguments()
+    epoch_to_save, depth, add_frame, ssim_loss, ssim_window_size = parse_arguments()
     torch.manual_seed(params.manualSeed)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     # device = torch.device("cpu")
@@ -335,6 +345,7 @@ if __name__ == '__main__':
     print("EPOCHS:", num_epochs)
     print("MODEL:", model, con_operator)
     print("UNET DEPTH: ", depth)
+    print("ADD FRAME: ", bool(add_frame))
     print("G LR: ", G_lr)
     print("D LR: ", D_lr)
     print("CHECK POINT:", isCheckpoint)
@@ -342,37 +353,39 @@ if __name__ == '__main__':
     print("INPUT IMAGES MEAN:", input_images_mean)
     print("LOSS G D FACTOR:", loss_g_d_factor)
     print("SSIM LOSS FACTOR:", ssim_loss_factor)
+    print("SSIM METRIC:", ssim_loss)
+    print("SSIM WINDOW SIZE:", ssim_window_size)
     print("LOG FACTOR:", log_factor)
     print("DEVICE:", device)
     print("=====================\n")
 
     # net_G = create_net("G_" + "unet3_layer", device, isCheckpoint, input_dim, input_images_mean)
-    net_G = model_save_util.create_net("G", model, device, isCheckpoint, input_dim, input_images_mean, filters, con_operator, depth)
+    net_G = model_save_util.create_net("G", model, device, isCheckpoint, input_dim, input_images_mean, filters, con_operator, depth, add_frame)
 
     print("=================  NET G  ==================")
     print(net_G)
-    summary(net_G, (input_dim, 256, 256), device="cpu")
+    summary(net_G, (input_dim, 346, 346), device="cpu")
     print()
-
-    net_D = model_save_util.create_net("D", "D", device, isCheckpoint, input_dim, input_images_mean)
-    print("=================  NET D  ==================")
-    print(net_D)
-    summary(net_D, (input_dim, 256, 256), device="cpu")
-    print()
-
-    # Setup Adam optimizers for both G and D
-    optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
-    optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
-
-    # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
-    writer = 1
-    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
-                                      params.loss_path, params.results_path, depth)
-
-    gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
-                             test_data_root_npy, test_data_root_ldr, isCheckpoint,
-                             net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
-                             ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
-                             test_dataroot_original_hdr, epoch_to_save)
-
-    gan_trainer.train(output_dir)
+    #
+    # net_D = model_save_util.create_net("D", "D", device, isCheckpoint, input_dim, input_images_mean)
+    # print("=================  NET D  ==================")
+    # print(net_D)
+    # summary(net_D, (input_dim, 256, 256), device="cpu")
+    # print()
+    #
+    # # Setup Adam optimizers for both G and D
+    # optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
+    # optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
+    #
+    # # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
+    # writer = 1
+    # output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
+    #                                   params.loss_path, params.results_path, depth)
+    #
+    # gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,
+    #                          test_data_root_npy, test_data_root_ldr, isCheckpoint,
+    #                          net_G, net_D, optimizer_G, optimizer_D, input_dim, loss_g_d_factor,
+    #                          ssim_loss_factor, input_images_mean, writer, use_transform_exp, log_factor,
+    #                          test_dataroot_original_hdr, epoch_to_save, add_frame, ssim_loss, ssim_window_size)
+    #
+    # gan_trainer.train(output_dir)
