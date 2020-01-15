@@ -1,0 +1,3 @@
+#!/bin/bash
+. /cs/labs/raananf/yael_vinker/my_venv/bin/activate
+python3.6 create_dng_npy_data.py --root_hdr "/cs/labs/raananf/yael_vinker/dng_collection" --output_hdr "/cs/labs/raananf/yael_vinker/data/train/hdrplus_log1/hdrplus_log1" --hdr_test_dir "/cs/labs/raananf/yael_vinker/data/test/hdrplus_log1/hdrplus_log1" --log_factor 1
