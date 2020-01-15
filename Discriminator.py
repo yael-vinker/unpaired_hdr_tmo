@@ -13,10 +13,13 @@ class Discriminator(nn.Module):
             input_size = int(input_size / 2)
             n_downsample += 1
         for i in range(n_downsample):
-            self.model += [Blocks.Conv2dBlock(dim, 2 * dim, 4, 2, 1, activation="leakyReLU")]
+            self.model += [Blocks.Conv2dBlock(dim, dim * 2, 4, 2, 1, activation="leakyReLU")]
             dim *= 2
         self.model += [Blocks.Conv2dBlock(dim, 1, 4, 1, 0, norm='none', activation="sigmoid")]
+        # self.model += [nn.Conv2d(dim, 1, 1, 1, 0)]
+
         self.model = nn.Sequential(*self.model)
+
         self.output_dim = dim
 
     def forward(self, input):

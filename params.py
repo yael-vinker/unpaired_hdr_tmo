@@ -25,7 +25,7 @@ shape_addition = 45
 input_size = 256
 n_downsample = 1
 n_downsamples_d = 3
-dim = 6
+dim = 64
 # Number of workers for dataloader
 workers = 1
 

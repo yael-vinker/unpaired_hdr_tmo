@@ -366,13 +366,13 @@ if __name__ == '__main__':
     print(net_G)
     summary(net_G, (input_dim, 346, 346), device="cpu")
     print()
-    #
-    # net_D = model_save_util.create_net("D", "D", device, isCheckpoint, input_dim, input_images_mean)
-    # print("=================  NET D  ==================")
-    # print(net_D)
-    # summary(net_D, (input_dim, 256, 256), device="cpu")
-    # print()
-    #
+
+    net_D = model_save_util.create_net("D", "D", device, isCheckpoint, input_dim, input_images_mean)
+    print("=================  NET D  ==================")
+    print(net_D)
+    summary(net_D, (input_dim, 256, 256), device="cpu")
+    print()
+
     # # Setup Adam optimizers for both G and D
     # optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
     # optimizer_G = optim.Adam(net_G.parameters(), lr=G_lr, betas=(params.beta1, 0.999))
