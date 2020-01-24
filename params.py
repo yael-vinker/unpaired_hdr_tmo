@@ -70,5 +70,3 @@ filters = 64
 
 ssim_tmqi = "ssim_tmqi"
 ssim_custom = "ssim_custom"
-
-

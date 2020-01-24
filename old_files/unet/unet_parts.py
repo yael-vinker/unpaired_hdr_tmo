@@ -23,6 +23,7 @@ class double_conv(nn.Module):
         x = self.conv(x)
         return x
 
+
 class double_conv_traspose(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
@@ -40,6 +41,7 @@ class double_conv_traspose(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+
 
 class inconv(nn.Module):
     def __init__(self, in_ch, out_ch):

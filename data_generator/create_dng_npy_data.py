@@ -1,5 +1,7 @@
 from __future__ import print_function
+
 import sys
+
 sys.path.append('/cs/labs/raananf/yael_vinker/01_12/code')
 import argparse
 import os
@@ -8,9 +10,10 @@ import numpy as np
 import hdr_image_utils
 import matplotlib.pyplot as plt
 import utils.hdr_image_util as hdr_image_util
-import matplotlib
 # matplotlib.use("Agg")
 from os import path
+from shutil import copyfile
+
 
 def display_tensor(tensor_im, isgray):
     np_im = np.array(tensor_im.permute(1, 2, 0))
@@ -21,6 +24,7 @@ def display_tensor(tensor_im, isgray):
     else:
         plt.imshow(im)
     plt.show()
+
 
 def print_result(output_dir):
     for img_name in os.listdir(output_dir):
@@ -36,7 +40,7 @@ def print_result(output_dir):
 
 def create_dict_data_log(input_dir, output_dir, isLdr, log_factor_):
     for img_name, i in zip(os.listdir(input_dir), range(2)):
-    # for img_name, i in zip(os.listdir(input_dir), range(len(os.listdir(input_dir)))):
+        # for img_name, i in zip(os.listdir(input_dir), range(len(os.listdir(input_dir)))):
         im_path = os.path.join(input_dir, img_name)
         output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + "_" + str(log_factor_) + '.npy')
         if not path.exists(output_path):
@@ -55,6 +59,7 @@ def create_dict_data_log(input_dir, output_dir, isLdr, log_factor_):
             np.save(output_path, data)
             print(output_path)
         print(i)
+
 
 def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
     im_hdr = im_hdr / np.max(im_hdr)
@@ -88,6 +93,29 @@ def create_dict_data_log_factorised(input_dir, output_dir, isLdr, log_factor_):
             print(output_path)
         print(i)
 
+def create_dict_data_hard_log_factorised(input_dir, output_dir, isLdr, log_factor_):
+    for img_name, i in zip(os.listdir(input_dir), range(len(os.listdir(input_dir)))):
+        im_path = os.path.join(input_dir, img_name)
+        output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + "_" + str(log_factor_) + '.npy')
+        if not path.exists(output_path):
+            if isLdr:
+                rgb_img = hdr_image_util.read_ldr_image(im_path)
+                output_im = hdr_image_util.to_gray(rgb_img)
+
+            else:
+                rgb_img = hdr_image_util.read_hdr_image(im_path)
+                small_rgb_im = hdr_image_util.reshape_image(rgb_img)
+                brightness_factor = get_brightness_factor(small_rgb_im)
+                print(brightness_factor)
+                rgb_img_log = hdr_log_loader_factorize(rgb_img, log_factor_, brightness_factor)
+                output_im = hdr_image_util.to_gray(rgb_img_log)
+
+            transformed_output_im = transforms_.gray_image_transform(output_im)
+            transformed_display_im = transforms_.rgb_display_image_transform(rgb_img)
+            data = {'input_image': transformed_output_im, 'display_image': transformed_display_im}
+            np.save(output_path, data)
+            print(output_path)
+        print(i)
 
 def split_test_data(output_train_dir, output_test_dir, selected_test_images, log_factor):
     for test_im_name in selected_test_images:
@@ -101,6 +129,7 @@ def split_test_data(output_train_dir, output_test_dir, selected_test_images, log
                 os.rename(im_path, im_new_path)
                 break
 
+
 def get_bump(im):
     tmp = im
     tmp[(tmp > 200) != 0] = 255
@@ -111,6 +140,7 @@ def get_bump(im):
     a0 = np.mean(hist[0:64])
     a1 = np.mean(hist[65:200])
     return a1 / a0
+
 
 def get_brightness_factor(im_hdr):
     im_hdr = im_hdr / np.max(im_hdr) * 255
@@ -130,10 +160,10 @@ def get_brightness_factor(im_hdr):
 def display_with_bf(im, bf):
     im1 = hdr_log_loader_factorize(im, 1, 1)
     plt.figure()
-    plt.subplot(1,2,1)
+    plt.subplot(1, 2, 1)
     plt.axis("off")
     plt.imshow(im1)
-    plt.subplot(1,2,2)
+    plt.subplot(1, 2, 2)
     plt.axis("off")
     new_im = hdr_log_loader_factorize(im, 1, bf)
     # new_im = (new_im / np.max(new_im) * 255).astype('uint8')
@@ -161,14 +191,25 @@ def save_brightness_factor_for_image(input_dir, output_dir, isLdr):
     np.save(output_path, data)
 
 
-
+def save_images_from_existing_path(existing_samples_path, input_path, output_path):
+    for img_name in os.listdir(existing_samples_path):
+        print(img_name[:-9])
+        img_name = img_name[:-9]
+        name_pref = os.path.splitext(img_name)[0]
+        im_path = os.path.join(input_path, name_pref + ".npy")
+        if os.path.exists(im_path):
+            output_im_path = os.path.join(output_path, img_name + ".npy")
+            if not os.path.exists(output_im_path):
+                copyfile(im_path, output_im_path)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--root_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/dng_collection"))
     parser.add_argument("--root_ldr", type=str, default=os.path.join("/cs/dataset/flickr30k/images"))
-    parser.add_argument("--output_hdr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/01_12/code/data/hdr_log_data/hdr_log_data"))
-    parser.add_argument("--output_ldr", type=str, default=os.path.join("/cs/labs/raananf/yael_vinker/01_12/code/data/ldr_npy/ldr_npy"))
+    parser.add_argument("--output_hdr", type=str,
+                        default=os.path.join("/cs/labs/raananf/yael_vinker/01_12/code/data/hdr_log_data/hdr_log_data"))
+    parser.add_argument("--output_ldr", type=str,
+                        default=os.path.join("/cs/labs/raananf/yael_vinker/01_12/code/data/ldr_npy/ldr_npy"))
     parser.add_argument("--hdr_test_dir", type=str, default=os.path.join(
         "/cs/labs/raananf/yael_vinker/data/test/hdrplus_log10/hdrplus_log10"))
     parser.add_argument("--log_factor", type=int, default=1000)

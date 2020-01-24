@@ -1,11 +1,11 @@
 import argparse
-import matplotlib.pyplot as plt
 import os
 import pathlib
-import skimage
-import imageio
+
 import cv2
+import imageio
 import numpy as np
+
 import hdr_image_utils as utils
 
 IMAGE_HEIGHT = 256
@@ -49,7 +49,7 @@ def hdr_test(path):
     im = (im_origin / max_origin) * IMAGE_SCALE
     log_im = np.log(im + 1)
     im_display = (((np.exp(log_im) - 1) / IMAGE_SCALE) * max_origin)
-    utils.print_image_details(im_display,"im_display")
+    utils.print_image_details(im_display, "im_display")
     utils.print_image_details(im_origin, "im_origin")
     # return cv2.resize(np.log(im + 1), (500, 500))
 
@@ -66,8 +66,3 @@ if __name__ == '__main__':
         # im_log = np.log(im + 1)
         # im_display = (((np.exp(im_log) - 1) / IMAGE_SCALE) * IMAGE_MAX_VALUE).astype("uint8")
         # utils.save_results(im_log, os.path.join(dataroot_out_ldr, utils.get_file_name(img_name)))
-
-
-
-
-

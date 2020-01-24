@@ -1,6 +1,6 @@
-import params
 import os
-import torch
+
+import params
 
 
 def create_dir(result_dir_pref, model_name, con_operator, model_path, loss_graph_path, result_path, model_depth):
@@ -64,7 +64,8 @@ def create_dir(result_dir_pref, model_name, con_operator, model_path, loss_graph
     return output_dir
 
 
-
 if __name__ == '__main__':
     import utils.image_quality_assessment_util as utils_
-    utils_.calculate_TMQI_results_for_selected_methods("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr", "/cs/labs/raananf/yael_vinker/NEW_TMQI")
+
+    utils_.calculate_TMQI_results_for_selected_methods("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr",
+                                                       "/cs/labs/raananf/yael_vinker/NEW_TMQI")

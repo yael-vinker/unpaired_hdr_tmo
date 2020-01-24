@@ -1,27 +1,25 @@
-import numpy as np
-import pathlib
-import imageio
 import os
+import pathlib
+from math import exp
+
+import imageio
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
+import torch.nn.functional as F
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
+import torchvision.utils as vutils
+from torch.autograd import Variable
+
+import GanTrainer
+import TMQI
+import gan_trainer_utils
+import hdr_image_utils
 import params
 import ssim
-import matplotlib.pyplot as plt
-import torchvision.utils as vutils
 import tranforms as transforms_
-import torchvision.transforms as transforms
-import torchvision.transforms.functional as F1
-import torch.nn.functional as F
-import hdr_image_utils
-import gan_trainer_utils
 from old_files import HdrImageFolder
-
-import torchvision.datasets as dset
-import gan_trainer
-from torch.autograd import Variable
-import numpy as np
-from math import exp
-import ssim
-import TMQI
 
 
 def print_im_details(im, title, disply=False):
@@ -66,7 +64,6 @@ def test_normalize_transform(batch, device):
     # normalize_back = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     # batch_origin = normalize_back(new_batch)
     compare_tensors(before_batch, batch_origin)
-
 
 
 def verify_G_output_range(fake_results, min, max):
@@ -131,9 +128,10 @@ def plot_npy_data(dataloader, device, title):
 def get_data_root():
     batch_size, num_epochs, model, G_lr, D_lr, train_data_root_npy, train_data_root_ldr, isCheckpoint_str, \
     test_data_root_npy, test_data_root_ldr, g_opt_for_single_d, \
-    result_dir_pref, input_dim, apply_g_ssim = gan_trainer.parse_arguments()
+    result_dir_pref, input_dim, apply_g_ssim = GanTrainer.parse_arguments()
     # Decide which device we want to run on
     return train_data_root_npy
+
 
 def transforms_test():
     transform_original = transforms.Compose([
@@ -151,7 +149,7 @@ def transforms_test():
 
     data_root = get_data_root()
     dataset_origin = dset.ImageFolder(root=data_root,
-                                   transform=transform_original)
+                                      transform=transform_original)
 
     dataset_custom = HdrImageFolder.HdrImageFolder(root=data_root,
                                                    transform=transform_custom)
@@ -165,6 +163,7 @@ def transforms_test():
     print(np.array_equal(original_transform_im, custom_transform_im))
     hdr_image_utils.print_image_details(original_transform_im, "original_transform_im")
     hdr_image_utils.print_image_details(custom_transform_im, "custom_transform_im")
+
 
 def ssim_test():
     transform_custom = transforms.Compose([
@@ -181,13 +180,14 @@ def ssim_test():
     dataset2 = HdrImageFolder.HdrImageFolder(root=data_root_2,
                                              transform=transform_custom)
     dataloader1 = torch.utils.data.DataLoader(dataset1, batch_size=4,
-                                                 shuffle=False, num_workers=params.workers)
+                                              shuffle=False, num_workers=params.workers)
     dataloader2 = torch.utils.data.DataLoader(dataset2, batch_size=4,
-                                                 shuffle=False, num_workers=1)
+                                              shuffle=False, num_workers=1)
     batch1 = (next(iter(dataloader1)))[0]
     batch2 = (next(iter(dataloader2)))[0]
     ssim_loss = ssim.SSIM(window_size=11)
     print(ssim_loss(batch1, batch2))
+
 
 def test1(root):
     for img_name in os.listdir(root):
@@ -216,13 +216,13 @@ def test1(root):
 
         im_log = np.log(im_origin + 1)
 
-        im_log_norm = im_log / np.max(im_log) # 0-1
+        im_log_norm = im_log / np.max(im_log)  # 0-1
         hdr_image_utils.print_image_details(im_log_norm, "im_log_norm")
 
-        std_im = (im_log_norm - 0.5) / 0.5 # -1 1
+        std_im = (im_log_norm - 0.5) / 0.5  # -1 1
         hdr_image_utils.print_image_details(std_im, "std_im")
 
-        im_n = (std_im - np.min(std_im)) / (np.max(std_im) - np.min(std_im)) # 0-1 (im_log_norm)
+        im_n = (std_im - np.min(std_im)) / (np.max(std_im) - np.min(std_im))  # 0-1 (im_log_norm)
         hdr_image_utils.print_image_details(im_n, "im_n")
 
         im_org = np.exp(im_n * np.log(255)) - 1
@@ -238,19 +238,21 @@ def test1(root):
         plt.imshow(im_log_norm)
         plt.show()
 
+
 def show_two_images(im1, im2):
     hdr_image_utils.print_tensor_details(im1, "no exp")
     hdr_image_utils.print_tensor_details(im2, "exp")
     im1 = np.squeeze(np.asarray(im1.permute(1, 2, 0).detach().cpu().numpy()))
     im2 = np.squeeze(np.asarray(im2.permute(1, 2, 0).detach().cpu().numpy()))
     plt.figure(figsize=(15, 15))
-    plt.subplot(2,1,1)
+    plt.subplot(2, 1, 1)
     plt.imshow(im1, cmap='gray')
-    plt.subplot(2,1,2)
+    plt.subplot(2, 1, 2)
     plt.imshow(im2, cmap='gray')
     plt.show()
     hdr_image_utils.print_image_details(im1, "no exp")
     hdr_image_utils.print_image_details(im2, "exp")
+
 
 def exp_transform_test():
     im = gan_trainer_utils.read_ldr_image("data/ldr_data/ldr_data/im_96.bmp")
@@ -299,27 +301,34 @@ def model_test():
 
     layer_factor = msu.get_layer_factor(params.original_unet)
     new_unet_conv = squre_unet.UNet(1, 1, 0, depth=4, layer_factor=layer_factor,
-                              con_operator=params.original_unet, filters=32, bilinear=False, network=params.unet_network, dilation=0)
+                                    con_operator=params.original_unet, filters=32, bilinear=False,
+                                    network=params.unet_network, dilation=0)
 
     new_torus = squre_unet.UNet(1, 1, 0, depth=3, layer_factor=layer_factor,
-                              con_operator=params.original_unet, filters=32, bilinear=False, network=params.torus_network, dilation=2)
+                                con_operator=params.original_unet, filters=32, bilinear=False,
+                                network=params.torus_network, dilation=2)
     # print(unet_conv)
     # summary(unet_conv, (1, 256, 256), device="cpu")
 
     print(new_torus)
     summary(new_torus, (1, 256, 256), device="cpu")
 
+
 def to_gray(im):
-    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+    return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
+
 
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
+
 def to_0_1_range_tensor(im):
     return (im - im.min()) / (im.max() - im.min())
 
+
 def ssim_test():
-    im_tone_mapped = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/local_log_1000_unet_original_unet_depth_2/model_results/1/1_epoch_1_rgb.png")
+    im_tone_mapped = imageio.imread(
+        "/Users/yaelvinker/PycharmProjects/lab/local_log_1000_unet_original_unet_depth_2/model_results/1/1_epoch_1_rgb.png")
     im_tone_mapped = to_gray(im_tone_mapped)
     im_tone_mapped = to_0_1_range(im_tone_mapped)
     im_tone_mapped_tensor = torch.from_numpy(im_tone_mapped)
@@ -334,9 +343,11 @@ def ssim_test():
     print("tmqi")
     print(TMQI.TMQI(hdr_im, im_tone_mapped))
 
+
 def to_numpy_display(im):
     im = im.clone().permute(1, 2, 0).detach().cpu().numpy()
     return np.squeeze(im)
+
 
 def frame_test():
     SHAPE_ADDITION = 45
@@ -368,15 +379,18 @@ def frame_test():
     plt.imshow(to_numpy_display(im), cmap='gray')
     plt.show()
 
+
 def gaussian(window_size, sigma):
     gauss = torch.Tensor([exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
     return gauss / gauss.sum()
+
 
 def create_window(window_size, channel):
     _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
     _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
     window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
     return window
+
 
 def our_custom_ssim_test():
     data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy/ldr_npy/im_96_one_dim.npy", allow_pickle=True)
@@ -411,14 +425,15 @@ def our_custom_ssim_test():
     print(ssim.ssim(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
     # print(our_ssim_loss(im_tone_mapped_tensor, im_tone_mapped_tensor * 2))
 
+
 if __name__ == '__main__':
     our_custom_ssim_test()
     ssim_test()
-    a = torch.tensor([1,0,-1,-3])
-    b = a<=0
+    a = torch.tensor([1, 0, -1, -3])
+    b = a <= 0
     print(b.sum())
     print(b.count(True))
-    print(len([a<=0]))
+    print(len([a <= 0]))
     # data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/ldr_npy/ldr_npy/im_96_one_dim.npy", allow_pickle=True)
     # img1 = data[()]["input_image"]
     # img2 = img1 * 0.5
@@ -499,8 +514,6 @@ if __name__ == '__main__':
     #     return ssim_map.mean()
     # else:
     #     return ssim_map.mean(1).mean(1).mean(1)
-
-
 
     # print(im.shape)
     # first_row = im[0, :]
@@ -598,7 +611,6 @@ if __name__ == '__main__':
     # print(im.shape)
     # print(im.dtype)
 
-
     # transform_custom = transforms.Compose([
     #     transforms_.Scale(params.input_size),
     #     # transforms_.CenterCrop(params.input_size),
@@ -630,5 +642,3 @@ if __name__ == '__main__':
     #
     # im3 = im2 + 1
     # hdr_image_utils.print_image_details(im3, "im3 dng")
-
-

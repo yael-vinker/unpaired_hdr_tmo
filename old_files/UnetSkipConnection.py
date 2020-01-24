@@ -1,15 +1,14 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 class UNetSkipConnection(nn.Module):
     def __init__(
-        self,
-        in_channels=3,
-        depth=3,
-        wf=4,
-        padding=1,
+            self,
+            in_channels=3,
+            depth=3,
+            wf=4,
+            padding=1,
     ):
         """
         Implementation of
@@ -51,8 +50,6 @@ class UNetSkipConnection(nn.Module):
 
         # self.conv_block = double_conv(32, 16)
 
-
-
     def forward(self, x):
         y = x.float()
         blocks = []
@@ -61,12 +58,12 @@ class UNetSkipConnection(nn.Module):
             y = down(y)
 
         for i, up in enumerate(self.up_path):
-            y_down = blocks[-i -1]
+            y_down = blocks[-i - 1]
             y = up(y, y_down)
 
         # return out
         return y
-        #return self.last_sig(y)
+        # return self.last_sig(y)
 
 
 class UNetConvBlock(nn.Module):
@@ -96,7 +93,7 @@ class UNetUpBlock(nn.Module):
         diff_y = (layer_height - target_size[0]) // 2
         diff_x = (layer_width - target_size[1]) // 2
         return layer[
-               :, :, diff_y : (diff_y + target_size[0]), diff_x : (diff_x + target_size[1])
+               :, :, diff_y: (diff_y + target_size[0]), diff_x: (diff_x + target_size[1])
                ]
 
     def forward(self, x1, x2):
@@ -109,6 +106,7 @@ class UNetUpBlock(nn.Module):
 
 class double_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
+
     def __init__(self, in_ch, out_ch):
         super(double_conv, self).__init__()
         self.conv = nn.Sequential(

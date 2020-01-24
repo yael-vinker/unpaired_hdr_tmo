@@ -1,12 +1,13 @@
 # full assembly of the sub-parts to form the complete net
 
-import torch.nn.functional as F
-
 from .unet_parts import *
 
+
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear, network, dilation, to_crop=False):
+    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear,
+                 network, dilation, to_crop=False, use_pyramid_loss=False):
         super(UNet, self).__init__()
+        self.use_pyramid_loss = use_pyramid_loss
         self.to_crop = to_crop
         self.con_operator = con_operator
         self.network = network
@@ -45,7 +46,6 @@ class UNet(nn.Module):
         else:
             raise Exception('ERROR: Invalid images range')
 
-
     def forward(self, x):
         next_x = self.inc(x)
         x_results = [next_x]
@@ -54,12 +54,20 @@ class UNet(nn.Module):
             x_results.append(next_x)
 
         up_x = x_results[(self.depth)]
-        # up_x_results = []
+        # x_pairs = []
         for i, up_layer in enumerate(self.up_path):
+            # x_pairs.append((x_results[(self.depth - (i + 1))], up_x))
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
-            # up_x_results.append(up_x)
         x = self.outc(up_x)
         x = self.last_sig(x)
+
+        # import matplotlib.pyplot as plt
+        # for p in x_pairs:
+        #     plt.subplot(1,2,1)
+        #     plt.imshow(p[0][0].clone().permute(1, 2, 0).detach().cpu().numpy())
+        #     plt.subplot(1, 2, 2)
+        #     plt.imshow(p[1][0].clone().permute(1, 2, 0).detach().cpu().numpy())
+        #     plt.show()
 
         # print("down res")
         # for d_x in x_results:

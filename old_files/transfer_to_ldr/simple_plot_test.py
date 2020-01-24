@@ -1,8 +1,9 @@
 import argparse
 import os
-import torch
 
 import matplotlib
+import torch
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -33,6 +34,7 @@ def pil_loader(path):
         img = Image.open(f)
         return img.convert('RGB')
 
+
 def get_data(isHdr, dir_root, b_size):
     if isHdr:
         dataset = HdrImageFolder.HdrImageFolder(root=dir_root,
@@ -41,14 +43,15 @@ def get_data(isHdr, dir_root, b_size):
                                                 ]))
     else:
         dataset = dset.ImageFolder(root=dir_root,
-                                    transform=transforms.Compose([
-                                        transforms.Resize(256),
-                                        transforms.ToTensor(),
-                                    ]))
+                                   transform=transforms.Compose([
+                                       transforms.Resize(256),
+                                       transforms.ToTensor(),
+                                   ]))
 
-    print("number of images in ",dir_root, " = ", len(dataset))
+    print("number of images in ", dir_root, " = ", len(dataset))
     return torch.utils.data.DataLoader(dataset, batch_size=b_size,
                                        shuffle=True, num_workers=2)
+
 
 def save_results(epoch, device, dataroot_hdr, dataroot_ldr, out_dir):
     dataloader_hdr = get_data(True, dataroot_hdr, 6)
@@ -67,7 +70,7 @@ def save_results(epoch, device, dataroot_hdr, dataroot_ldr, out_dir):
 
     # Plot the fake images from the last epoch
     # with torch.no_grad():
-        # fake = self.netG(first_b).detach().cpu()
+    # fake = self.netG(first_b).detach().cpu()
     fake = next(iter(dataloader_ldr))[0].to(device)
     img_list1 = []
     img_list1.append(vutils.make_grid(fake[:64], padding=2, normalize=True))
@@ -84,4 +87,3 @@ if __name__ == '__main__':
     in_root, out_root, root_hdr, root_ldr = parse_arguments()
     device1 = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
     save_results(5, device1, root_hdr, root_ldr, out_root)
-

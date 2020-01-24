@@ -12,7 +12,6 @@ from torch import autograd
 from torchsummary import summary
 
 matplotlib.use('Agg')
-import Discriminator
 import params
 import time
 import gan_trainer_utils as g_t_utils
@@ -23,7 +22,7 @@ import ssim
 import printer
 import tranforms as custom_transform
 # import torus.Unet as TorusUnet
-import unet_multi_filters.Unet as Generator
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
@@ -52,11 +51,13 @@ def parse_arguments():
     parser.add_argument("--use_transform_exp", type=int, default=1)  # int(False) = 0
     parser.add_argument("--epoch_to_save", type=int, default=2)
     args = parser.parse_args()
-    return args.batch, args.epochs, args.model, args.con_operator, args.filters, args.G_lr, args.D_lr, os.path.join(args.data_root_npy), \
+    return args.batch, args.epochs, args.model, args.con_operator, args.filters, args.G_lr, args.D_lr, os.path.join(
+        args.data_root_npy), \
            os.path.join(args.data_root_ldr), args.checkpoint, os.path.join(args.test_data_root_npy), \
            os.path.join(args.test_data_root_ldr), args.result_dir_prefix, args.input_dim, \
            args.loss_g_d_factor, args.ssim_loss_g_factor, args.input_images_mean, args.use_transform_exp, \
            args.log_factor, args.test_dataroot_original_hdr, args.epoch_to_save, args.unet_depth
+
 
 class GanTrainer:
     def __init__(self, t_device, t_batch_size, t_num_epochs, train_dataroot_npy,
@@ -71,7 +72,7 @@ class GanTrainer:
         self.optimizerD = t_optimizerD
         self.criterion = nn.BCELoss()
         self.epoch_to_save = epoch_to_save_
-        self.use_transform_exp = 1 #true
+        self.use_transform_exp = 1  # true
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
 
@@ -174,7 +175,7 @@ class GanTrainer:
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
         plot_util.plot_discriminator_losses(self.D_loss_fake,
-                                      self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path)
+                                            self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path)
         plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
                                         "accuracy epoch = " + str(epoch),
                                         self.epoch, acc_path)
@@ -202,7 +203,7 @@ class GanTrainer:
                                             0)
             if epoch % self.epoch_to_save == 0:
                 model_save_util.save_discriminator_model(params.models_save_path, epoch, output_dir,
-                                           self.netD, self.optimizerD)
+                                                         self.netD, self.optimizerD)
                 self.save_loss_plot(epoch, output_dir)
                 # self.tester.update_TMQI(self.netG, output_dir, epoch)
         # self.writer.close()
@@ -253,7 +254,8 @@ if __name__ == '__main__':
     # Setup Adam optimizers for both G and D
     optimizer_D = optim.Adam(net_D.parameters(), lr=D_lr, betas=(params.beta1, 0.999))
 
-    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator, params.models_save_path,
+    output_dir = g_t_utils.create_dir(result_dir_pref + "_log_" + str(log_factor), model, con_operator,
+                                      params.models_save_path,
                                       params.loss_path, params.results_path, depth)
 
     gan_trainer = GanTrainer(device, batch_size, num_epochs, train_data_root_npy, train_data_root_ldr,

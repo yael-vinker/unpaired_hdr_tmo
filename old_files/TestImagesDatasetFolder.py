@@ -1,10 +1,12 @@
 from __future__ import print_function
-from torchvision.datasets import DatasetFolder
-import imageio
+
 import pathlib
-import skimage
+
 import cv2
+import imageio
 import numpy as np
+import skimage
+from torchvision.datasets import DatasetFolder
 
 IMG_EXTENSIONS_local = ['.hdr', '.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', 'webp']
 
@@ -35,7 +37,6 @@ class TestImagesDatasetFolder(DatasetFolder):
     def __init__(self, root, transform=None, target_transform=None,
                  loader=hdr_loader):
         super(TestImagesDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
-                                             transform=transform,
-                                             target_transform=target_transform)
+                                                      transform=transform,
+                                                      target_transform=target_transform)
         self.imgs = self.samples
-

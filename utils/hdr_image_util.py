@@ -1,16 +1,17 @@
-import torchvision.transforms as transforms
-import params
-import torchvision.utils as vutils
-import pathlib
-import matplotlib.pyplot as plt
 import os
-import numpy as np
-from skimage import exposure
+import pathlib
+
 import cv2
 import imageio
-import torch
+import matplotlib.pyplot as plt
+import numpy as np
 import skimage
+import torch
+from skimage import exposure
+
+import params
 import tranforms
+
 
 def print_image_details(im, title):
     print(title)
@@ -20,8 +21,10 @@ def print_image_details(im, title):
     print("unique values : ", np.unique(im).shape[0])
     print()
 
+
 def to_gray(im):
-    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
+    return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
+
 
 def read_hdr_image(path):
     path_lib_path = pathlib.Path(path)
@@ -41,6 +44,7 @@ def read_ldr_image(path):
     im = im_origin / 255
     return im
 
+
 def hdr_log_loader_factorize(path, range_factor):
     im_origin = read_hdr_image(path)
     max_origin = np.max(im_origin)
@@ -48,6 +52,7 @@ def hdr_log_loader_factorize(path, range_factor):
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
+
 
 def uint_normalization(im):
     # norm_im = ((im / np.max(im)) * 255).astype("uint8")
@@ -57,11 +62,14 @@ def uint_normalization(im):
     norm_im = np.clip(norm_im, 0, 255)
     return norm_im
 
+
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
+
 def exp_normalization(im):
     return (np.exp(im) - 1) / (np.exp(np.max(im)) - 1)
+
 
 def log100_normalization(im, isHDR):
     IMAGE_SCALE = 100
@@ -84,6 +92,7 @@ def log100_normalization(im, isHDR):
     # norm_im_clamp = np.clip(norm_im, 0, 255)
     return norm_im
 
+
 def back_to_color(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
     fake = to_0_1_range(fake)
@@ -94,17 +103,19 @@ def back_to_color(im_hdr, fake):
     output_im = np.power(norm_im, 0.5) * fake
     return to_0_1_range(output_im)
 
+
 def reshape_image(rgb_im):
     h, w = rgb_im.shape[0], rgb_im.shape[1]
-    if min(h,w) > 3000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
-                                                       int(rgb_im.shape[1] / 4)),
-                                                       mode='reflect', preserve_range=False).astype("float32")
-    elif min(h,w) > 2000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
-                                                       int(rgb_im.shape[1] / 3)),
-                                               mode='reflect', preserve_range=False).astype("float32")
+    if min(h, w) > 3000:
+        rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
+                                                   int(rgb_im.shape[1] / 4)),
+                                          mode='reflect', preserve_range=False).astype("float32")
+    elif min(h, w) > 2000:
+        rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+                                                   int(rgb_im.shape[1] / 3)),
+                                          mode='reflect', preserve_range=False).astype("float32")
     return rgb_im
+
 
 def back_to_color_batch(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
@@ -170,12 +181,14 @@ def display_tensor(tensor):
     plt.imshow(im_display)
     plt.show()
 
+
 def log_1000(im, range_factor=1000):
     max_origin = np.max(im)
     image_new_range = (im / max_origin) * range_factor
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
+
 
 def apply_preproccess_for_hdr_im(hdr_im):
     im_hdr_log = log_1000(hdr_im)

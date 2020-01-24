@@ -1,10 +1,9 @@
+import inspect
 import os
 import sys
-import skimage
 
 import imageio
-import torch
-import os,sys,inspect
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
@@ -44,16 +43,21 @@ def get_layer_factor(con_operator):
         assert 0, "Unsupported con_operator request: {}".format(con_operator)
 
 
-def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean_, filters=64, con_operator="", unet_depth_=0, add_frame=False):
+def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean_, filters=64, con_operator="",
+               unet_depth_=0, add_frame=False):
     # Create the Generator (UNet architecture)
     if net == "G":
         layer_factor = get_layer_factor(con_operator)
         if model == params.unet_network:
-            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=layer_factor,
-                                      con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0, to_crop=add_frame).to(device_)
+            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+                                     layer_factor=layer_factor,
+                                     con_operator=con_operator, filters=filters, bilinear=False, network=model,
+                                     dilation=0, to_crop=add_frame).to(device_)
         elif model == params.torus_network:
-            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_, layer_factor=layer_factor,
-                                      con_operator=con_operator, filters=filters, bilinear=False, network=params.torus_network, dilation=2, to_crop=add_frame).to(device_)
+            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+                                     layer_factor=layer_factor,
+                                     con_operator=con_operator, filters=filters, bilinear=False,
+                                     network=params.torus_network, dilation=2, to_crop=add_frame).to(device_)
 
     # Create the Discriminator
     elif net == "D":
@@ -71,6 +75,46 @@ def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean
         new_net.apply(weights_init)
         print("Weights for " + net + " were initialized successfully")
     return new_net
+
+
+def set_parallel_net(net, device_, is_checkpoint, net_name):
+    # Handle multi-gpu if desired
+    if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
+        print("Using [%d] GPUs" % torch.cuda.device_count())
+        net = nn.DataParallel(net, list(range(torch.cuda.device_count())))
+
+    # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
+    if not is_checkpoint:
+        net.apply(weights_init)
+        print("Weights for " + net_name + " were initialized successfully")
+    return net
+
+
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm):
+    # Create the Discriminator
+    new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
+    return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator")
+
+
+def create_G_net(model, device_, is_checkpoint, input_dim_, input_images_mean_, filters, con_operator, unet_depth_,
+                 add_frame, use_pyramid_loss):
+    # Create the Generator (UNet architecture)
+    layer_factor = get_layer_factor(con_operator)
+    if model == params.unet_network:
+        new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+                                 layer_factor=layer_factor,
+                                 con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
+                                 to_crop=add_frame, use_pyramid_loss=use_pyramid_loss).to(device_)
+    elif model == params.torus_network:
+        new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+                                 layer_factor=layer_factor,
+                                 con_operator=con_operator, filters=filters, bilinear=False,
+                                 network=params.torus_network, dilation=2, to_crop=add_frame,
+                                 use_pyramid_loss=use_pyramid_loss).to(device_)
+    else:
+        assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
+
+    return set_parallel_net(new_net, device_, is_checkpoint, "Generator")
 
 
 def save_model(path, epoch, output_dir, netG, optimizerG, netD, optimizerD):
@@ -96,6 +140,7 @@ def save_model(path, epoch, output_dir, netG, optimizerG, netD, optimizerD):
             'optimizerG_state_dict': optimizerG.state_dict(),
         }, path_250)
 
+
 def save_discriminator_model(path, epoch, output_dir, netD, optimizerD):
     path = os.path.join(output_dir, path, "net_epoch_" + str(epoch) + ".pth")
     if not os.path.exists(os.path.dirname(path)):
@@ -115,6 +160,7 @@ def save_discriminator_model(path, epoch, output_dir, netD, optimizerD):
             'optimizerD_state_dict': optimizerD.state_dict(),
         }, path_250)
 
+
 def save_best_model(netG, output_dir, optimizerG):
     best_model_save_path = os.path.join("best_model", "best_model.pth")
     best_model_path = os.path.join(output_dir, best_model_save_path)
@@ -124,10 +170,11 @@ def save_best_model(netG, output_dir, optimizerG):
     }, best_model_path)
 
 
-def load_g_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
+def load_g_model(model, device, filters, con_operator, model_depth,
+                 net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     G_net = create_net("G", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
-    #checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+    # checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
     # if device.type == 'cpu':
@@ -142,7 +189,9 @@ def load_g_model(model, device, filters, con_operator, model_depth, net_path="/U
     G_net.eval()
     return G_net
 
-def load_d_model(model, device, filters, con_operator, model_depth, net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
+
+def load_d_model(model, device, filters, con_operator, model_depth,
+                 net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
     D_net = create_net("D", model, device, False, 1, 0, filters,
                        con_operator, model_depth).to(device)
     # checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
@@ -159,6 +208,7 @@ def load_d_model(model, device, filters, con_operator, model_depth, net_path="/U
     D_net.load_state_dict(new_state_dict)
     D_net.eval()
     return D_net
+
 
 def run_model_on_single_image(G_net, original_im, device, im_name, output_path):
     transform_exp = tranforms.Exp(1000)
@@ -187,7 +237,6 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 def run_model_for_path(device, train_dataroot_npy, train_dataroot_ldr, output_path, model_path, batch_size=4):
     train_data_loader_npy, train_ldr_loader = data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
                                                                          batch_size, testMode=False, title="train")
-
 
     G_net = load_g_model(device, model_path)
     num_iters = 0
@@ -219,11 +268,11 @@ def save_fake_images_for_fid_hdr_input():
                32, 32, 32, 32,
                32, 32, 64]
     models = [params.torus_network, params.torus_network, params.torus_network, params.unet_network,
-             params.unet_network, params.unet_network, params.unet_network, params.unet_network,
-             params.unet_network, params.unet_network, params.unet_network]
+              params.unet_network, params.unet_network, params.unet_network, params.unet_network,
+              params.unet_network, params.unet_network, params.unet_network]
     con_operators = [params.original_unet, params.original_unet, params.square, params.original_unet,
-                    params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
-                    params.square, params.square_root, params.original_unet]
+                     params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
+                     params.square, params.square_root, params.original_unet]
     depths = [3, 4, 3, 3,
               4, 3, 4, 3,
               4, 3, 3]
@@ -231,7 +280,8 @@ def save_fake_images_for_fid_hdr_input():
     models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
 
     for i in range(len(filters)):
-        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(depths[i])
+        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(
+            depths[i])
         print("cur model = ", model_name)
         cur_model_path = os.path.join(arch_dir, model_name)
         if os.path.exists(cur_model_path):
@@ -246,12 +296,14 @@ def save_fake_images_for_fid_hdr_input():
                     cur_output_path = os.path.join(output_path, str(m))
                     if not os.path.exists(cur_output_path):
                         os.mkdir(cur_output_path)
-                    run_model_on_path(models[i], device, filters[i], con_operators[i], depths[i], cur_net_path, input_images_path,
+                    run_model_on_path(models[i], device, filters[i], con_operators[i], depths[i], cur_net_path,
+                                      input_images_path,
                                       cur_output_path)
                 else:
                     print("model path does not exists: ", cur_output_path)
         else:
             print("model path does not exists")
+
 
 def get_bump(im):
     import numpy as np
@@ -264,6 +316,7 @@ def get_bump(im):
     a0 = np.mean(hist[0:64])
     a1 = np.mean(hist[65:200])
     return a1 / a0
+
 
 def find_f(im):
     import numpy as np
@@ -284,7 +337,8 @@ def find_f(im):
     return f
 
 
-def run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path, output_images_path):
+def run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path,
+                      output_images_path):
     net_G = load_g_model(model, device, filters, con_operator, model_depth, net_path)
     print("model " + model + " was loaded successfully")
     for img_name in os.listdir(input_images_path):
@@ -296,6 +350,7 @@ def run_model_on_path(model, device, filters, con_operator, model_depth, net_pat
             # print(f)
             # original_im = original_im * 255 * f
             run_model_on_single_image(net_G, original_im, device, os.path.splitext(img_name)[0], output_images_path)
+
 
 def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_path, train_data_loader_hdr,
                         train_data_loader_ldr, output_images_path):
@@ -321,11 +376,10 @@ def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_p
     return accDreal_counter / (num_iter * 16), accDlog_counter / (num_iter * 16)
 
 
-
-
 def compare_best_models():
     models_name = ["skip_connection"]
-    models_path = ["/cs/labs/raananf/yael_vinker/11_20/results/log1000_with_exp_log_1000_skip_connection_conv_depth_4/best_model/best_model.pth"]
+    models_path = [
+        "/cs/labs/raananf/yael_vinker/11_20/results/log1000_with_exp_log_1000_skip_connection_conv_depth_4/best_model/best_model.pth"]
     models_depth = [4]
     input_images_path = "/cs/labs/raananf/yael_vinker/models_results/hdr_test_images"
     output_path = "/cs/labs/raananf/yael_vinker/models_results/models_results"
@@ -336,6 +390,7 @@ def compare_best_models():
         model_output_path = os.path.join(output_path, model_name)
         print(model_name)
         run_model_on_path(model_path, model_name, model_depth, input_images_path, model_output_path)
+
 
 def run_discriminator_on_data():
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
@@ -371,7 +426,8 @@ def run_discriminator_on_data():
     acc_ldr_list = []
     acc_log_list = []
     for i in range(len(filters)):
-        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(depths[i])
+        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(
+            depths[i])
         print("cur model = ", model_name)
         cur_model_path = os.path.join(arch_dir, model_name)
         if os.path.exists(cur_model_path):
@@ -386,9 +442,10 @@ def run_discriminator_on_data():
                     cur_output_path = os.path.join(output_path, str(m))
                     if not os.path.exists(cur_output_path):
                         os.mkdir(cur_output_path)
-                    acc_ldr, acc_log = run_model_d_on_path(models[i], device, filters[i], con_operators[i], depths[i], cur_net_path,
-                                        train_data_loader_hdr,
-                                        train_data_loader_ldr, cur_output_path)
+                    acc_ldr, acc_log = run_model_d_on_path(models[i], device, filters[i], con_operators[i], depths[i],
+                                                           cur_net_path,
+                                                           train_data_loader_hdr,
+                                                           train_data_loader_ldr, cur_output_path)
                     acc_ldr_list.append(acc_ldr)
                     acc_log_list.append(acc_log)
                 else:
@@ -408,7 +465,6 @@ def run_discriminator_on_data():
             plt.close()
         else:
             print("model path does not exists")
-
 
 
 if __name__ == '__main__':

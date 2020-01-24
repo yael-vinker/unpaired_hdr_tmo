@@ -1,14 +1,15 @@
-import torchvision.transforms as transforms
 import argparse
-import params
 import os
-import shutil
-import tranforms as transforms_
-import imageio
 import pathlib
+
+import imageio
 import numpy as np
+import torchvision.transforms as transforms
+
 import hdr_image_utils
-import matplotlib.pyplot as plt
+import params
+import tranforms as transforms_
+
 
 def hdr_log_loader(path):
     path_lib_path = pathlib.Path(path)
@@ -38,16 +39,19 @@ def hdr_loader(path):
     im = (im_origin / max_origin)
     return im
 
+
 def ldr_loader(path):
     path = pathlib.Path(path)
     im_origin = imageio.imread(path)
     return im_origin
+
 
 def test_result(output_dir):
     for img_name in os.listdir(output_dir):
         im_path = os.path.join(output_dir, img_name)
         data = np.load(im_path, allow_pickle=True)
         hdr_image_utils.print_image_details(data, img_name)
+
 
 def create_log_npy_data(input_dir, output_dir):
     dtype = np.float32
@@ -64,6 +68,7 @@ def create_log_npy_data(input_dir, output_dir):
         transformed_im = transform_custom(log_im)
         np.save(output_path, transformed_im)
         print(output_path)
+
 
 def create_npy_data(input_dir, output_dir, isLdr=False):
     dtype = np.float32

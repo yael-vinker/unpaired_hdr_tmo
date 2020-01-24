@@ -1,5 +1,7 @@
-import params
 import torch
+
+import params
+
 
 def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode):
     import ProcessedDatasetFolder
@@ -29,6 +31,7 @@ def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title):
     printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
     return train_hdr_dataloader, train_ldr_dataloader
 
+
 def crop_input_hdr_batch(input_hdr_batch):
     b, c, h, w = input_hdr_batch.shape
     th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
@@ -37,6 +40,7 @@ def crop_input_hdr_batch(input_hdr_batch):
     i, j, h, w = i, j, th, tw
     input_hdr_batch = input_hdr_batch[:, :, i:i + h, j:j + w]
     return input_hdr_batch
+
 
 def add_frame_to_im(input_im):
     input_im = torch.squeeze(input_im)

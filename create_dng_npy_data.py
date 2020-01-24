@@ -1,16 +1,17 @@
 from __future__ import print_function
-import argparse
+
 import os
+from os import path
 
 import imageio
+import matplotlib.pyplot as plt
+import numpy as np
 import skimage
 
-import tranforms as transforms_
-import numpy as np
 import hdr_image_utils
-import matplotlib.pyplot as plt
+import tranforms as transforms_
 import utils.hdr_image_util as hdr_image_util
-from os import path
+
 
 def display_tensor(tensor_im, isgray):
     np_im = np.array(tensor_im.permute(1, 2, 0))
@@ -21,6 +22,7 @@ def display_tensor(tensor_im, isgray):
     else:
         plt.imshow(im)
     plt.show()
+
 
 def print_result(output_dir):
     for img_name in os.listdir(output_dir):
@@ -68,6 +70,7 @@ def split_test_data(output_train_dir, output_test_dir, selected_test_images, log
                 os.rename(im_path, im_new_path)
                 break
 
+
 def reshape_hdr_test_images():
     input_dir = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"
     output_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images_reshaped"
@@ -77,11 +80,11 @@ def reshape_hdr_test_images():
         h, w = rgb_img.shape[0], rgb_img.shape[1]
         print("before ", img_name)
         print(rgb_img.shape)
-        if min(h,w) > 3000:
+        if min(h, w) > 3000:
             rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 3),
-                                                                         int(rgb_img.shape[1] / 3)),
-                                                       mode='reflect', preserve_range=False).astype("float32")
-        elif min(h,w) > 2000:
+                                                         int(rgb_img.shape[1] / 3)),
+                                               mode='reflect', preserve_range=False).astype("float32")
+        elif min(h, w) > 2000:
             rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 2),
                                                          int(rgb_img.shape[1] / 2)),
                                                mode='reflect', preserve_range=False).astype("float32")
@@ -94,8 +97,6 @@ def reshape_hdr_test_images():
             imageio.imwrite(os.path.join(output_path, os.path.splitext(img_name)[0]), rgb_img, format=format)
         print("after")
         print(rgb_img.shape)
-
-
 
 
 if __name__ == '__main__':

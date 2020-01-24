@@ -1,18 +1,19 @@
-import torchvision.transforms as transforms
-import params
-import torchvision.utils as vutils
-import torch
-import pathlib
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-from skimage import exposure
 import math
+import os
+import pathlib
+
 import cv2
-from PIL import Image
 import imageio
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
+import torchvision.transforms as transforms
+from skimage import exposure
+
+import params
 import tranforms as transforms_
+
+
 # import hdr_image_utils
 # import Writer
 
@@ -21,6 +22,7 @@ def read_ldr_image(path):
     im_origin = imageio.imread(path)
     im = im_origin / 255
     return im
+
 
 def read_hdr_image(path):
     path_lib_path = pathlib.Path(path)
@@ -33,6 +35,7 @@ def read_hdr_image(path):
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im
 
+
 def hdr_log_loader_factorize(path, range_factor):
     im_origin = read_hdr_image(path)
     max_origin = np.max(im_origin)
@@ -41,12 +44,15 @@ def hdr_log_loader_factorize(path, range_factor):
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
+
 def custom_loss(output, target):
     b_size = target.shape[0]
     loss = ((output - target) ** 2).sum() / b_size
     return loss
 
-def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss, use_g_ssim_loss):
+
+def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss,
+                        use_g_ssim_loss):
     if use_g_ssim_loss or use_g_d_loss:
         plt.figure()
         plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
@@ -173,8 +179,10 @@ def uint_normalization(im):
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
+
 def to_0_1_range_tensor(im):
     return (im - im.min()) / (im.max() - im.min())
+
 
 def back_to_color(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
@@ -185,6 +193,7 @@ def back_to_color(im_hdr, fake):
     norm_im[:, :, 2] = im_hdr[:, :, 2] / im_gray_
     output_im = np.power(norm_im, 0.5) * fake
     return output_im
+
 
 def back_to_color_exp(im_hdr, fake):
     im_gray_ = np.sum(im_hdr, axis=2)
@@ -197,6 +206,7 @@ def back_to_color_exp(im_hdr, fake):
     output_im = np.power(norm_im, 0.5) * fake
     return output_im
 
+
 def back_to_color_batch(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
     output = []
@@ -207,6 +217,7 @@ def back_to_color_batch(im_hdr_batch, fake_batch):
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
     return torch.stack(output)
 
+
 def back_to_color_exp_batch(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
     output = []
@@ -216,6 +227,7 @@ def back_to_color_exp_batch(im_hdr_batch, fake_batch):
         norm_im = back_to_color_exp(im_hdr, fake)
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
     return torch.stack(output)
+
 
 def exp_normalization(im):
     return (np.exp(im) - 1) / (np.exp(np.max(im)) - 1)
@@ -271,9 +283,10 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
                 im_for_grid = norm_batch[k][:, :, 0]
             else:
                 im_for_grid = norm_batch[k]
-            grid[(y * height):(y * height + height), x * width : x * width + width] = im_for_grid
+            grid[(y * height):(y * height + height), x * width: x * width + width] = im_for_grid
             k = k + 1
     return grid
+
 
 def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_dir, batch_size, epoch, image_mean):
     test_ldr_batch = test_real_batch["input_im"]
@@ -293,8 +306,9 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
         for j in range(4):
-            display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4, normalization=normalization_string_arr[j],
-                                                 isHDR=False, batch_start_index=i * 4)
+            display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4,
+                                               normalization=normalization_string_arr[j],
+                                               isHDR=False, batch_start_index=i * 4)
             plt.subplot(4, 1, j + 1)
             plt.axis("off")
             plt.title(titles[j])
@@ -318,14 +332,16 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_
         for j in range(3):
             if j == 2:
                 normalization_string = "none"
-            display_im = display_batch_as_grid(color_display_group[j], ncols_to_display=(i + 1) * 4, normalization=normalization_string,
-                                                 isHDR=False, batch_start_index=i * 4)
+            display_im = display_batch_as_grid(color_display_group[j], ncols_to_display=(i + 1) * 4,
+                                               normalization=normalization_string,
+                                               isHDR=False, batch_start_index=i * 4)
             plt.subplot(3, 1, j + 1)
             plt.axis("off")
             plt.title(titles[j])
             plt.imshow(display_im)
         plt.savefig(os.path.join(new_out_dir, "color set " + str(i)))
         plt.close()
+
 
 def get_rgb_normalize_im(im):
     new_im = im.clone()
@@ -337,9 +353,12 @@ def get_rgb_normalize_im(im):
         new_im[i, :, :] = im[i, :, :] / norm_rgb
     return new_im
 
+
 def get_rgb_normalize_im_batch(batch):
     batch_normalize = torch.stack([get_rgb_normalize_im(im_x) for im_x in batch])
     return batch_normalize
+
+
 #
 # def get_no(fake, hdr_input):
 #     new_fake = get_rgb_normalize_im(fake)
@@ -377,6 +396,7 @@ def display_tensor(tensor):
     plt.imshow(im_display)
     plt.show()
 
+
 # ----- data loader -------
 def load_data_set(data_root, batch_size_, shuffle, testMode):
     import ProcessedDatasetFolder
@@ -407,15 +427,13 @@ def load_data(train_root_npy, train_root_ldr, batch_size, testMode, title):
     return train_hdr_dataloader, train_ldr_dataloader
 
 
-
 def to_gray(im):
-    return np.dot(im[...,:3], [0.299, 0.587, 0.114]).astype('float32')
-
-
+    return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
 
 
 if __name__ == '__main__':
-    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_1000.npy", allow_pickle=True)
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/hdr_log_data/hdr_log_data/belgium_1000.npy",
+                   allow_pickle=True)
     # if testMode:
     input_im = data[()]["input_image"]
     print(input_im.shape)
@@ -445,7 +463,8 @@ if __name__ == '__main__':
     # plt.show()
     # gray_fake[0, :, :] = gray_np_gamma
 
-    im5 = back_to_color(im_transform.clone().permute(1, 2, 0).detach().cpu().numpy(), gray_t, gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy())
+    im5 = back_to_color(im_transform.clone().permute(1, 2, 0).detach().cpu().numpy(), gray_t,
+                        gray_fake_0_1.clone().permute(1, 2, 0).detach().cpu().numpy())
     plt.imshow(im5)
     plt.show()
 
@@ -456,8 +475,8 @@ if __name__ == '__main__':
     im2[0, :, :] = im_transform[0, :, :] / gray_t
     im2[1, :, :] = im_transform[1, :, :] / gray_t
     im2[2, :, :] = im_transform[2, :, :] / gray_t
-    print(im2[0,0,0])
-    print(im_transform[0,0,0] / (gray_t[0,0]))
+    print(im2[0, 0, 0])
+    print(im_transform[0, 0, 0] / (gray_t[0, 0]))
     im3 = torch.pow(im2, 0.4) * gray_fake_0_1
 
     im_display = im3.clone().permute(1, 2, 0).detach().cpu().numpy()
@@ -476,7 +495,6 @@ if __name__ == '__main__':
     # hdr_image_utils.print_image_details(im3, "pow")
     # plt.imshow(im3)
     # plt.show()
-
 
 #
 # def normalize_im_by_windows(im, window_size):
@@ -517,5 +535,3 @@ if __name__ == '__main__':
 #         fake_im_normalize, hdr_im_normalize = get_tensor_normalized_images_for_windows_loss(fake_im, hdr_im, window_size=5)
 #         loss += mse_loss(fake_im_normalize, hdr_im_normalize)
 #     return loss / b_size
-
-

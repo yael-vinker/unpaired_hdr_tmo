@@ -1,22 +1,13 @@
 from __future__ import print_function
 
-from torchvision.datasets import DatasetFolder
-import imageio
-import pathlib
-import skimage
-import params
-import cv2
-from scipy import ndimage
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-import time
 import os
-import hdr_image_utils
+import pathlib
 
+import imageio
+import numpy as np
+from torchvision.datasets import DatasetFolder
 
-
-IMG_EXTENSIONS_local = ('.hdr','.bmp','.png', '.dng')
+IMG_EXTENSIONS_local = ('.hdr', '.bmp', '.png', '.dng')
 IMAGE_SCALE = 100
 MAX_AXIS = 600
 
@@ -38,7 +29,6 @@ def hdr_loader(path, input_dim, trainMode):
         im_origin = imageio.imread(path_lib_path).astype('float32')
     else:
         raise Exception('invalid hdr file format: {}'.format(file_extension))
-
 
     #     path = "hdr05.hdr"
     # path = pathlib.Path(path)
@@ -82,7 +72,6 @@ def hdr_loader(path, input_dim, trainMode):
     return im
 
 
-
 class HdrImageFolder(DatasetFolder):
     """
     A customized data loader, to load .hdr file
@@ -96,7 +85,6 @@ class HdrImageFolder(DatasetFolder):
         self.input_dim = input_dim
         self.imgs = self.samples
         self.trainMode = trainMode
-
 
     def __getitem__(self, index):
         """

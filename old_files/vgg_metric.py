@@ -1,9 +1,5 @@
-import torchvision.transforms as transforms
 import torch.nn as nn
 import torchvision.models as models
-import imageio
-import tranforms as transforms_
-import torch
 
 
 def maybe_cuda(tensor):

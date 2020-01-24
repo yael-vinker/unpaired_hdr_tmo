@@ -1,21 +1,20 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 
 
 class UNet(nn.Module):
     def __init__(
-        self,
-        in_channels=3,
-        n_classes=3,
-        depth=3,
-        wf=6,
-        # padding=False,
-        padding=True,
-        # batch_norm=False,
-        batch_norm=True,
-        up_mode='upsample',
-        # up_mode='upsample',
+            self,
+            in_channels=3,
+            n_classes=3,
+            depth=3,
+            wf=6,
+            # padding=False,
+            padding=True,
+            # batch_norm=False,
+            batch_norm=True,
+            up_mode='upsample',
+            # up_mode='upsample',
     ):
         """
         Implementation of
@@ -126,8 +125,8 @@ class UNetUpBlock(nn.Module):
         diff_y = (layer_height - target_size[0]) // 2
         diff_x = (layer_width - target_size[1]) // 2
         return layer[
-            :, :, diff_y : (diff_y + target_size[0]), diff_x : (diff_x + target_size[1])
-        ]
+               :, :, diff_y: (diff_y + target_size[0]), diff_x: (diff_x + target_size[1])
+               ]
 
     def forward(self, x, bridge):
         up = self.up(x)

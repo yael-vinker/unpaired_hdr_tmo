@@ -1,18 +1,16 @@
 from __future__ import print_function
-from torchvision.datasets import DatasetFolder
-import numpy as np
+
 import pathlib
+
 import imageio
-import cv2
-import random
-import matplotlib.pyplot as plt
+from torchvision.datasets import DatasetFolder
+
 import hdr_image_utils
-import time
-from skimage.util import img_as_float
 
 IMG_EXTENSIONS_local = ('.png', '.bmp', '.jpg')
 IMAGE_MAX_VALUE = 255
 IMAGE_SCALE = 100
+
 
 def ldr_loader(path, input_dim, trainMode):
     """
@@ -46,6 +44,7 @@ def ldr_loader(path, input_dim, trainMode):
     # im = np.log(im_origin + 1)
     return im_origin
 
+
 class LdrDatasetFolder(DatasetFolder):
     """
     A customized data loader, to load .npy file that contains a dict
@@ -55,8 +54,8 @@ class LdrDatasetFolder(DatasetFolder):
     def __init__(self, root, input_dim, trainMode, transform=None, target_transform=None,
                  loader=ldr_loader):
         super(LdrDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
-                                                     transform=transform,
-                                                     target_transform=target_transform)
+                                               transform=transform,
+                                               target_transform=target_transform)
         self.input_dim = input_dim
         self.imgs = self.samples
         self.trainMode = trainMode

@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 import params
 
 
@@ -23,6 +24,7 @@ class double_conv(nn.Module):
     def forward(self, x):
         x = self.conv(x)
         return x
+
 
 class double_conv_traspose(nn.Module):
     '''(conv => BN => ReLU) * 2'''
@@ -87,7 +89,8 @@ class up(nn.Module):
                 self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
 
         elif network == params.torus_network:  # for torus
-            self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0, dilation=dilation)
+            self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0,
+                                         dilation=dilation)
         else:
             assert 0, "Unsupported network request: {}".format(network)
 

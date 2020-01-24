@@ -1,19 +1,16 @@
 import os
-import torch
+import pathlib
 
 import cv2
-import pathlib
-import skimage
-
 import imageio
-import numpy as np
 import matplotlib
-
+import numpy as np
+import skimage
 
 WINDOW_SIZE_FACTOR = 20
 CHANGE_MATRIX = (np.array([[0.299, 0.587, 0.114],
-                          [0.596, -0.275, -0.321],
-                          [0.212, -0.523, 0.311]])).T  # Create the change of basis matrix
+                           [0.596, -0.275, -0.321],
+                           [0.212, -0.523, 0.311]])).T  # Create the change of basis matrix
 
 IMAGE_WIDTH = 256
 IMAGE_HEIGHT = 256
@@ -33,7 +30,8 @@ def draw_patch_from_center(color, window_height, window_width, ax, im, x, y, tex
     half_height = int(window_height / 2)
     half_width = int(window_width / 2)
     ax.imshow(im, cmap='gray')
-    rect = patches.Rectangle((x - half_width, y - half_height), window_width, window_height, linewidth=1, edgecolor=color, facecolor='none')
+    rect = patches.Rectangle((x - half_width, y - half_height), window_width, window_height, linewidth=1,
+                             edgecolor=color, facecolor='none')
     ax.add_patch(rect)
 
 
@@ -45,6 +43,7 @@ def print_image_details(im, title):
     print("unique values : ", np.unique(im).shape[0])
     print()
 
+
 def print_tensor_details(im, title):
     print(title)
     print("shape : ", im.shape)
@@ -55,8 +54,7 @@ def print_tensor_details(im, title):
 
 
 def RGB2YUV(rgb_im):
-
-    m = np.array([[0.29900, -0.16874,  0.50000],
+    m = np.array([[0.29900, -0.16874, 0.50000],
                   [0.58700, -0.33126, -0.41869],
                   [0.11400, 0.50000, -0.08131]])
 

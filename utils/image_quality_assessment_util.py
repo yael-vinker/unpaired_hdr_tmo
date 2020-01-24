@@ -1,24 +1,28 @@
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-import cv2
-import utils.hdr_image_util as hdr_image_util
-import imageio
 import operator
+import os
+
+import cv2
+import imageio
+import matplotlib.pyplot as plt
+import numpy as np
 import skimage
+
+import TMQI
 import tranforms
 import utils.data_loader_util as data_loader_util
-import TMQI
+import utils.hdr_image_util as hdr_image_util
+
 
 def save_text_to_image(output_path, text, im_name=""):
     from PIL import Image, ImageDraw
     img = Image.new('RGB', (256, 256), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
-    d.text((5,5), text, fill=(0,0,0))
+    d.text((5, 5), text, fill=(0, 0, 0))
     img.save(os.path.join(output_path, im_name + "all.png"))
 
+
 def save_single_tone_mapped_result(output_path, title, method_name, image):
-    plt.figure(figsize=(30,30))
+    plt.figure(figsize=(30, 30))
     plt.axis("off")
     plt.title(title, fontsize=15)
     plt.imshow(image)
@@ -27,11 +31,13 @@ def save_single_tone_mapped_result(output_path, title, method_name, image):
     im = (image * 255).astype('uint8')
     imageio.imwrite(os.path.join(output_path, method_name + "imageio.png"), im, format='PNG-FI')
 
+
 def get_rgb_imageio_im_file_name(self, im_and_q, color):
     return im_and_q["im_name"] + "_imageio_" + color + ".png"
 
 
-def ours(original_im, net_path="/cs/labs/raananf/yael_vinker/11_06/results/ssim2_log_1000_torus_depth_3/models/net.pth"):
+def ours(original_im,
+         net_path="/cs/labs/raananf/yael_vinker/11_06/results/ssim2_log_1000_torus_depth_3/models/net.pth"):
     import torch
     import old_files.torus.Unet as TorusUnet
     import torch.nn as nn
@@ -89,12 +95,14 @@ def net_G_pipeline(im_log_normalize_tensor, hdr_im):
     streched_im = hdr_image_util.to_0_1_range(exp_im_color)
     return streched_im
 
+
 def log_1(im, range_factor=1):
     max_origin = np.max(im)
     image_new_range = (im / max_origin) * range_factor
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
+
 
 def log_100(im, range_factor=100):
     max_origin = np.max(im)
@@ -103,6 +111,7 @@ def log_100(im, range_factor=100):
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
+
 def log_1000(im, range_factor=1000):
     max_origin = np.max(im)
     image_new_range = (im / max_origin) * range_factor
@@ -110,14 +119,17 @@ def log_1000(im, range_factor=1000):
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
 
+
 def log_1000_exp(im):
     im_log_normalize_tensor = apply_preproccess_for_hdr_im(im)
     log1000_im = net_G_pipeline(im_log_normalize_tensor, im)
     return log1000_im
 
+
 def log_100_exp(im):
     im = log_100(im)
     return exp_map(im)
+
 
 def exp_map(im):
     import math
@@ -125,6 +137,7 @@ def exp_map(im):
     im_exp = np.exp(im_0_1) - 1
     im_end = im_exp / (math.exp(1) - 1)
     return im_end
+
 
 def Dargo_tone_map(im):
     # Tonemap using Drago's method to obtain 24-bit color image
@@ -141,23 +154,27 @@ def Durand_tone_map(im):
     # hdr_image_utils.print_image_details(ldrDurand,"durand")
     return ldrDurand
 
+
 def Reinhard_tone_map(im):
     # Tonemap using Reinhard's method to obtain 24-bit color image
     tonemapReinhard = cv2.createTonemapReinhard(1.5, 0, 0, 0)
     ldrReinhard = tonemapReinhard.process(im)
     return ldrReinhard
 
+
 def Mantiuk_tone_map(im):
     # Tonemap using Mantiuk's method to obtain 24-bit color image
-    tonemapMantiuk = cv2.createTonemapMantiuk(2.2,0.85, 1.2)
+    tonemapMantiuk = cv2.createTonemapMantiuk(2.2, 0.85, 1.2)
     ldrMantiuk = tonemapMantiuk.process(im)
     return ldrMantiuk
 
+
 def Durand_tone_map(im):
     # Tonemap using Durand's method obtain 24-bit color image
-    tonemapDurand = cv2.createTonemapDurand(1.5,4,1.0,1,1)
+    tonemapDurand = cv2.createTonemapDurand(1.5, 4, 1.0, 1, 1)
     ldrDurand = tonemapDurand.process(im)
     return ldrDurand
+
 
 def ours_input(im_name):
     path = "/cs/labs/raananf/yael_vinker/NEW_TMQI/our_res_torus2"
@@ -170,17 +187,17 @@ def ours_input(im_name):
 
 def calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_output_path="", save_images=False):
     tone_map_methods = {
-                        # "Our_torus": ours,
-                        # "ours_input": ours_input,
-                        "Reinhard": Reinhard_tone_map,
-                        "Dargo": Dargo_tone_map,
-                        "Mantiuk": Mantiuk_tone_map,
-                        "Durand": Durand_tone_map,
-                        "log100_exp": log_100_exp,
-                        "log1000_exp": log_1000_exp,
-                        "log100": log_100,
-                        "log1000": log_1000,
-                        "log": log_1}
+        # "Our_torus": ours,
+        # "ours_input": ours_input,
+        "Reinhard": Reinhard_tone_map,
+        "Dargo": Dargo_tone_map,
+        "Mantiuk": Mantiuk_tone_map,
+        "Durand": Durand_tone_map,
+        "log100_exp": log_100_exp,
+        "log1000_exp": log_1000_exp,
+        "log100": log_100,
+        "log1000": log_1000,
+        "log": log_1}
     methods_and_Q_results = {}
     for method_name in tone_map_methods.keys():
         if method_name == "ours_input":
@@ -200,6 +217,7 @@ def calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_o
         subtitle = method_and_q_tuple[0] + " : " + str(method_and_q_tuple[1]) + "\n"
         text += subtitle
     return text
+
 
 def create_tone_mapped_datasets_for_fid(input_path, output_path):
     tone_map_methods = {
@@ -224,7 +242,9 @@ def create_tone_mapped_datasets_for_fid(input_path, output_path):
             tone_mapped_result = tone_map_methods[method_name](original_im)
             tone_mapped_result = tone_mapped_result / np.max(tone_mapped_result)
             im = (tone_mapped_result * 255).astype('uint8')
-            imageio.imwrite(os.path.join(method_output_path, os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
+            imageio.imwrite(os.path.join(method_output_path, os.path.splitext(img_name)[0] + ".jpg"), im,
+                            format='JPEG-PIL')
+
 
 def calaulate_and_save_TMQI_from_path(input_path, output_path):
     for img_name in os.listdir(input_path):
@@ -239,6 +259,7 @@ def calaulate_and_save_TMQI_from_path(input_path, output_path):
         result_text = calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name, new_output_path)
         save_text_to_image(new_output_path, result_text)
 
+
 def log_to_image(im_origin, log_factor):
     import numpy as np
     max_origin = np.max(im_origin)
@@ -246,6 +267,7 @@ def log_to_image(im_origin, log_factor):
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(log_factor + 1)).astype('float32')
     return im
+
 
 def load_original_test_hdr_images(root, log_factor):
     import skimage
@@ -275,14 +297,14 @@ def create_hdr_dataset_from_dng(dng_path, output_hdr_path):
         cv2.imwrite(os.path.join(output_hdr_path, hdr_name), im_bgr)
 
 
-
 if __name__ == '__main__':
     for img_name in os.listdir("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape"):
         im_path = os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape", img_name)
         im_hdr_original = hdr_image_util.read_hdr_image(im_path)
         new_im = log_1000_exp(im_hdr_original)
         im = (new_im * 255).astype('uint8')
-        imageio.imwrite(os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/log1000_exp", os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
+        imageio.imwrite(os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/log1000_exp",
+                                     os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
     # imageio.imsave("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", im_hdr_original, format="HDR-FI")
     # im_hdr_original = imageio.imread("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", format="HDR-FI")
     # print(im_hdr_original.shape)

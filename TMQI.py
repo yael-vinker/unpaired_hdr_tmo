@@ -1,17 +1,19 @@
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
 from scipy.signal import convolve
 from scipy.stats import norm, beta
 from skimage.util import view_as_blocks
 
+
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
+
 
 def _RGBtoY(RGB):
     M = np.asarray([[0.2126, 0.7152, 0.0722], ])
     Y = np.dot(RGB.reshape(-1, 3), M.T)
     return Y.reshape(RGB.shape[0:2])
+
 
 def show_im(im, isTensor=False):
     if isTensor:
@@ -23,6 +25,7 @@ def show_im(im, isTensor=False):
     else:
         plt.imshow(im)
         plt.show()
+
 
 def StatisticalNaturalness(L_ldr, win=11):
     phat1 = 4.4
@@ -57,6 +60,7 @@ def StatisticalNaturalness(L_ldr, win=11):
     pb = B / B_0
     N = pb * pc
     return N
+
 
 def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     window = window / window.sum()
@@ -96,6 +100,7 @@ def _Slocal(img1, img2, window, sf, C1=0.01, C2=10.):
     print(s)
     return s, s_map
 
+
 def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
     f = 32
     s_local = []
@@ -119,6 +124,7 @@ def _StructuralFidelity(L_hdr, L_ldr, level, weight, window):
 
     S = np.prod(np.power(s_local, weight))
     return S, s_local, s_maps
+
 
 def TMQI(L_hdr, L_ldr):
     if len(L_hdr.shape) == 3:
@@ -156,12 +162,13 @@ def TMQI(L_hdr, L_ldr):
     Q = a * (S ** Alpha) + (1. - a) * (N ** Beta)
     return Q, S, N
 
+
 if __name__ == '__main__':
 
-    import hdr_image_utils
     import imageio
     import os
     import matplotlib.pyplot as plt
+
     names = ["durand", "dargo", "reinhard"]
 
     durand_path = "/Users/yaelvinker/Documents/MATLAB/new_image_quality/type1_durand_with_gamma"
@@ -212,5 +219,3 @@ if __name__ == '__main__':
     # plt.imshow(tran_non_norm)
     # plt.show()
     # run(im_hdr_original)
-
-

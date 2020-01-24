@@ -1,8 +1,9 @@
+import numpy as np
 import torch
 # from __future__ import print_function
 from torchvision.datasets import DatasetFolder
+
 import params
-import numpy as np
 
 IMG_EXTENSIONS_local = ('.npy')
 
@@ -36,8 +37,6 @@ def npy_loader(path, addFrame, hdrMode):
     # return image_tensor
     # return data
     # return data[()][params.image_key], data[()][params.window_image_key]
-
-
 
 
 class ProcessedDatasetFolder(DatasetFolder):

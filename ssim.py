@@ -1,8 +1,10 @@
+from math import exp
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
-import numpy as np
-from math import exp
+
 import params
 
 
@@ -40,6 +42,7 @@ def _ssim(img1, img2, window, window_size, channel, size_average=True):
     else:
         return ssim_map.mean(1).mean(1).mean(1)
 
+
 def _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average=True):
     factor = float(2 ** 8 - 1.)
     window = window / window.sum()
@@ -61,7 +64,7 @@ def _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average=True)
     sigma12 = F.conv2d(img1 * img2, window, padding=0, groups=channel) - mu1_mu2
 
     sigma1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
-    sigma2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq))+ params.epsilon, 0.5)
+    sigma2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
 
     CSF = 100.0 * 2.6 * (0.0192 + 0.114 * 16) * np.exp(- (0.114 * 16) ** 1.1)
     u_hdr = 128 / (1.4 * CSF)
@@ -104,6 +107,7 @@ class SSIM(torch.nn.Module):
 
         return _ssim(img1, img2, window, self.window_size, channel, self.size_average)
 
+
 class TMQI_SSIM(torch.nn.Module):
     def __init__(self, window_size=11, size_average=True):
         super(TMQI_SSIM, self).__init__()
@@ -129,6 +133,7 @@ class TMQI_SSIM(torch.nn.Module):
 
         return _ssim_from_tmqi(img1, img2, window, self.window_size, channel, self.size_average)
 
+
 def print_tensor_details(im, title):
     print(title)
     print("shape : ", im.shape)
@@ -137,23 +142,24 @@ def print_tensor_details(im, title):
     # print("unique values : ", np.unique(im.numpy()).shape[0])
     print()
 
+
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss):
     window = window / window.sum()
     factor = float(2 ** 8 - 1.)
     img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
     img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min())
-    print_tensor_details(img1, "im1")
-    print_tensor_details(img2, "im2")
+    # print_tensor_details(img1, "im1")
+    # print_tensor_details(img2, "im2")
 
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
-    print_tensor_details(mu1, "mu1")
-    print_tensor_details(mu2, "mu2")
+    # print_tensor_details(mu1, "mu1")
+    # print_tensor_details(mu2, "mu2")
 
     mu1_sq = mu1.pow(2)
     mu2_sq = mu2.pow(2)
-    print_tensor_details(mu1_sq, "mu1_sq")
-    print_tensor_details(mu2_sq, "mu2_sq")
+    # print_tensor_details(mu1_sq, "mu1_sq")
+    # print_tensor_details(mu2_sq, "mu2_sq")
 
     sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
     sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
@@ -163,8 +169,6 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss):
 
     a = sigma1_sq <= 0
     b = sigma2_sq <= 0
-    print("a", a.sum())
-    print("b", b.sum())
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
     # std1 = (sigma1_sq + sigma1_sq.min().abs() + params.epsilon).pow(0.5)
@@ -173,12 +177,10 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss):
     # norm_im1 = torch.div(torch.add(img1, -mu1), std1)
     # norm_im2 = torch.div(torch.add(img2, -mu2), std2)
     C2 = 10.
-    s_map = 1 - (sigma12 + C2) / (std1 * std2 + C2)
-    print("s_map", s_map.mean())
+    s_map = (sigma12 + C2) / (std1 * std2 + C2)
     # s_map1 = torch.pow((((img1 - mu1 + C2) / std1+ C2) - ((img2 - mu2+ C2) / std2+ C2)), 2)
     # print("mse_loss", mse_loss(((img1 - mu1) / std1) , ((img2 - mu2) / std2)))
     # s_map1 = 2 * F.conv2d(((img1 - mu1) * (img2 - mu2)), window, padding=window_size // 2, groups=channel) / (std1 * std2)
-    print("s_map1", s_map.mean())
 
     # print((norm_im1 - norm_im2).pow(2).mean())
     return s_map.mean()
@@ -220,8 +222,6 @@ def ssim(img1, img2, window_size=11, size_average=True):
     print("_ssim")
     print(_ssim(img1, img2, window, window_size, channel, size_average))
     return _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average)
-
-
 
 #
 # if __name__ == '__main__':

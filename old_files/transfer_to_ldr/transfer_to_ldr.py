@@ -1,26 +1,25 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib
-import cv2
-import skimage
 import os
-from scipy import ndimage
-
 import pathlib
+
+import cv2
 import imageio
+import matplotlib
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import skimage
+from scipy import ndimage
 
 WINDOW_SIZE_FACTOR = 20
 CHANGE_MATRIX = (np.array([[0.299, 0.587, 0.114],
-                          [0.596, -0.275, -0.321],
-                          [0.212, -0.523, 0.311]])).T  # Create the change of basis matrix
+                           [0.596, -0.275, -0.321],
+                           [0.212, -0.523, 0.311]])).T  # Create the change of basis matrix
 
 IMAGE_WIDTH = 256
 IMAGE_HEIGHT = 256
 
 
 def save_results(res_im, path_name):
-
     matplotlib.image.imsave(path_name, res_im)
 
 
@@ -40,11 +39,11 @@ def draw_results(im1, isHdr1, title1, im2, isHdr2, title2, title, is_gray, to_sa
     """
     # Tonemap HDR image
     if isHdr1:
-        tone_map1 = cv2.createTonemapReinhard(1.5, 0,0,0)
+        tone_map1 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
         im1_dub = tone_map1.process(im1.copy().astype(np.float32)[:, :, ::-1])
         im1 = np.clip(im1_dub, 0, 1).astype('float32')[:, :, ::-1]
     if isHdr2:
-        tone_map2 = cv2.createTonemapReinhard(1.5, 0,0,0)
+        tone_map2 = cv2.createTonemapReinhard(1.5, 0, 0, 0)
         im2_dub = tone_map2.process(im2.copy().astype(np.float32)[:, :, ::-1])
         im2 = np.clip(im2_dub, 0, 1).astype('float32')[:, :, ::-1]
     f = plt.figure()
@@ -54,7 +53,7 @@ def draw_results(im1, isHdr1, title1, im2, isHdr2, title2, title, is_gray, to_sa
     ax1.title.set_text(title1)
     draw_patch_from_center('r', 13, 13, ax1, im1, int(im1.shape[1] / 2), int(im1.shape[0] / 2), "")
     if is_gray:
-        plt.imshow(im1,  cmap='gray')
+        plt.imshow(im1, cmap='gray')
     else:
         plt.imshow(im1)
     ax2 = f.add_subplot(122)
@@ -70,13 +69,14 @@ def draw_results(im1, isHdr1, title1, im2, isHdr2, title2, title, is_gray, to_sa
     else:
         plt.show()
 
+
 class Formatter(object):
     def __init__(self, im):
         self.im = im
+
     def __call__(self, x, y):
         z = self.im.get_array()[int(y), int(x)]
         return 'x={:.01f}, y={:.01f}, z={:.01f}'.format(x, y, z)
-
 
 
 def normalize_im(hdr_img):
@@ -167,7 +167,8 @@ def draw_patch_from_center(color, window_height, window_width, ax, im, x, y, tex
     half_height = int(window_height / 2)
     half_width = int(window_width / 2)
     ax.imshow(im, cmap='gray')
-    rect = patches.Rectangle((x - half_width, y - half_height), window_width, window_height, linewidth=1, edgecolor=color, facecolor='none')
+    rect = patches.Rectangle((x - half_width, y - half_height), window_width, window_height, linewidth=1,
+                             edgecolor=color, facecolor='none')
     ax.add_patch(rect)
 
 
@@ -322,7 +323,6 @@ def fix_high_luminance(im_log, im_rgb, output_path):
         #     show_wind = get_window(new_im, x0, x1, y0, y1)
         #     print_image_details(show_wind, "wind")
         if 135 < pos[1] < 145 and 142 < pos[0] < 160:
-
             y0, y1, x0, x1 = get_window_borders_from_center(im_log.shape[1], im_log.shape[0], pos[1], window_width * 4,
                                                             pos[0], window_height * 4)
             show_wind = get_window(im_rgb, x0, x1, y0, y1)
@@ -338,9 +338,11 @@ def fix_high_luminance(im_log, im_rgb, output_path):
             show_wind_fix = get_window(cur_im, x0, x1, y0, y1)
 
             print_image_details(true_wind, "true wind")
-            title = "max_wind = " + str(np.nanmax(true_wind)) + "\n" + "min_wind = " + str(np.nanmin(true_wind)) + "\n" + "mean_wind = " + str(np.nanmean(true_wind))
+            title = "max_wind = " + str(np.nanmax(true_wind)) + "\n" + "min_wind = " + str(
+                np.nanmin(true_wind)) + "\n" + "mean_wind = " + str(np.nanmean(true_wind))
 
-            draw_results(show_wind, True, "HDR", show_wind_fix, False, "NEW", title, False, True, output_path + str(pos))
+            draw_results(show_wind, True, "HDR", show_wind_fix, False, "NEW", title, False, True,
+                         output_path + str(pos))
 
             # plot_image_coor(show_wind)
 
@@ -350,6 +352,7 @@ def fix_high_luminance(im_log, im_rgb, output_path):
         new_im[pos_h[0], pos_h[1], 2] = 0
 
     return new_im
+
 
 def get_file_name(path):
     pre = os.path.splitext(path)[0]
@@ -379,17 +382,14 @@ def run(input_path, output_path, train):
     for img_name in os.listdir(input_path):
         im_path = input_path + "/" + img_name
         rgb_img = read_img(im_path)
-        print_image_details(rgb_img, "befor : "+img_name)
+        print_image_details(rgb_img, "befor : " + img_name)
         fixed_rgb = run_single(rgb_img, output_path + get_file_name(img_name))
         # plot_image_coor(fixed_rgb)
-        draw_results(rgb_img, True,"origin", fixed_rgb, False, "ldr", output_path + get_file_name(img_name) + "_comp", False, True)
+        draw_results(rgb_img, True, "origin", fixed_rgb, False, "ldr", output_path + get_file_name(img_name) + "_comp",
+                     False, True)
         save_results(fixed_rgb, output_path + get_file_name(img_name))
         print_image_details(fixed_rgb, "afrter : " + img_name)
     print("=============== finish image processing =====================")
 
 
-
 run("transfer_to_ldr/hdr_images_small_wrap", "transfer_to_ldr/tone_mapped/", False)
-
-
-

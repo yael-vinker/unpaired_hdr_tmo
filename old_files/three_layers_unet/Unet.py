@@ -1,8 +1,7 @@
 # full assembly of the sub-parts to form the complete net
 
-import torch.nn.functional as F
-
 from .unet_parts import *
+
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, input_images_mean, bilinear):
@@ -44,6 +43,7 @@ class UNet(nn.Module):
             self.last_sig = nn.Sigmoid()
         else:
             raise Exception('ERROR: Invalid images range')
+
     def forward(self, x):
         x1 = self.inc(x)
         x2 = self.down1(x1)

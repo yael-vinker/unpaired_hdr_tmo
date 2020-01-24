@@ -1,11 +1,13 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import random
 import os
-from skimage import draw
+import random
+
 import cv2
 import imageio
+import matplotlib.pyplot as plt
+import numpy as np
+from skimage import draw
 from skimage.draw import polygon
+
 
 def create_real_data(path, num_of_images):
     for i in range(num_of_images):
@@ -16,12 +18,14 @@ def create_real_data(path, num_of_images):
         black_background[random_y: random_y + 28, random_x: random_x + 28] = white_squer
         save_image(black_background, os.path.join(path, "im" + str(i) + ".jpg"))
 
+
 def create_fake_data(path, num_of_images):
     for i in range(num_of_images):
         black_background = np.zeros((256, 256, 3))
         rr, cc = draw.circle(128, 128, radius=40, shape=black_background.shape)
         black_background[rr, cc] = 1
         save_image(black_background, os.path.join(path, "im" + str(i) + ".jpg"))
+
 
 def create_fake_triangle_data(path, num_of_images):
     for i in range(num_of_images):
@@ -34,14 +38,14 @@ def create_fake_triangle_data(path, num_of_images):
         black_background[rr, cc] = 1
         save_image(black_background, os.path.join(path, "im" + str(i) + ".jpg"))
 
+
 def test(path):
     for img_name in os.listdir(path):
         im_path = os.path.join(path, img_name)
         image = cv2.imread(im_path)
-        print("cv2 ",image.shape)
+        print("cv2 ", image.shape)
         im_origin = imageio.imread(im_path)
-        print("imageio ",im_origin.shape)
-
+        print("imageio ", im_origin.shape)
 
 
 def save_image(data, fn):
@@ -58,6 +62,7 @@ def save_image(data, fn):
     ax.imshow(data)
     plt.savefig(fn, dpi=height)
     plt.close()
+
 
 if __name__ == '__main__':
     real_train_data_path = os.path.join("check_data")
@@ -84,5 +89,3 @@ if __name__ == '__main__':
     #
     # test(fake_train_data_path)
     # test(fake_test_data_path)
-
-

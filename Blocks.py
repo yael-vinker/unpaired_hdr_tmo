@@ -1,9 +1,8 @@
 from torch import nn
-import torch.tensor as tensor
 
 
 class Conv2dBlock(nn.Module):
-    def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, norm='batch2d', activation="none"):
+    def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, norm='none', activation="none"):
         super(Conv2dBlock, self).__init__()
         self.use_bias = False
         norm_dim = output_dim
@@ -11,6 +10,8 @@ class Conv2dBlock(nn.Module):
 
         if norm == 'none':
             self.norm = None
+        elif norm == "instance_norm":
+            self.norm = nn.InstanceNorm2d(norm_dim)
         else:
             self.norm = nn.BatchNorm2d(norm_dim)
         if activation == "sigmoid":
@@ -25,8 +26,8 @@ class Conv2dBlock(nn.Module):
     def forward(self, x):
         y = x.float()
         out = self.conv(y)
-        # if self.norm:
-        #     out = self.norm(out)
+        if self.norm:
+            out = self.norm(out)
         out1 = self.activation(out)
         return out1
 
@@ -69,6 +70,15 @@ class LinearBlock(nn.Module):
         return out
 
 
+class LambdaLR:
+    def __init__(self, n_epochs, offset, decay_start_epoch):
+        assert (n_epochs - decay_start_epoch) > 0, "Decay must start before the training session ends!"
+        self.n_epochs = n_epochs
+        self.offset = offset
+        self.decay_start_epoch = decay_start_epoch
+
+    def step(self, epoch):
+        return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch) / (self.n_epochs - self.decay_start_epoch)
 # class Normal(object):
 #     def __init__(self, mu, sigma, log_sigma, v=None, r=None):
 #         self.mu = mu
