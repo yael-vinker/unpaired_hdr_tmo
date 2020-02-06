@@ -7,10 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 
-import TMQI
 import tranforms
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
+#from old_files import TMQI
 
 
 def save_text_to_image(output_path, text, im_name=""):
@@ -80,6 +80,38 @@ def ours(original_im,
 
 def apply_preproccess_for_hdr_im(hdr_im, addFrame=False):
     im_hdr_log = log_1000(hdr_im)
+    im_log_gray = hdr_image_util.to_gray(im_hdr_log)
+    im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+    if addFrame:
+        im_log_normalize_tensor = data_loader_util.add_frame_to_im(im_log_normalize_tensor)
+    return im_log_normalize_tensor
+
+
+def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
+    im_hdr = im_hdr / np.max(im_hdr)
+    total_factor = range_factor * brightness_factor * 255
+    image_new_range = im_hdr * total_factor
+    im_log = np.log(image_new_range + 1)
+    im = (im_log / np.log(total_factor + 1)).astype('float32')
+    return im
+
+
+def apply_preproccess_for_hdr_im_factorised(hdr_im, factor_dict, img_name, addFrame=False):
+    brightness_factor = factor_dict[img_name + ".hdr"]
+    if np.min(hdr_im) < 0:
+        hdr_im = hdr_im - np.min(hdr_im)
+    im_hdr_log = hdr_log_loader_factorize(hdr_im, 1, brightness_factor)
+    im_log_gray = hdr_image_util.to_gray(im_hdr_log)
+    im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
+    if addFrame:
+        im_log_normalize_tensor = data_loader_util.add_frame_to_im(im_log_normalize_tensor)
+    return im_log_normalize_tensor
+
+
+def apply_preproccess_for_hdr_im_factorize(hdr_im, log_factor, addFrame=False):
+    brightness_factor = hdr_image_util.get_brightness_factor(hdr_im)
+    print(brightness_factor)
+    im_hdr_log = hdr_log_loader_factorize(hdr_im, log_factor, brightness_factor)
     im_log_gray = hdr_image_util.to_gray(im_hdr_log)
     im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
     if addFrame:
@@ -297,34 +329,173 @@ def create_hdr_dataset_from_dng(dng_path, output_hdr_path):
         cv2.imwrite(os.path.join(output_hdr_path, hdr_name), im_bgr)
 
 
+def create_exr_reshaped_dataset_from_exr(exr_path, output_exr_path):
+    if not os.path.exists(output_exr_path):
+        os.mkdir(output_exr_path)
+    for img_name in os.listdir(exr_path):
+        file_extension = os.path.splitext(img_name)[1]
+        if file_extension == ".png":
+            print(img_name)
+            im_path = os.path.join(exr_path, img_name)
+            # original_im = hdr_image_util.read_hdr_image(im_path)
+            # print(original_im.shape)
+            # original_im = hdr_image_util.reshape_image_fixed_size(original_im)
+            original_im = imageio.imread(im_path)
+            original_im = skimage.transform.resize(original_im, (int(original_im.shape[0] / 2),
+                                                       int(original_im.shape[1] / 2)),
+                                              mode='reflect', preserve_range=False).astype('float32')
+            original_im = hdr_image_util.to_0_1_range(original_im)
+            original_im = (original_im * 255).astype('uint8')
+            hdr_image_util.print_image_details(original_im, img_name)
+            # im_bgr = cv2.cvtColor(original_im, cv2.COLOR_RGB2BGR)
+            # print(im_bgr.shape)
+            # cv2.imwrite(os.path.join(output_exr_path, img_name), im_bgr)
+            # im = imageio.imread(os.path.join(output_exr_path, img_name))
+            # print(im.shape)
+            imageio.imwrite(os.path.join(output_exr_path, os.path.splitext(img_name)[0] + "our_gray" + ".png"), original_im)
+
+
+
+def save_clipped_open_exr(input_path, output_path):
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    for img_name in os.listdir(input_path):
+        file_extension = os.path.splitext(img_name)[1]
+        if file_extension == ".png":
+            im_path = os.path.join(input_path, img_name)
+            print(im_path)
+            original_im = imageio.imread(im_path)
+            original_im = original_im / np.max(original_im)
+            original_im = (original_im * 1.1) * 255
+            new_im = np.clip(original_im, 0, 255).astype('uint8')
+            cur_output_path = os.path.join(output_path, img_name)
+            imageio.imwrite(cur_output_path, new_im)
+
+def rename_files(input_path):
+    for img_name in os.listdir(input_path):
+
+        im_name = os.path.splitext(img_name)[0]
+        file_extension = os.path.splitext(img_name)[1]
+        if file_extension == '.jpg':
+            new_im_name = im_name[:-81] + file_extension
+            print(new_im_name)
+            os.rename(os.path.join(input_path, img_name), os.path.join(input_path, new_im_name))
+
+
 if __name__ == '__main__':
-    for img_name in os.listdir("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape"):
-        im_path = os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape", img_name)
-        im_hdr_original = hdr_image_util.read_hdr_image(im_path)
-        new_im = log_1000_exp(im_hdr_original)
-        im = (new_im * 255).astype('uint8')
-        imageio.imwrite(os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/log1000_exp",
-                                     os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
-    # imageio.imsave("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", im_hdr_original, format="HDR-FI")
-    # im_hdr_original = imageio.imread("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", format="HDR-FI")
-    # print(im_hdr_original.shape)
-    # print(im_hdr_original.dtype)
+    rename_files("/Users/yaelvinker/Documents/quality_assesment/105_images/durand_luminance_hdr")
+    # create_exr_reshaped_dataset_from_exr("/Users/yaelvinker/Documents/quality_assesment/our_gray", "/Users/yaelvinker/Documents/quality_assesment/our_gray_reshaped")
+    # im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/old/JesseBrownsCabin1.png")
+    # original_im = imageio.imread(im_path)
+    # original_im = original_im / np.max(original_im)
+    # original_im = (original_im * 1.1 - 0.05) * 255
+    # new_im = np.clip(original_im, 0, 255).astype('uint8')
+    # cur_output_path = "/Users/yaelvinker/PycharmProjects/lab/utils/old/JesseBrownsCabin.png"
+    # imageio.imwrite(cur_output_path, new_im)
+    # original_im = hdr_image_util.read_hdr_image(im_path)
+    # brightness_factor = hdr_image_util.get_brightness_factor(original_im)
+    # print(brightness_factor)
+    # im_path = "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_29/JesseBrownsCabin.exr"
+    # original_im = hdr_image_util.read_hdr_image(im_path)
+    # original_im = hdr_image_util.reshape_image_fixed_size(original_im)
+    # print(original_im.shape)
+    # im_bgr = cv2.cvtColor(original_im, cv2.COLOR_RGB2BGR)
+    # cv2.imwrite("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_29/exr_format_fixed_size/JesseBrownsCabin.exr", im_bgr)
+    # create_exr_reshaped_dataset_from_exr("/cs/labs/raananf/yael_vinker/data/quality_assesment/from_openEXR_data", "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size")
+    # save_clipped_open_exr(
+    #     "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/02_04/new_no_tanh_clip_exp__G_unet_original_unet_depth_4_last_act_none/135_gray/",
+    #     "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/02_04/new_no_tanh_clip_exp__G_unet_original_unet_depth_4_last_act_none/135_gray_11_")
+    # save_clipped_open_exr("/cs/snapless/raananf/yael_vinker/01_24/results/instance_norm_g_pyramid_half_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1/exr_format_factorised_1_new2/40",
+    #                       "/cs/snapless/raananf/yael_vinker/01_24/results/instance_norm_g_pyramid_half_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1/exr_format_factorised_1_new2_clip_13/40")
 
-    # calculate_TMQI_results_for_selected_methods(im_hdr_original, "belgium", new_output_path="/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", save_images=True)
-    # create_tone_mapped_datasets_for_fid(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data"), os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"))
-    # calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
-    # path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
-    # im = imageio.imread(path)
-    # hdr_image_util.print_image_details(im, "")
-    # im2 = (((im - np.min(im)) / (np.max(im) - np.min(im))) * 255).astype('uint8')
-    # hdr_image_util.print_image_details(im2, "")
-    # imageio.imwrite(os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/", "ours_strtch_imageio.png"), im2, format='PNG-FI')
+# im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/507.jpg")
+# im_path = os.path.join("/Users/yaelvinker/Documents/university/lab/255/507.jpg")
+# b_factor_output_dir = os.path.join(
+#     "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests//brightness_factors.npy")
+# data = np.load(b_factor_output_dir, allow_pickle=True)[()]
+# f = data["URChapel(2).hdr"]
+#
+# original_im = imageio.imread("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests//URChapel(2).exr", format="EXR-FI")
+# # transform_exp = tranforms.Exp(1000)
+# original_im = original_im - np.min(original_im)
+# preprocessed_im = apply_preproccess_for_hdr_im_factorised(original_im, data, "URChapel(2)", addFrame=False)
+# hdr_image_util.print_tensor_details(preprocessed_im, "before")
+# ours_tone_map_gray = preprocessed_im.unsqueeze(0)
+# # ours_tone_map_gray = transform_exp(preprocessed_im_batch)
+# #
+# # hdr_image_util.print_image_details(original_im, "original_im")
+# # original_im = hdr_image_util.to_0_1_range(original_im)
+# # hdr_image_util.print_image_details(original_im,"original_im")
+#
+# original_im_tensor = tranforms.hdr_im_transform(original_im).unsqueeze(0)
+# color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
+# ours_tone_map_numpy = hdr_image_util.to_0_1_range(color_batch[0].clone().permute(1, 2, 0).detach().cpu().numpy())
+# im = (ours_tone_map_numpy * 255).astype('uint8')
+# original_im1 = (original_im / np.max(original_im)) * 1.3 - 0.05
+# original_im1 = np.clip(original_im1 * 255, 0, 255).astype('uint8')
+# hdr_image_util.print_tensor_details(ours_tone_map_numpy, "before")
+# plt.imshow(im)
+# plt.show()
+# hdr_image_util.print_image_details(im, "before")
+# hdr_image_util.print_image_details(original_im1, "before")
+# original_im2 = (original_im / np.max(original_im)) * 1.2
+# original_im2 = np.clip(original_im2 * 255, 0, 255).astype('uint8')
+# plt.subplot(3,1,1)
+# plt.imshow(original_im)
+# plt.subplot(3,1,2)
+# plt.imshow(original_im1)
+# plt.subplot(3, 1, 3)
+# plt.imshow(original_im2)
+# plt.show()
+# new_im = np.clip(original_im, 0, 255).astype('uint8')
+# cur_output_path = os.path.join(output_path, img_name)
+# imageio.imwrite(cur_output_path, new_im)
+# im_path = "/Users/yaelvinker/PycharmProjects/lab/utils/507_our_1.jpg"
+# im = imageio.imread(im_path)
+# hdr_image_util.print_image_details(im, "before")
+# im2 = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/507.hdr")
+# print(im2.shape)
+# im3 = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/507.jpg")
+# print(im3.shape)
+# im2 = (im*1.1-0.5)
+# hdr_image_util.print_image_details(im2, "after")
+# im3 = np.clip(im2, 0, 255).astype('uint8')
+# imageio.imwrite("/Users/yaelvinker/PycharmProjects/lab/utils/507_our_1_clip.jpg", im3)
+# hdr_image_util.print_image_details(im3, "after2")
+# import matplotlib.pyplot as plt
+# plt.subplot(2,1,1)
+# plt.imshow(im)
+# plt.subplot(2,1,2)
+# plt.imshow(im3)
+# plt.show()
 
-    # hdr_path = "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr/0030_20151008_090054_301.dng"
-    # ldr_path = "/cs/usr/yael_vinker/2.png"
-    # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
-    # im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
-    #                                                              int(im_hdr_original.shape[1] / 3)), mode='reflect',
-    #                                            preserve_range=False).astype("float32")
-    # tone_mappes_result = hdr_image_util.read_ldr_image(ldr_path)
-    # Q, S, N = TMQI.TMQI(im_hdr_original, tone_mapp
+# for img_name in os.listdir("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape"):
+#     im_path = os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/hdr_openEXR_no_reshape", img_name)
+#     im_hdr_original = hdr_image_util.read_hdr_image(im_path)
+#     new_im = log_1000_exp(im_hdr_original)
+#     im = (new_im * 255).astype('uint8')
+#     imageio.imwrite(os.path.join("/Users/yaelvinker/Documents/MATLAB/new_for_exr/log1000_exp",
+#                                  os.path.splitext(img_name)[0] + ".jpg"), im, format='JPEG-PIL')
+# imageio.imsave("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", im_hdr_original, format="HDR-FI")
+# im_hdr_original = imageio.imread("/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res/original.hdr", format="HDR-FI")
+# print(im_hdr_original.shape)
+# print(im_hdr_original.dtype)
+
+# calculate_TMQI_results_for_selected_methods(im_hdr_original, "belgium", new_output_path="/Users/yaelvinker/Documents/university/lab/matlab_input_niqe/belgium_res", save_images=True)
+# create_tone_mapped_datasets_for_fid(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data"), os.path.join("/Users/yaelvinker/PycharmProjects/lab/data/hdr_test_images"))
+# calaulate_and_save_TMQI_from_path("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data", "tmqi_results")
+# path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/ours_inputimageio.png")
+# im = imageio.imread(path)
+# hdr_image_util.print_image_details(im, "")
+# im2 = (((im - np.min(im)) / (np.max(im) - np.min(im))) * 255).astype('uint8')
+# hdr_image_util.print_image_details(im2, "")
+# imageio.imwrite(os.path.join("/Users/yaelvinker/PycharmProjects/lab/tmqi_test_hdr/results3/1/", "ours_strtch_imageio.png"), im2, format='PNG-FI')
+
+# hdr_path = "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr/0030_20151008_090054_301.dng"
+# ldr_path = "/cs/usr/yael_vinker/2.png"
+# im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
+# im_hdr_original = skimage.transform.resize(im_hdr_original, (int(im_hdr_original.shape[0] / 3),
+#                                                              int(im_hdr_original.shape[1] / 3)), mode='reflect',
+#                                            preserve_range=False).astype("float32")
+# tone_mappes_result = hdr_image_util.read_ldr_image(ldr_path)
+# Q, S, N = TMQI.TMQI(im_hdr_original, tone_mapp

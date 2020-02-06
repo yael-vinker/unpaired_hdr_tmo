@@ -26,6 +26,7 @@ input_size = 256
 n_downsample = 1
 n_downsamples_d = 3
 dim = 64
+dim_d = 6
 # Number of workers for dataloader
 workers = 1
 
@@ -66,7 +67,7 @@ square = "square"
 square_root = "square_root"
 square_and_square_root = "square_and_square_root"
 
-filters = 64
+filters = 32
 
 ssim_tmqi = "ssim_tmqi"
 ssim_custom = "ssim_custom"

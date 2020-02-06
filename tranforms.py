@@ -6,7 +6,7 @@ import skimage.transform
 import torch
 import torchvision.transforms as torch_transforms
 
-import params
+from utils import params
 
 
 # class Normalize(object):
@@ -153,7 +153,7 @@ class Scale(object):
         # if self.dtype == np.uint8:
         #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
         #     return util.img_as_ubyte(scaled_im) / 255
-        im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=False)
+        im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=True)
         return im
 
 
@@ -195,22 +195,12 @@ class Normalize(object):
 
 
 class Exp(object):
-    """Normalize a tensor image with mean and standard deviation.
-    Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
-    will normalize each channel of the input ``torch.*Tensor`` i.e.
-    ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
 
-    .. note::
-        This transform acts out of place, i.e., it does not mutates the input tensor.
-
-    Args:
-        mean (sequence): Sequence of means for each channel.
-        std (sequence): Sequence of standard deviations for each channel.
-    """
-
-    def __init__(self, factor):
+    def __init__(self, factor, add_clipping, apply_inverse_to_preprocess, normalised_data):
         self.factor = factor
         self.log_factor = torch.tensor(np.log(1 + factor))
+        self.add_clipping = add_clipping
+        self.normalised_data = normalised_data
 
     def __call__(self, tensor):
         """
@@ -220,15 +210,23 @@ class Exp(object):
         Returns:
             Tensor: Normalized Tensor image.
         """
-        # import torch
-        import math
-        im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
-        # im_lm = im_0_1 * self.log_factor
+        if self.normalised_data:
+            im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
+        else:
+            im_0_1 = tensor
         im_exp = torch.exp(im_0_1) - 1
-        im_end = im_exp / (math.exp(1) - 1)
+        im_end = im_exp / im_exp.max()
+        if self.add_clipping:
+            im_end = im_end * 1.1 - 0.05
+            im_end = torch.clamp(im_end, 0, 1)
         return im_end
-        # return F.normalize(tensor, self.mean, self.std, self.inplace)
 
+
+image_transform_no_norm = torch_transforms.Compose([
+    Scale(params.input_size),
+    CenterCrop(params.input_size),
+    ToTensor(),
+])
 
 # image in [-1, 1]
 gray_image_transform = torch_transforms.Compose([
@@ -236,6 +234,12 @@ gray_image_transform = torch_transforms.Compose([
     CenterCrop(params.input_size),
     ToTensor(),
     Normalize(0.5, 0.5),
+])
+
+gray_image_transform_original_range = torch_transforms.Compose([
+    Scale(params.input_size),
+    CenterCrop(params.input_size),
+    ToTensor(),
 ])
 
 rgb_non_display_image_transform = torch_transforms.Compose([

@@ -3,11 +3,11 @@ import os
 import sys
 
 import imageio
-
+import numpy as np
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-import params
+from utils import params
 import torch
 import torch.nn as nn
 import utils.image_quality_assessment_util as tmqi
@@ -16,20 +16,37 @@ import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
 # import three_layers_unet.Unet as three_Unet
 import tranforms
-import unet_multi_filters.Unet as Generator
-import Discriminator
-
+import models.unet_multi_filters.Unet as Generator
+from models import Discriminator
 
 # TODO ask about init BatchNorm weights
 def weights_init(m):
     """custom weights initialization called on netG and netD"""
     classname = m.__class__.__name__
-    if (classname.find('Conv') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
+    if (classname.find('Conv2d') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
         nn.init.normal_(m.weight.data, 0.0, 0.02)
 
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
+
+    elif classname.find('BatchNorm2d') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+
+
+def weights_init_xavier(m):
+    """custom weights initialization called on netG and netD"""
+    classname = m.__class__.__name__
+    if (classname.find('Conv2d') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
+        torch.nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            nn.init.constant(m.bias, 0)
+
+    elif classname.find('BatchNorm2d') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        if m.bias is not None:
+            nn.init.constant(m.bias, 0)
 
 
 def get_layer_factor(con_operator):
@@ -43,41 +60,7 @@ def get_layer_factor(con_operator):
         assert 0, "Unsupported con_operator request: {}".format(con_operator)
 
 
-def create_net(net, model, device_, is_checkpoint, input_dim_, input_images_mean_, filters=64, con_operator="",
-               unet_depth_=0, add_frame=False):
-    # Create the Generator (UNet architecture)
-    if net == "G":
-        layer_factor = get_layer_factor(con_operator)
-        if model == params.unet_network:
-            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
-                                     layer_factor=layer_factor,
-                                     con_operator=con_operator, filters=filters, bilinear=False, network=model,
-                                     dilation=0, to_crop=add_frame).to(device_)
-        elif model == params.torus_network:
-            new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
-                                     layer_factor=layer_factor,
-                                     con_operator=con_operator, filters=filters, bilinear=False,
-                                     network=params.torus_network, dilation=2, to_crop=add_frame).to(device_)
-
-    # Create the Discriminator
-    elif net == "D":
-        new_net = Discriminator.Discriminator(params.input_size, input_dim_, params.dim).to(device_)
-    else:
-        assert 0, "Unsupported network request: {}  (creates only G or D)".format(net)
-
-    # Handle multi-gpu if desired
-    if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
-        print("Using [%d] GPUs" % torch.cuda.device_count())
-        new_net = nn.DataParallel(new_net, list(range(torch.cuda.device_count())))
-
-    # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
-    if not is_checkpoint:
-        new_net.apply(weights_init)
-        print("Weights for " + net + " were initialized successfully")
-    return new_net
-
-
-def set_parallel_net(net, device_, is_checkpoint, net_name):
+def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
     # Handle multi-gpu if desired
     if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
         print("Using [%d] GPUs" % torch.cuda.device_count())
@@ -85,36 +68,39 @@ def set_parallel_net(net, device_, is_checkpoint, net_name):
 
     # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
     if not is_checkpoint:
-        net.apply(weights_init)
+        if use_xaviar:
+            net.apply(weights_init_xavier)
+        else:
+            net.apply(weights_init)
         print("Weights for " + net_name + " were initialized successfully")
     return net
 
 
-def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm):
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar=False):
     # Create the Discriminator
     new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
-    return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator")
+    return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
 
 
-def create_G_net(model, device_, is_checkpoint, input_dim_, input_images_mean_, filters, con_operator, unet_depth_,
-                 add_frame, use_pyramid_loss):
+def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
+                 add_frame, use_pyramid_loss, unet_norm, use_xaviar=False):
     # Create the Generator (UNet architecture)
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
-                                 to_crop=add_frame, use_pyramid_loss=use_pyramid_loss).to(device_)
+                                 to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm).to(device_)
     elif model == params.torus_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, input_images_mean_, depth=unet_depth_,
+        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False,
                                  network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 use_pyramid_loss=use_pyramid_loss).to(device_)
+                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm).to(device_)
     else:
         assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
 
-    return set_parallel_net(new_net, device_, is_checkpoint, "Generator")
+    return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
 def save_model(path, epoch, output_dir, netG, optimizerG, netD, optimizerD):
@@ -170,11 +156,9 @@ def save_best_model(netG, output_dir, optimizerG):
     }, best_model_path)
 
 
-def load_g_model(model, device, filters, con_operator, model_depth,
-                 net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
-    G_net = create_net("G", model, device, False, 1, 0, filters,
-                       con_operator, model_depth).to(device)
-    # checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
+def load_g_model(model, device, filters, con_operator, model_depth, net_path, pyramid_loss, last_layer, unet_norm):
+    G_net = create_G_net(model, device, False, 1, last_layer,filters, con_operator, model_depth, 1, pyramid_loss , unet_norm)
+    #checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
     # if device.type == 'cpu':
@@ -184,7 +168,7 @@ def load_g_model(model, device, filters, con_operator, model_depth,
         name = k[7:]  # remove `module.`
         new_state_dict[name] = v
     # else:
-    new_state_dict = state_dict
+    #new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
@@ -210,17 +194,40 @@ def load_d_model(model, device, filters, con_operator, model_depth,
     return D_net
 
 
-def run_model_on_single_image(G_net, original_im, device, im_name, output_path):
-    transform_exp = tranforms.Exp(1000)
-    preprocessed_im = tmqi.apply_preproccess_for_hdr_im(original_im).to(device)
+def run_model_on_single_image(G_net, original_im, device, im_name, output_path, addFrame=False, add_clipping=False,
+                              apply_inverse_to_preprocess=False, normalised_data=True):
+    transform_exp = tranforms.Exp(1000, add_clipping, apply_inverse_to_preprocess, normalised_data)
+    b_factor_output_dir = os.path.join(
+        "/cs/snapless/raananf/yael_vinker/data/open_exr_source/openexr_factors/brightness_factors.npy")
+    data = np.load(b_factor_output_dir, allow_pickle=True)[()]
+    preprocessed_im = tmqi.apply_preproccess_for_hdr_im_factorised(original_im, data, im_name, addFrame=True).to(device)
+    #
+    # preprocessed_im = tmqi.apply_preproccess_for_hdr_im(original_im).to(device)
     preprocessed_im_batch = preprocessed_im.unsqueeze(0)
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
         ours_tone_map_gray = transform_exp(ours_tone_map_gray)
+        if addFrame:
+            b, c, h, w = ours_tone_map_gray.shape
+            th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
+            i = int(round((h - th) / 2.))
+            j = int(round((w - tw) / 2.))
+            i, j, h, w = i, j, th, tw
+            ours_tone_map_gray = ours_tone_map_gray[:, :, i: i + h, j:j + w]
+    fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
+    fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+    fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
+    # fake_im_gray_numpy_0_1 = fake_im_gray_numpy_0_1 * 1.1 - 0.05
+    im = (fake_im_gray_numpy_0_1 * 255).astype('uint8')
+    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
+
     original_im_tensor = tranforms.hdr_im_transform(original_im).unsqueeze(0)
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
     ours_tone_map_numpy = hdr_image_util.to_0_1_range(color_batch[0].clone().permute(1, 2, 0).detach().cpu().numpy())
     im = (ours_tone_map_numpy * 255).astype('uint8')
+    # ours_tone_map_numpy = (ours_tone_map_numpy * 1.1 - 0.05)
+    # im = (ours_tone_map_numpy * 255)
+    # im = np.clip(im, 0, 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     imageio.imwrite(os.path.join(output_path, im_name + ".jpg"), im, format='JPEG-PIL')
@@ -261,31 +268,77 @@ def save_fake_images_for_fid():
 
 def save_fake_images_for_fid_hdr_input():
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_images_path = "/cs/labs/raananf/yael_vinker/data/groups_for_tmqi_best_model_dng"
-    arch_dir = "/cs/labs/raananf/yael_vinker/12_25/run/results"
+    # device = torch.device("cpu")
+    # input_images_path = "/cs/labs/raananf/yael_vinker/data/quality_assesment/hdr_openEXR_no_reshape"
+    input_images_path = "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size"
+    # input_images_path = "/cs/snapless/raananf/yael_vinker/data/open_exr_source/temp"
+    # arch_dir = "/cs/snapless/raananf/yael_vinker/01_30/results"
+    arch_dir = "/cs/snapless/raananf/yael_vinker/02_04/results"
+    # arch_dir = "/cs/labs/raananf/yael_vinker/01_10/results_custom_ssim"
+    filters = [32, 32, 32, 32, 32, 32, 32, 32, 32, 32]
+    models = [params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network,
+              params.unet_network]
+    con_operators = [params.original_unet,
+                     params.square_and_square_root,
+                     params.original_unet,
+                     params.square_and_square_root,
+                     params.square_and_square_root,
+                     params.square_and_square_root]
+    depths = [4, 4, 4, 3, 3, 4, 4, 4, 4, 4]
+    # models_names = ["with_frame_32_filters_custom_ssim_window_5__log_1000_unet_square_and_square_root_depth_4"]
+    # models_names = ["with_frame_32_filters_custom_ssim_window_5__log_1000_unet_square_and_square_root_depth_4"]
+    # models_names = ["d_dim_32_instance_norm_pyramid_small_lr_factor01__G_unet_square_and_square_root_depth_4_filters_32_frame_1",
+    #                 "d_inst_n_dim_16_inst_n_pyramid_small_lr_factor01__G_unet_square_and_square_root_depth_4_filters_32_frame_1",
+    #                 "instance_norm_pyramid_small_lr_factor01__G_unet_original_unet_depth_4_filters_32_frame_1",
+    #                 "d_dim_16_instance_norm_pyramid_small_lr_factor01__G_unet_original_unet_depth_4_filters_32_frame_1",
+    #                 "d_inst_n_dim_16_inst_n_pyramid_small_lr_factor01__G_unet_square_and_square_root_depth_4_filters_32_frame_1"]
+    # models_names = ["no_norm_pyramid_G_unet_square_and_square_root_depth_4_filters_32_frame_1",
+    #       "no_norm_G_unet_square_and_square_root_depth_4_filters_32_frame_1"]
+    models_names = ["new_no_tanh_clip_exp__G_unet_original_unet_depth_4_last_act_none"]
+    # "eq_half_lr_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1",
+    #       "half_lr_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1",
+    # "half_lr_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1"]
+    #      "lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1",
+    #     "new_data_origin_lr_ssim5pyramid_lr_decay_G_unet_square_and_square_root_depth_3_filters_32_frame_1",
+    #    "origin_lr_ssim5pyramid_lr_decay_G_unet_square_and_square_root_depth_3_filters_32_frame_1",
+    #   "origin_lr_ssim5pyramid_lr_decay_G_unet_square_and_square_root_depth_4_filters_32_frame_1",
+    #  "pyramid_eq_half_lr_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1",
+    #  "pyramid_half_lr_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1"]
+    # "pyramid_half_lr_lr_decay_G_unet_square_and_square_root_depth_4_filters_32_frame_1",
+    # "ssim5pyramid_lr_decay_G_unet_square_and_square_root_depth_4_filters_32_frame_1"]
 
-    filters = [32, 32, 32, 32,
-               32, 32, 32, 32,
-               32, 32, 64]
-    models = [params.torus_network, params.torus_network, params.torus_network, params.unet_network,
-              params.unet_network, params.unet_network, params.unet_network, params.unet_network,
-              params.unet_network, params.unet_network, params.unet_network]
-    con_operators = [params.original_unet, params.original_unet, params.square, params.original_unet,
-                     params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
-                     params.square, params.square_root, params.original_unet]
-    depths = [3, 4, 3, 3,
-              4, 3, 4, 3,
-              4, 3, 3]
+    # filters = [32, 32, 32, 32,
+    #            32, 32, 32, 32,
+    #            32, 32, 64]
+    # models = [params.torus_network, params.torus_network, params.torus_network, params.unet_network,
+    #          params.unet_network, params.unet_network, params.unet_network, params.unet_network,
+    #          params.unet_network, params.unet_network, params.unet_network]
+    # con_operators = [params.original_unet, params.original_unet, params.square, params.original_unet,
+    #                 params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
+    #                 params.square, params.square_root, params.original_unet]
+    # depths = [3, 4, 3, 3,
+    #           4, 3, 4, 3,
+    #           4, 3, 3]
 
-    models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+    # models_epoch = range(100, 300, 5)
+    models_epoch = [135]
+    print(models_epoch)
 
-    for i in range(len(filters)):
-        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(
-            depths[i])
+    for i in range(len(models_names)):
+        # model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(depths[i])
+        model_name = models_names[i]
         print("cur model = ", model_name)
         cur_model_path = os.path.join(arch_dir, model_name)
         if os.path.exists(cur_model_path):
-            output_path = os.path.join(cur_model_path, "new_net_results")
+            output_path = os.path.join(cur_model_path, "hdr_format_factorised_last_im_1")
             if not os.path.exists(output_path):
                 os.mkdir(output_path)
             net_path = os.path.join(cur_model_path, "models")
@@ -297,8 +350,7 @@ def save_fake_images_for_fid_hdr_input():
                     if not os.path.exists(cur_output_path):
                         os.mkdir(cur_output_path)
                     run_model_on_path(models[i], device, filters[i], con_operators[i], depths[i], cur_net_path,
-                                      input_images_path,
-                                      cur_output_path)
+                                      input_images_path, cur_output_path, last_layer='none', unet_norm='instance_norm')
                 else:
                     print("model path does not exists: ", cur_output_path)
         else:
@@ -338,14 +390,14 @@ def find_f(im):
 
 
 def run_model_on_path(model, device, filters, con_operator, model_depth, net_path, input_images_path,
-                      output_images_path):
-    net_G = load_g_model(model, device, filters, con_operator, model_depth, net_path)
+                      output_images_path, last_layer, unet_norm):
+    net_G = load_g_model(model, device, filters, con_operator, model_depth, net_path, 0, last_layer, unet_norm)
     print("model " + model + " was loaded successfully")
     for img_name in os.listdir(input_images_path):
         print(img_name)
         im_path = os.path.join(input_images_path, img_name)
-        if os.path.splitext(img_name)[1] == ".hdr":
-            original_im = hdr_image_util.reshape_image(hdr_image_util.read_hdr_image(im_path))
+        if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr":
+            original_im = hdr_image_util.read_hdr_image(im_path)
             # f = 10760.730115410688
             # print(f)
             # original_im = original_im * 255 * f
@@ -469,7 +521,7 @@ def run_discriminator_on_data():
 
 if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
-    run_discriminator_on_data()
+    save_fake_images_for_fid_hdr_input()
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/S0020.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)

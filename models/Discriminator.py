@@ -1,6 +1,6 @@
 from torch import nn
 
-import Blocks
+from models import Blocks
 
 
 class Discriminator(nn.Module):

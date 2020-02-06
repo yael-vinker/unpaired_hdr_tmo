@@ -4,51 +4,97 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import params
+from utils import params
 
 
 class double_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, unet_norm):
         super(double_conv, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
+        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm = None
+        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm1 = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm1 = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm1 = None
+        self.relu1 = nn.ReLU(inplace=True)
+        # self.conv = nn.Sequential(
+        #     nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0),
+        #     nn.BatchNorm2d(out_ch),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=0),
+        #     nn.BatchNorm2d(out_ch),
+        #     nn.ReLU(inplace=True)
+        # )
 
     def forward(self, x):
         x = self.conv(x)
+        if self.norm:
+            x = self.norm(x)
+        x = self.relu(x)
+        x = self.conv1(x)
+        if self.norm1:
+            x = self.norm1(x)
+        x = self.relu1(x)
         return x
 
 
 class double_conv_traspose(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, unet_norm):
         super(double_conv_traspose, self).__init__()
-        self.conv = nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True)
-        )
+        self.conv = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm = None
+        self.relu = nn.ReLU(inplace=True)
+        self.conv1 = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm1 = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm1 = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm1 = None
+        self.relu1 = nn.ReLU(inplace=True)
+        # self.conv = nn.Sequential(
+        #     nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0),
+        #     nn.BatchNorm2d(out_ch),
+        #     nn.ReLU(inplace=True),
+        #     nn.ConvTranspose2d(out_ch, out_ch, kernel_size=3, stride=1, padding=0),
+        #     nn.BatchNorm2d(out_ch),
+        #     nn.ReLU(inplace=True)
+        # )
 
     def forward(self, x):
         x = self.conv(x)
+        if self.norm:
+            x = self.norm(x)
+        x = self.relu(x)
+        x = self.conv1(x)
+        if self.norm1:
+            x = self.norm1(x)
+        x = self.relu1(x)
         return x
 
 
 class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch):
+    def __init__(self, in_ch, out_ch, unet_norm):
         super(inconv, self).__init__()
-        self.conv = double_conv(in_ch, out_ch)
+        self.conv = double_conv(in_ch, out_ch, unet_norm)
 
     def forward(self, x):
         x = self.conv(x)
@@ -56,17 +102,17 @@ class inconv(nn.Module):
 
 
 class down(nn.Module):
-    def __init__(self, in_ch, out_ch, network, dilation=0):
+    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none'):
         super(down, self).__init__()
         if network == params.unet_network:
             self.mpconv = nn.Sequential(
                 nn.MaxPool2d(2),
-                double_conv(in_ch, out_ch)
+                double_conv(in_ch, out_ch, unet_norm)
             )
         elif network == params.torus_network:  # for torus
             self.mpconv = nn.Sequential(
                 nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
-                double_conv(in_ch, out_ch)
+                double_conv(in_ch, out_ch, unet_norm)
             )
         else:
             assert 0, "Unsupported network request: {}".format(self.network)
@@ -77,7 +123,7 @@ class down(nn.Module):
 
 
 class up(nn.Module):
-    def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation):
+    def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation, unet_norm):
         super(up, self).__init__()
 
         #  would be a nice idea if the upsampling could be learned too,
@@ -94,7 +140,7 @@ class up(nn.Module):
         else:
             assert 0, "Unsupported network request: {}".format(network)
 
-        self.conv = double_conv_traspose(in_ch, out_ch)
+        self.conv = double_conv_traspose(in_ch, out_ch, unet_norm)
 
     def forward(self, x1, x2, con_operator, network):
         x1 = self.up(x1)

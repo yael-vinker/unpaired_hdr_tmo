@@ -69,25 +69,14 @@ class LinearBlock(nn.Module):
             out = self.activation(out)
         return out
 
-
-class LambdaLR:
-    def __init__(self, n_epochs, offset, decay_start_epoch):
-        assert (n_epochs - decay_start_epoch) > 0, "Decay must start before the training session ends!"
-        self.n_epochs = n_epochs
-        self.offset = offset
-        self.decay_start_epoch = decay_start_epoch
-
-    def step(self, epoch):
-        return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch) / (self.n_epochs - self.decay_start_epoch)
-# class Normal(object):
-#     def __init__(self, mu, sigma, log_sigma, v=None, r=None):
-#         self.mu = mu
-#         self.sigma = sigma  # either stdev diagonal itself, or stdev diagonal from decomposition
-#         self.logsigma = log_sigma
-#         dim = mu.get_shape()
-#         if v is None:
-#             v = torch.FloatTensor(*dim)
-#         if r is None:
-#             r = torch.FloatTensor(*dim)
-#         self.v = v
-#         self.r = r
+#
+# class LambdaLR:
+#     def __init__(self, n_epochs, offset, decay_start_epoch):
+#         assert (n_epochs - decay_start_epoch) > 0, "Decay must start before the training session ends!"
+#         self.n_epochs = n_epochs
+#         self.offset = offset
+#         self.decay_start_epoch = decay_start_epoch
+#
+#     def step(self, epoch):
+#         return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch) / (self.n_epochs - self.decay_start_epoch)
+#

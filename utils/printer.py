@@ -144,10 +144,10 @@ def print_TMQI_summary(q, s, n, num_epochs, epoch):
           % (epoch, num_epochs, q, s, n))
 
 
-def print_g_progress(fake):
+def print_g_progress(fake, title=""):
     fake_single = np.asarray(fake[0].cpu().detach())
-    print("fake --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (float(np.max(fake_single)), float(np.min(fake_single)),
+    print("fake [%s] --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+          (title, float(np.max(fake_single)), float(np.min(fake_single)),
            fake_single.dtype, str(fake_single.shape)))
 
 
@@ -189,20 +189,19 @@ def print_net(net_name, net, opt, input_size):
 
 def print_opt(opt):
     print("=====================")
+    print("RANDOM SEED:", opt.manual_seed)
+    print("DEVICE:", opt.device)
     print("BATCH SIZE:", opt.batch_size)
     print("EPOCHS:", opt.num_epochs)
     print("MODEL:", opt.model, opt.con_operator)
-    print("UNET DEPTH: ", opt.unet_depth)
-    print("ADD FRAME: ", bool(opt.add_frame))
     print("G LR: ", opt.G_lr)
     print("D LR: ", opt.D_lr)
-    print("CHECK POINT:", opt.isCheckpoint)
-    print("INPUT DIM:", opt.input_dim)
-    print("INPUT IMAGES MEAN:", opt.input_images_mean)
     print("LOSS G D FACTOR:", opt.loss_g_d_factor)
     print("SSIM LOSS FACTOR:", opt.ssim_loss_factor)
     print("SSIM METRIC:", opt.ssim_loss)
-    print("SSIM WINDOW SIZE:", opt.ssim_window_size)
+    print("SSIM PYRAMID:", bool(opt.pyramid_loss))
+    if opt.pyramid_loss:
+        print("SSIM PYRAMID WEIGHTS:", opt.pyramid_weight_list)
     print("LOG FACTOR:", opt.log_factor)
-    print("DEVICE:", opt.device)
+    print("FACTORISED DATA:", opt.use_factorise_data)
     print("=====================\n")

@@ -9,8 +9,8 @@ import skimage
 import torch
 from skimage import exposure
 
-import params
 import tranforms
+from utils import params
 
 
 def print_image_details(im, title):
@@ -19,6 +19,15 @@ def print_image_details(im, title):
     print("max : ", np.max(im), "  min : ", np.min(im), "mean : ", np.mean(im))
     print("type : ", im.dtype)
     print("unique values : ", np.unique(im).shape[0])
+    print()
+
+
+def print_tensor_details(im, title):
+    print(title)
+    print("shape : ", im.shape)
+    print("max : ", im.max(), "  min : ", im.min(), "mean : ", im.mean())
+    print("type : ", im.dtype)
+    # print("unique values : ", np.unique(im).shape[0])
     print()
 
 
@@ -33,9 +42,38 @@ def read_hdr_image(path):
         im = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
     elif file_extension == ".dng":
         im = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+    elif file_extension == ".exr":
+        im = imageio.imread(path_lib_path, format="EXR-FI").astype('float32')
     else:
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im
+
+
+def get_bump(im):
+    tmp = im
+    tmp[(tmp > 200) != 0] = 255
+    tmp = tmp.astype('uint8')
+
+    hist, bins = np.histogram(tmp, bins=255)
+
+    a0 = np.mean(hist[0:64])
+    a1 = np.mean(hist[65:200])
+    return a1 / a0
+
+
+def get_brightness_factor(im_hdr):
+    im_hdr = im_hdr / np.max(im_hdr) * 255
+    big = 1.1
+    f = 1.0
+
+    for i in range(1000):
+        r = get_bump(im_hdr * f)
+        if r < big:
+            f = f * 1.01
+        else:
+            if r > 1 / big:
+                return f
+    return f
 
 
 def read_ldr_image(path):
@@ -43,6 +81,11 @@ def read_ldr_image(path):
     im_origin = imageio.imread(path)
     im = im_origin / 255
     return im
+
+def read_ldr_image_original_range(path):
+    path = pathlib.Path(path)
+    im_origin = imageio.imread(path)
+    return im_origin
 
 
 def hdr_log_loader_factorize(path, range_factor):
@@ -52,6 +95,15 @@ def hdr_log_loader_factorize(path, range_factor):
     im_log = np.log(image_new_range + 1)
     im = (im_log / np.log(range_factor + 1)).astype('float32')
     return im
+
+def reshape_im(im, new_y, new_x):
+    return skimage.transform.resize(im, (new_y, new_x),
+                                             mode='reflect', preserve_range=True).astype("float32")
+
+def log_to_image(im):
+    im_log = np.log(im + 1)
+    return im
+
 
 
 def uint_normalization(im):
@@ -66,6 +118,8 @@ def uint_normalization(im):
 def to_0_1_range(im):
     return (im - np.min(im)) / (np.max(im) - np.min(im))
 
+def to_minus1_1_range(im):
+    return 2 * im - 1
 
 def exp_normalization(im):
     return (np.exp(im) - 1) / (np.exp(np.max(im)) - 1)
@@ -93,14 +147,20 @@ def log100_normalization(im, isHDR):
     return norm_im
 
 
-def back_to_color(im_hdr, fake):
-    im_gray_ = np.sum(im_hdr, axis=2)
-    fake = to_0_1_range(fake)
+def back_to_color(im_hdr, fake, normalise=False):
+    if normalise:
+        fake = to_0_1_range(fake)
+    # im_hdr = np.max(im_hdr) * to_0_1_range(im_hdr)
+    if np.min(im_hdr) < 0:
+        im_hdr = im_hdr - np.min(im_hdr)
+    im_gray_ = to_gray(im_hdr)
+    # print_image_details(im_gray_,"im_gray_")
     norm_im = np.zeros(im_hdr.shape)
     norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
     norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
     norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
     output_im = np.power(norm_im, 0.5) * fake
+    output_im = output_im / np.linalg.norm(norm_im)
     return to_0_1_range(output_im)
 
 
@@ -114,6 +174,14 @@ def reshape_image(rgb_im):
         rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
                                                    int(rgb_im.shape[1] / 3)),
                                           mode='reflect', preserve_range=False).astype("float32")
+    return rgb_im
+
+
+def reshape_image_fixed_size(rgb_im):
+    rgb_im = skimage.transform.resize(rgb_im, (1024,
+                                               2048),
+                                      mode='reflect', preserve_range=False).astype("float32")
+
     return rgb_im
 
 
@@ -178,7 +246,11 @@ def back_to_color_exp(im_hdr, fake):
 def display_tensor(tensor):
     im_display = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     im_display = to_0_1_range(im_display)
-    plt.imshow(im_display)
+    if im_display.shape[2] == 1:
+        im_display = np.squeeze(im_display)
+        plt.imshow(im_display, cmap='gray')
+    else:
+        plt.imshow(im_display)
     plt.show()
 
 

@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import params
+from utils import params
 
 
 def gaussian(window_size, sigma):
@@ -133,57 +133,39 @@ class TMQI_SSIM(torch.nn.Module):
 
         return _ssim_from_tmqi(img1, img2, window, self.window_size, channel, self.size_average)
 
+def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
 
-def print_tensor_details(im, title):
-    print(title)
-    print("shape : ", im.shape)
-    print("max : ", im.max(), "  min : ", im.min(), "mean : ", im.mean())
-    print("type : ", im.dtype)
-    # print("unique values : ", np.unique(im.numpy()).shape[0])
-    print()
-
-
-def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss):
     window = window / window.sum()
     factor = float(2 ** 8 - 1.)
     img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
     img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min())
-    # print_tensor_details(img1, "im1")
-    # print_tensor_details(img2, "im2")
 
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
-    # print_tensor_details(mu1, "mu1")
-    # print_tensor_details(mu2, "mu2")
 
     mu1_sq = mu1.pow(2)
     mu2_sq = mu2.pow(2)
-    # print_tensor_details(mu1_sq, "mu1_sq")
-    # print_tensor_details(mu2_sq, "mu2_sq")
 
     sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
     sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
 
     mu1_mu2 = mu1 * mu2
     sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
-
-    a = sigma1_sq <= 0
-    b = sigma2_sq <= 0
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
-    # std1 = (sigma1_sq + sigma1_sq.min().abs() + params.epsilon).pow(0.5)
-    # std2 = (sigma2_sq + sigma1_sq.min().abs() + params.epsilon).pow(0.5)
-
-    # norm_im1 = torch.div(torch.add(img1, -mu1), std1)
-    # norm_im2 = torch.div(torch.add(img2, -mu2), std2)
     C2 = 10.
     s_map = (sigma12 + C2) / (std1 * std2 + C2)
-    # s_map1 = torch.pow((((img1 - mu1 + C2) / std1+ C2) - ((img2 - mu2+ C2) / std2+ C2)), 2)
-    # print("mse_loss", mse_loss(((img1 - mu1) / std1) , ((img2 - mu2) / std2)))
-    # s_map1 = 2 * F.conv2d(((img1 - mu1) * (img2 - mu2)), window, padding=window_size // 2, groups=channel) / (std1 * std2)
+    return torch.tensor(1) - s_map.mean()
 
-    # print((norm_im1 - norm_im2).pow(2).mean())
-    return s_map.mean()
+def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_weight_list):
+    ssim_loss_list = []
+    for i in range(len(pyramid_weight_list)):
+        ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
+        img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
+        img1.clamp(min=0, max=img1.max().item())
+        img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
+        img2.clamp(min=0, max=img2.max().item())
+    return torch.sum(torch.stack(ssim_loss_list))
 
 
 class OUR_CUSTOM_SSIM(torch.nn.Module):
@@ -211,6 +193,31 @@ class OUR_CUSTOM_SSIM(torch.nn.Module):
 
         return our_custom_ssim(img1, img2, window, self.window_size, channel, self.mse_loss)
 
+class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
+    def __init__(self, pyramid_weight_list, window_size=11):
+        super(OUR_CUSTOM_SSIM_PYRAMID, self).__init__()
+        self.window_size = window_size
+        self.channel = 1
+        self.window = create_window(window_size, self.channel)
+        self.mse_loss = torch.nn.MSELoss()
+        self.pyramid_weight_list = pyramid_weight_list
+
+    def forward(self, img1, img2):
+        (_, channel, _, _) = img1.size()
+
+        if channel == self.channel and self.window.data.type() == img1.data.type():
+            window = self.window
+        else:
+            window = create_window(self.window_size, channel)
+
+            if img1.is_cuda:
+                window = window.cuda(img1.get_device())
+            window = window.type_as(img1)
+
+            self.window = window
+            self.channel = channel
+
+        return our_custom_ssim_pyramid(img1, img2, window, self.window_size, channel, self.pyramid_weight_list)
 
 def ssim(img1, img2, window_size=11, size_average=True):
     (_, channel, _, _) = img1.size()
@@ -223,11 +230,3 @@ def ssim(img1, img2, window_size=11, size_average=True):
     print(_ssim(img1, img2, window, window_size, channel, size_average))
     return _ssim_from_tmqi(img1, img2, window, window_size, channel, size_average)
 
-#
-# if __name__ == '__main__':
-#     img1 = Variable(torch.ones(4, 3, 256, 256))
-#     img2 = Variable(torch.ones(4, 3, 256, 256))
-#     print(ssim(img1, img2))
-#     ssim_loss = SSIM(window_size=11)
-#
-#     print(ssim_loss(img1, img2))

@@ -1,11 +1,11 @@
 # full assembly of the sub-parts to form the complete net
 
 from .unet_parts import *
-
+import utils.printer
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, input_images_mean, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop=False, use_pyramid_loss=False):
+    def __init__(self, n_channels, n_classes, last_layer, depth, layer_factor, con_operator, filters, bilinear,
+                 network, dilation, to_crop, use_pyramid_loss, unet_norm):
         super(UNet, self).__init__()
         self.use_pyramid_loss = use_pyramid_loss
         self.to_crop = to_crop
@@ -13,38 +13,37 @@ class UNet(nn.Module):
         self.network = network
         down_ch = filters
         self.depth = depth
-        self.inc = inconv(n_channels, down_ch)
+        self.inc = inconv(n_channels, down_ch, unet_norm)
         ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2, network, dilation=dilation)
+                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm)
             )
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        self.down_path.append(down(ch, ch, network, dilation=dilation))
+        self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
             if i >= self.depth - 2:
                 self.up_path.append(
-                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network, dilation=dilation)
+                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network, dilation=dilation, unet_norm=unet_norm)
                 )
             else:
                 self.up_path.append(
-                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network, dilation=dilation)
+                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network, dilation=dilation, unet_norm=unet_norm)
                 )
             ch = ch // 2
             if network == params.torus_network:
                 dilation = dilation // 2
         self.outc = outconv(down_ch, n_classes)
-        if input_images_mean == 0:
+        if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
-        elif input_images_mean == 0.5:
-            self.last_sig = nn.Sigmoid()
         else:
-            raise Exception('ERROR: Invalid images range')
+            self.last_sig = None
+
 
     def forward(self, x):
         next_x = self.inc(x)
@@ -58,8 +57,18 @@ class UNet(nn.Module):
         for i, up_layer in enumerate(self.up_path):
             # x_pairs.append((x_results[(self.depth - (i + 1))], up_x))
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
+        # print("up_x")
+        # print(up_x.requires_grad)
         x = self.outc(up_x)
-        x = self.last_sig(x)
+        # print(x.requires_grad)
+        # utils.printer.print_g_progress(x, "before tanh")
+        if self.last_sig:
+
+            # print("here",  self.last_sig)
+            x = self.last_sig(x)
+            # utils.printer.print_g_progress(x, "after tanh")
+            # print(x.requires_grad)
+
 
         # import matplotlib.pyplot as plt
         # for p in x_pairs:

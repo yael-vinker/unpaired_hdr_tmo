@@ -1,11 +1,17 @@
 import os
 
-import params
+from utils import params
 
 
-def create_dir(result_dir_pref, model_name, con_operator, model_path, loss_graph_path, result_path, model_depth):
-    # output_dir = os.path.join("/cs","labs","raananf","yael_vinker","29_07",result_dir_pref + "_" + model_name)
-    output_dir = os.path.join(result_dir_pref + "_" + model_name + "_" + con_operator + "_depth_" + str(model_depth))
+def create_dir(opt):
+    result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, opt.con_operator, opt.unet_depth, opt.filters, opt.add_frame
+    output_dir = result_dir_pref + model_name + "_" + con_operator + "_last_act_" + opt.last_layer \
+                 + "_norm_g_" + opt.unet_norm + "_use_f_" + str(bool(opt.use_factorise_data)) + "_coeff_" \
+                 + str(opt.factor_coeff) + "_clip_" + str(bool(opt.add_clipping)) + "_normalise_" + str(bool(opt.use_normalization))
+    model_path = params.models_save_path
+    loss_graph_path = params.loss_path
+    result_path = params.results_path
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")

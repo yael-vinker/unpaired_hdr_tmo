@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-import TMQI
-import printer
+# from old_files import TMQI
+from utils import printer
 import tranforms
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
@@ -16,7 +16,9 @@ import utils.plot_util as plot_util
 
 class Tester:
     def __init__(self, test_dataroot_npy, test_dataroot_ldr, test_dataroot_original_hdr, batch_size, device,
-                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_, addFrame_):
+                 loss_g_d_factor_, ssim_loss_g_factor_, use_transform_exp_, transform_exp_, log_factor_, addFrame_,
+                 args):
+        self.args = args
         self.to_crop = addFrame_
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             data_loader_util.load_data(test_dataroot_npy, test_dataroot_ldr, batch_size, addFrame=addFrame_,
@@ -37,28 +39,21 @@ class Tester:
         self.test_original_hdr_images = self.load_original_test_hdr_images(test_dataroot_original_hdr)
         self.normalize = tranforms.Normalize(0.5, 0.5)
 
-    def log_to_image(self, im_origin, log_factor):
-        import numpy as np
-        max_origin = np.max(im_origin)
-        image_new_range = (im_origin / max_origin) * log_factor
-        im_log = np.log(image_new_range + 1)
-        im = (im_log / np.log(log_factor + 1)).astype('float32')
-        return im
 
     def load_original_test_hdr_images(self, root):
+        import data_generator.create_dng_npy_data as create_dng_npy_data
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
-            im_hdr_original = hdr_image_util.read_hdr_image(im_path)
-            im_hdr_original = hdr_image_util.reshape_image(im_hdr_original)
-            im_log_normalize_tensor = image_quality_assessment_util.apply_preproccess_for_hdr_im(im_hdr_original,
-                                                                                                 self.to_crop)
-            # text = image_quality_assessment_util.calculate_TMQI_results_for_selected_methods(im_hdr_original, img_name)
+            rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, self.args, reshape=True)
+            rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+            if self.to_crop:
+                gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             text = ""
             original_hdr_images.append({'im_name': str(counter),
-                                        'im_hdr_original': im_hdr_original,
-                                        'im_log_normalize_tensor': im_log_normalize_tensor,
+                                        'im_hdr_original': rgb_img,
+                                        'im_log_normalize_tensor': gray_im_log,
                                         'Q_arr': [],
                                         'N_arr': [],
                                         'S_arr': [],
@@ -285,8 +280,10 @@ class Tester:
                     fake = self.transform_exp(fake)
                 fake_im_gray = torch.squeeze(fake, dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+                im_hdr_original = im_hdr_original.clone().permute(1, 2, 0).detach().cpu().numpy()
                 fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
-                                                             fake_im_gray_numpy)
+                                                             fake_im_gray_numpy, self.args.use_normalization)
+                fake_im_color = (255 * fake_im_color).astype('uint8')
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
                 fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
@@ -305,8 +302,10 @@ class Tester:
                     fake = self.transform_exp(fake)
                 fake_im_gray = torch.squeeze(fake, dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+                im_hdr_original = im_hdr_original.clone().permute(1, 2, 0).detach().cpu().numpy()
                 fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
-                                                             fake_im_gray_numpy)
+                                                             fake_im_gray_numpy, self.args.use_normalization)
+                fake_im_color = (255 * fake_im_color).astype('uint8')
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
                 fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')

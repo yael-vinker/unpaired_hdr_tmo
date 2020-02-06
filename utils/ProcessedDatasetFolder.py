@@ -3,8 +3,8 @@ import torch
 # from __future__ import print_function
 from torchvision.datasets import DatasetFolder
 
-import params
-
+from utils import params
+import utils.data_loader_util as data_loader_util
 IMG_EXTENSIONS_local = ('.npy')
 
 
@@ -19,16 +19,7 @@ def npy_loader(path, addFrame, hdrMode):
     input_im = data[()]["input_image"]
     color_im = data[()]["display_image"]
     if addFrame and hdrMode:
-        input_im = torch.squeeze(input_im)
-        first_row = input_im[0].repeat(params.shape_addition, 1)
-        im = torch.cat((first_row, input_im), 0)
-        last_row = input_im[-1].repeat(params.shape_addition, 1)
-        im = torch.cat((im, last_row), 0)
-        left_col = torch.t(im[:, 0].repeat(params.shape_addition, 1))
-        im = torch.cat((left_col, im), 1)
-        right_col = torch.t(im[:, -1].repeat(params.shape_addition, 1))
-        im = torch.cat((im, right_col), 1)
-        im = torch.unsqueeze(im, dim=0)
+        im = data_loader_util.add_frame_to_im(input_im)
         return im, color_im
     return input_im, color_im
     # if data.ndim == 2:

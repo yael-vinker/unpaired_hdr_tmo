@@ -1,10 +1,10 @@
 import torch
 
-import params
+from utils import params
 
 
 def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode):
-    import ProcessedDatasetFolder
+    from utils import ProcessedDatasetFolder
     npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, addFrame=addFrame, hdrMode=hdrMode)
     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
                                              shuffle=shuffle, num_workers=params.workers)
@@ -12,7 +12,7 @@ def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode):
 
 
 def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title):
-    import printer
+    from utils import printer
     """
     :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
     :param dir_root: path to wanted directory
