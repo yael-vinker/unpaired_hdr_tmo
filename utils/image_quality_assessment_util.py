@@ -96,8 +96,10 @@ def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
     return im
 
 
-def apply_preproccess_for_hdr_im_factorised(hdr_im, factor_dict, img_name, addFrame=False):
-    brightness_factor = factor_dict[img_name + ".hdr"]
+def apply_preproccess_for_hdr_im_factorised(hdr_im, addFrame):
+    temp_hdr_im = skimage.transform.resize(hdr_im, (128, 128),
+                                       mode='reflect', preserve_range=True).astype("float32")
+    brightness_factor = hdr_image_util.get_brightness_factor(temp_hdr_im)
     if np.min(hdr_im) < 0:
         hdr_im = hdr_im - np.min(hdr_im)
     im_hdr_log = hdr_log_loader_factorize(hdr_im, 1, brightness_factor)

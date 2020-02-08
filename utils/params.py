@@ -1,8 +1,8 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "data/hdr_log_data"
-train_dataroot_ldr = "data/ldr_npy"
+train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
+train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
 
 test_dataroot_hdr = "data/hdr_log_data"
 test_dataroot_ldr = "data/ldr_npy"

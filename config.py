@@ -1,10 +1,9 @@
 import argparse
 import os
-
 import torch
-
-from utils import gan_trainer_utils as g_t_utils, params
+from utils import params
 import random
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
@@ -24,7 +23,7 @@ def parse_arguments():
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
     parser.add_argument("--filters", type=int, default=params.filters)
     parser.add_argument("--unet_depth", type=int, default=4)
-    parser.add_argument("--con_operator", type=str, default=params.original_unet)
+    parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
     parser.add_argument("--d_norm", type=str, default='none')
@@ -48,13 +47,13 @@ def parse_arguments():
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
-    parser.add_argument('--factor_coeff', type=float, default=1)
+    parser.add_argument('--factor_coeff', type=float, default=0.1)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
     parser.add_argument("--use_transform_exp", type=int, default=1)  # int(False) = 0
     parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
-    parser.add_argument('--use_normalization', type=int, default=1)
+    parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument('--apply_inverse_to_preprocess', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
 
@@ -82,8 +81,74 @@ def get_opt():
     # device = torch.device("cpu")
     opt.device = device
 
-    opt.output_dir = g_t_utils.create_dir(opt)
+    opt.output_dir = create_dir(opt)
     opt.pyramid_weight_list = [float(item) for item in opt.pyramid_weight_list.split(',')]
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
-
     return opt
+
+
+def create_dir(opt):
+    result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, opt.con_operator, opt.unet_depth, opt.filters, opt.add_frame
+    output_dir = result_dir_pref + model_name + "_" + con_operator + "_last_act_" + opt.last_layer \
+                 + "_norm_g_" + opt.unet_norm + "_use_f_" + str(bool(opt.use_factorise_data)) + "_coeff_" \
+                 + str(opt.factor_coeff) + "_clip_" + str(bool(opt.add_clipping)) + "_normalise_" + str(bool(opt.use_normalization))
+    model_path = params.models_save_path
+    loss_graph_path = params.loss_path
+    result_path = params.results_path
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print("Directory ", output_dir, " created")
+
+    best_acc_path = os.path.join(output_dir, params.best_acc_images_path)
+    models_images = os.path.join(output_dir, params.models_images)
+    model_path = os.path.join(output_dir, model_path)
+    models_250_save_path = os.path.join("models_250", "models_250_net.pth")
+    model_path_250 = os.path.join(output_dir, models_250_save_path)
+    best_model_save_path = os.path.join("best_model", "best_model.pth")
+    best_model_path = os.path.join(output_dir, best_model_save_path)
+    loss_graph_path = os.path.join(output_dir, loss_graph_path)
+    result_path = os.path.join(output_dir, result_path)
+    acc_path = os.path.join(output_dir, "accuracy")
+    tmqi_path = os.path.join(output_dir, "tmqi")
+    gradient_flow_path = os.path.join(output_dir, params.gradient_flow_path, "g")
+
+    if not os.path.exists(models_images):
+        os.mkdir(models_images)
+        print("Directory ", models_images, " created")
+
+    if not os.path.exists(best_acc_path):
+        os.mkdir(best_acc_path)
+        print("Directory ", best_acc_path, " created")
+
+    if not os.path.exists(os.path.dirname(gradient_flow_path)):
+        os.makedirs(os.path.dirname(gradient_flow_path))
+        print("Directory ", gradient_flow_path, " created")
+
+    if not os.path.exists(os.path.dirname(model_path)):
+        os.makedirs(os.path.dirname(model_path))
+        print("Directory ", model_path, " created")
+
+    if not os.path.exists(os.path.dirname(model_path_250)):
+        os.makedirs(os.path.dirname(model_path_250))
+        print("Directory ", model_path_250, " created")
+
+    if not os.path.exists(os.path.dirname(best_model_path)):
+        os.makedirs(os.path.dirname(best_model_path))
+        print("Directory ", best_model_path, " created")
+
+    if not os.path.exists(loss_graph_path):
+        os.mkdir(loss_graph_path)
+
+        print("Directory ", loss_graph_path, " created")
+    if not os.path.exists(result_path):
+        os.mkdir(result_path)
+        print("Directory ", result_path, " created")
+    if not os.path.exists(acc_path):
+        os.mkdir(acc_path)
+        print("Directory ", acc_path, " created")
+
+    if not os.path.exists(tmqi_path):
+        os.mkdir(tmqi_path)
+        print("Directory ", tmqi_path, " created")
+    return output_dir

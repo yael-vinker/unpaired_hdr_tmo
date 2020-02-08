@@ -56,7 +56,6 @@ class GanTrainer:
         self.G_loss_ssim, self.G_loss_d = [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
 
-
         # ====== DATASET ======
         self.train_data_loader_npy, self.train_data_loader_ldr = \
             data_loader_util.load_data(opt.data_root_npy, opt.data_root_ldr,
@@ -70,7 +69,7 @@ class GanTrainer:
         self.to_crop = opt.add_frame
         self.use_transform_exp = opt.use_transform_exp
         self.transform_exp = custom_transform.Exp(opt.log_factor, opt.add_clipping, opt.apply_inverse_to_preprocess,
-                                                  opt.use_normalization)
+                                                  opt.use_normalization, opt.use_factorise_data)
         self.use_normalization = opt.use_normalization
         self.apply_inverse_to_preprocess = opt.apply_inverse_to_preprocess
 
@@ -78,10 +77,8 @@ class GanTrainer:
         self.output_dir = opt.output_dir
         self.epoch_to_save = opt.epoch_to_save
         self.best_accG = 0
-        self.tester = Tester.Tester(opt.test_dataroot_npy, opt.test_dataroot_ldr, opt.test_dataroot_original_hdr,
-                                    opt.batch_size,
-                                    self.device, self.loss_g_d_factor, self.ssim_loss_g_factor, opt.use_transform_exp,
-                                    self.transform_exp, self.log_factor, opt.add_frame, opt)
+        self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.ssim_loss_g_factor,
+                                    self.transform_exp, self.log_factor, opt)
 
     def train(self):
         printer.print_cuda_details(self.device.type)
@@ -96,7 +93,6 @@ class GanTrainer:
             self.lr_scheduler_D.step()
             # self.save_gradient_flow(epoch)
             self.print_epoch_summary(epoch, start)
-
 
     def train_epoch(self):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -169,6 +165,7 @@ class GanTrainer:
         self.netG.zero_grad()
         label.fill_(self.real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
+        printer.print_g_progress(hdr_input, "hdr_inp__")
         fake = self.netG(hdr_input)
         if self.use_transform_exp:
             printer.print_g_progress(fake, "pre_exp__")

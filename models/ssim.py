@@ -155,7 +155,7 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
     C2 = 10.
     s_map = (sigma12 + C2) / (std1 * std2 + C2)
-    return torch.tensor(1) - s_map.mean()
+    return 1 - s_map.mean()
 
 def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_weight_list):
     ssim_loss_list = []

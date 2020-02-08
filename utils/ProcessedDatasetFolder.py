@@ -21,6 +21,9 @@ def npy_loader(path, addFrame, hdrMode):
     if addFrame and hdrMode:
         im = data_loader_util.add_frame_to_im(input_im)
         return im, color_im
+    if not hdrMode:
+        if input_im.max() > 1:
+            input_im = input_im / 255
     return input_im, color_im
     # if data.ndim == 2:
     #     data = data[:, :, None]

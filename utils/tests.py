@@ -18,7 +18,7 @@ import utils.hdr_image_util as hdr_image_util
 # import hdr_image_utils
 from models import ssim
 from old_files import HdrImageFolder, TMQI
-from utils import gan_trainer_utils, params
+from utils import params
 
 
 def print_im_details(im, title, disply=False):
@@ -3891,9 +3891,11 @@ def back_to_color2(im_hdr, fake):
     return to_0_1_range(output_im)
 
 def back_to_color3(im_hdr, fake):
+    fake = to_0_1_range(fake)
+    # im_hdr = np.max(im_hdr) * to_0_1_range(im_hdr)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr - np.min(im_hdr)
-    im_gray_ = hdr_image_util.to_gray(im_hdr / np.max(im_hdr))
+    im_gray_ = to_gray(im_hdr)
     # print_image_details(im_gray_,"im_gray_")
     norm_im = np.zeros(im_hdr.shape)
     norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
@@ -3901,7 +3903,8 @@ def back_to_color3(im_hdr, fake):
     norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
     output_im = np.power(norm_im, 0.5) * fake
     output_im = output_im / np.linalg.norm(norm_im)
-    return (255 * to_0_1_range(output_im)).astype('uint8')
+    return to_0_1_range(output_im)
+
 
 def back_to_color_dir(input_dir, exr_dir, output_dir):
     if not os.path.exists(output_dir):
@@ -3936,25 +3939,68 @@ def to_gray_test():
     plt.imshow(z, cmap='gray')
     plt.show()
 
+def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, epoch)
+        old_name = im_number + "_epoch_" + epoch + "_gray.png"
+        cur_output_path = os.path.join(output_path, epoch, im_number)
+        output_name = date + "_" + arch_name + ".png"
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        if os.path.exists(os.path.join(im_path, old_name)):
+            shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+        # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
+
+def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "accuracy")
+        old_name = "accuracy epoch = " + epoch + ".png"
+        cur_output_path = os.path.join(output_path, "accuracy_" + epoch)
+        output_name = date + "_" + arch_name + ".png"
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        if os.path.exists(os.path.join(im_path, old_name)):
+            shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+        # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
 if __name__ == '__main__':
-    import numpy as np
+    epochs = ['96']
+    for ep in epochs:
+        gather_all_architectures("/Users/yaelvinker/Documents/university/lab/02_08/fix_exp",
+                             "/Users/yaelvinker/Documents/university/lab/02_08/new_arch_summary", ep, "02_08", "1")
 
-    to_gray_test()
-    # back_to_color_dir("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_10/110_clip_11/",
-    #                   "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_29/exr_format_fixed_size",
-    #                   "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_10/110_clip_11_color")
 
-    # parse_nima_output()
-    # im_exr = imageio.imread("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_29/exr_format_fixed_size/507.exr", format="EXR-FI")
-    # im = imageio.imread("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_30/small_lr_instance_norm_g_pyramid_half_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1/105_gray_1_clip_11_05/507.png")
-    # im = im / np.max(im)
-    # im = im[:, :, None]
+# if __name__ == '__main__':
+#     import numpy as np
+#
+#     # to_gray_test()
+#     # back_to_color_dir("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_10/110_clip_11/",
+#     #                   "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_29/exr_format_fixed_size",
+#     #                   "/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_10/110_clip_11_color")
+#
+#     # parse_nima_output()
+#     im_exr = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/data/synagogue.hdr", format='HDR-FI')
+#     im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/data/1_epoch_496_gray.png")
+#     # im = imageio.imread("/Users/yaelvinker/Documents/university/lab/open_exr_images_tests/01_30/small_lr_instance_norm_g_pyramid_half_lr_decay_G_unet_original_unet_depth_4_filters_32_frame_1/105_gray_1_clip_11_05/507.png")
+#     # im = im / np.max(im)
+#     im = im[:, :, None]
     # im1 = (back_to_color1(im_exr, im) * 255).astype('uint8')
     # hdr_image_util.print_image_details(im1, "im1")
     # im2 = (back_to_color2(im_exr, im) * 255).astype('uint8')
     # hdr_image_util.print_image_details(im2, "im2")
     # im3 = (back_to_color3(im_exr, im) * 255).astype('uint8')
+    # plt.subplot(2,1,1)
+    # plt.imshow(im_exr)
+    # plt.subplot(2, 1, 2)
+    # plt.imshow(im3)
+    # plt.show()
+
     # hdr_image_util.print_image_details(im3, "im3")
     # hdr_image_util.print_image_details(im, "im")
     # imageio.imwrite("/Users/yaelvinker/Documents/MATLAB/best_model/tmqi_check/original.jpg", im1)

@@ -196,11 +196,12 @@ class Normalize(object):
 
 class Exp(object):
 
-    def __init__(self, factor, add_clipping, apply_inverse_to_preprocess, normalised_data):
+    def __init__(self, factor, add_clipping, apply_inverse_to_preprocess, normalised_data, factorised_data):
         self.factor = factor
         self.log_factor = torch.tensor(np.log(1 + factor))
         self.add_clipping = add_clipping
         self.normalised_data = normalised_data
+        self.factorised_data = factorised_data
 
     def __call__(self, tensor):
         """
@@ -210,15 +211,22 @@ class Exp(object):
         Returns:
             Tensor: Normalized Tensor image.
         """
-        if self.normalised_data:
-            im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
-        else:
-            im_0_1 = tensor
-        im_exp = torch.exp(im_0_1) - 1
-        im_end = im_exp / im_exp.max()
+        # if self.normalised_data:
+        #     im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
+        # else:
+        #     im_0_1 = tensor
+        im_end = torch.exp(tensor)
+        import utils.printer
+        # utils.printer.print_g_progress(im_end, "in_exp__")
+        # if self.normalised_data:
+        im_end = im_end / im_end.max()
+        # utils.printer.print_g_progress(im_end, "max_div__")
+        # if self.factorised_data:
+        #     im_end = (im_end - im_end.min()) / (im_end.max() - im_end.min())
         if self.add_clipping:
-            im_end = im_end * 1.1 - 0.05
+            im_end = im_end * 1.1
             im_end = torch.clamp(im_end, 0, 1)
+            # utils.printer.print_g_progress(im_end, "clip__")
         return im_end
 
 
