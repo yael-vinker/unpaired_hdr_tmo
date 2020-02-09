@@ -66,7 +66,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, use_pyramid_loss, unet_norm, add_clipping, use_xaviar):
+                 add_frame, use_pyramid_loss, unet_norm, add_clipping, normalization, use_xaviar):
     # Create the Generator (UNet architecture)
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
@@ -74,14 +74,14 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
                                  to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping).to(device_)
+                                 add_clipping=add_clipping, normalization=normalization).to(device_)
     elif model == params.torus_network:
         new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False,
                                  network=params.torus_network, dilation=2, to_crop=add_frame,
                                  use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping).to(device_)
+                                 add_clipping=add_clipping, normalization=normalization).to(device_)
     else:
         assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
 
@@ -265,14 +265,14 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
                                  to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping).to(device_)
+                                 add_clipping=add_clipping, normalization='max_normalization').to(device_)
     elif model == params.torus_network:
         new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False,
                                  network=params.torus_network, dilation=2, to_crop=add_frame,
                                  use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping).to(device_)
+                                 add_clipping=add_clipping, normalization='max_normalization').to(device_)
     else:
         assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
 

@@ -97,7 +97,6 @@ class MaxNormalization(nn.Module):
             cur_im = tensor_batch[i]
             cur_im = torch.div(cur_im, torch.max(cur_im))
             output.append(cur_im)
-            # utils.hdr_image_util.print_tensor_details(tensor_batch, "MaxNormalization")
         return torch.stack(output)
 
 class MinMaxNormalization(nn.Module):
@@ -105,9 +104,13 @@ class MinMaxNormalization(nn.Module):
         super(MinMaxNormalization, self).__init__()
 
     def forward(self, tensor_batch):
-        tensor_batch = (tensor_batch - torch.min(tensor_batch)) / (torch.max(tensor_batch) - torch.min(tensor_batch))
-        utils.hdr_image_util.print_tensor_details(tensor_batch, "MinMaxNormalization")
-        return tensor_batch
+        b_size = tensor_batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = tensor_batch[i]
+            cur_im = torch.div((cur_im - torch.min(cur_im)), (torch.max(cur_im) - torch.min(cur_im)))
+            output.append(cur_im)
+        return torch.stack(output)
 
 
 #

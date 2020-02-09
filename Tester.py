@@ -132,13 +132,13 @@ class Tester:
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
-        if self.args.use_normalization:
-            if self.args.normalization == "max_normalization":
-                fake = self.max_normalization(fake)
-            elif self.args.normalization == "min_max_normalization":
-                fake = self.min_max_normalization(fake)
-            else:
-                assert 0, "Unsupported normalization"
+        # if self.args.use_normalization:
+        #     if self.args.normalization == "max_normalization":
+        #         fake = self.max_normalization(fake)
+        #     elif self.args.normalization == "min_max_normalization":
+        #         fake = self.min_max_normalization(fake)
+        #     else:
+        #         assert 0, "Unsupported normalization"
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
@@ -147,11 +147,11 @@ class Tester:
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
-        hdr_image_util.print_image_details(im,"before saving")
-        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".jpg"
-        # im = hdr_image_util.to_0_1_range(im)
-        # im = (im * 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='JPEG-FI')
+        printer.print_g_progress_tensor(im, "before saving")
+        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
+        im = hdr_image_util.to_0_1_range(im)
+        im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
     def save_images_for_model(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "model_results", str(epoch))
@@ -165,13 +165,13 @@ class Tester:
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
-                if self.args.use_normalization:
-                    if self.args.normalization == "max_normalization":
-                        fake = self.max_normalization(fake)
-                    elif self.args.normalization == "min_max_normalization":
-                        fake = self.min_max_normalization(fake)
-                    else:
-                        assert 0, "Unsupported normalization"
+                # if self.args.use_normalization:
+                #     if self.args.normalization == "max_normalization":
+                #         fake = self.max_normalization(fake)
+                #     elif self.args.normalization == "min_max_normalization":
+                #         fake = self.min_max_normalization(fake)
+                #     else:
+                #         assert 0, "Unsupported normalization"
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')

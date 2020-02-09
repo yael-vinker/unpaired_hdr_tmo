@@ -116,9 +116,6 @@ def back_to_color(im_hdr, fake):
     norm_im_gray = to_gray(norm_im)
     norm_im_gray = norm_im_gray[:, :, None]
     output_im = (norm_im / norm_im_gray) * fake
-    print(np.equal(to_gray(output_im), np.squeeze(fake)).all())
-    print_image_details(fake, "original gray")
-    print_image_details(to_gray(output_im), "return to gray")
     return output_im
 
 

@@ -6,7 +6,7 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, use_pyramid_loss, unet_norm, add_clipping):
+                 network, dilation, to_crop, use_pyramid_loss, unet_norm, add_clipping, normalization):
         super(UNet, self).__init__()
         self.use_pyramid_loss = use_pyramid_loss
         self.to_crop = to_crop
@@ -40,17 +40,25 @@ class UNet(nn.Module):
             if network == params.torus_network:
                 dilation = dilation // 2
         self.outc = outconv(down_ch, n_classes)
-        self.exp = Blocks.Exp()
+        # self.exp = Blocks.Exp()
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
         if last_layer == 'sigmoid':
             self.last_sig = nn.Sigmoid()
         else:
             self.last_sig = None
+        if normalization == "max_normalization":
+            self.normalization = Blocks.MaxNormalization()
+        elif normalization == "min_max_normalization":
+            self.normalization = Blocks.MinMaxNormalization()
+        else:
+            assert 0, "Unsupported normalization"
+
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
             self.clip = None
+
 
 
     def forward(self, x):
@@ -64,9 +72,10 @@ class UNet(nn.Module):
         for i, up_layer in enumerate(self.up_path):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
         x = self.outc(up_x)
-        x = self.exp(x)
+        # x = self.exp(x)
         if self.last_sig:
             x = self.last_sig(x)
+        x = self.normalization(x)
         if self.clip:
             x = self.clip(x)
 

@@ -149,6 +149,12 @@ def print_g_progress(fake, title=""):
           (title, float(np.max(fake_single)), float(np.min(fake_single)),
            fake_single.dtype, str(fake_single.shape)))
 
+def print_g_progress_tensor(fake, title=""):
+    with torch.no_grad():
+        print("fake [%s] --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (title, float(fake.max().item()), float(fake.min().item()),
+               fake.dtype, str(fake.shape)))
+
 
 def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, loss_g_d_factor, errG_d,
                                ssim_loss_g_factor, errG_ssim):
