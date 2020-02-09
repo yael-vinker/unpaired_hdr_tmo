@@ -70,8 +70,11 @@ class GanTrainer:
         self.to_crop = opt.add_frame
         self.use_normalization = opt.use_normalization
         self.normalization = opt.normalization
-        self.max_normalization = custom_transform.MaxNormalization()
-        self.min_max_normalization = custom_transform.MinMaxNormalization()
+        # self.max_normalization = custom_transform.MaxNormalization()
+        # self.min_max_normalization = custom_transform.MinMaxNormalization()
+        import models.Blocks
+        self.max_normalization = models.Blocks.MaxNormalization()
+        self.min_max_normalization = models.Blocks.MinMaxNormalization()
 
         # ====== SAVE RESULTS ======
         self.output_dir = opt.output_dir
