@@ -148,10 +148,10 @@ class Tester:
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
         hdr_image_util.print_image_details(im,"before saving")
-        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = hdr_image_util.to_0_1_range(im)
-        im = (im * 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
+        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".jpg"
+        # im = hdr_image_util.to_0_1_range(im)
+        # im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='JPEG-FI')
 
     def save_images_for_model(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "model_results", str(epoch))
