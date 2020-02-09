@@ -8,7 +8,7 @@ import utils.data_loader_util as data_loader_util
 IMG_EXTENSIONS_local = ('.npy')
 
 
-def npy_loader(path, addFrame, hdrMode):
+def npy_loader(path, addFrame, hdrMode, normalization):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
     :param path: image path
@@ -22,7 +22,9 @@ def npy_loader(path, addFrame, hdrMode):
         im = data_loader_util.add_frame_to_im(input_im)
         return im, color_im
     if not hdrMode:
-        if input_im.max() > 1:
+        if normalization == "max_normalization":
+            input_im = input_im / 255
+        elif normalization == "min_max_normalization":
             input_im = input_im / 255
     return input_im, color_im
     # if data.ndim == 2:
@@ -39,7 +41,7 @@ class ProcessedDatasetFolder(DatasetFolder):
     of numpy arrays that represents hdr_images and window_binary_images.
     """
 
-    def __init__(self, root, addFrame, hdrMode, transform=None, target_transform=None,
+    def __init__(self, root, addFrame, hdrMode, normalization, transform=None, target_transform=None,
                  loader=npy_loader):
         super(ProcessedDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                                      transform=transform,
@@ -47,6 +49,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.imgs = self.samples
         self.addFrame = addFrame
         self.hdrMode = hdrMode
+        self.normalization = normalization
 
     def __getitem__(self, index):
         """
@@ -59,7 +62,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         path, target = self.samples[index]
         # if self.test_mode:
         # input_im, color_im = self.loader(path, self.test_mode)
-        input_im, color_im = self.loader(path, self.addFrame, self.hdrMode)
+        input_im, color_im = self.loader(path, self.addFrame, self.hdrMode, self.normalization)
         return {"input_im": input_im, "color_im": color_im}
         # else:
         #     input_im = self.loader(path, self.test_mode)
