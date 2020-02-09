@@ -23,6 +23,7 @@ echo "factor_coeff $18"
 echo "add_clipping $19"
 echo "use_normalization $20"
 echo "normalization $21"
+echo "last_layer $22"
 
 
 
@@ -47,5 +48,6 @@ python3.6 -W ignore -u main_train.py \
   --factor_coeff $18 \
   --add_clipping $19 \
   --use_normalization $20 \
-  --normalization $21
+  --normalization $21 \
+  --last_layer $22
 

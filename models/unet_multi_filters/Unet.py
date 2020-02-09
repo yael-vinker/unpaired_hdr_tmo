@@ -46,7 +46,7 @@ class UNet(nn.Module):
         if last_layer == 'sigmoid':
             self.last_sig = nn.Sigmoid()
         else:
-            self.last_sig = None
+            self.last_sig = Blocks.Exp()
         if normalization == "max_normalization":
             self.normalization = Blocks.MaxNormalization()
         elif normalization == "min_max_normalization":
@@ -72,11 +72,6 @@ class UNet(nn.Module):
         for i, up_layer in enumerate(self.up_path):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
         x = self.outc(up_x)
-        # x = self.exp(x)
-        if self.last_sig:
-            x = self.last_sig(x)
-
-
         if self.to_crop:
             b, c, h, w = x.shape
             th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
@@ -84,6 +79,8 @@ class UNet(nn.Module):
             j = int(round((w - tw) / 2.))
             i, j, h, w = i, j, th, tw
             x = x[:, :, i: i + h, j:j + w]
+        if self.last_sig:
+            x = self.last_sig(x)
         x = self.normalization(x)
         if self.clip:
             x = self.clip(x)

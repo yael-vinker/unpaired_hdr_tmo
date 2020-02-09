@@ -111,7 +111,7 @@ class MinMaxNormalization(nn.Module):
             cur_im = tensor_batch[i]
             cur_im = torch.div((cur_im - torch.min(cur_im)), (torch.max(cur_im) - torch.min(cur_im)))
             output.append(cur_im)
-        return torch.stack(output, dim=0)
+        return torch.stack(output)
 
 
 #
