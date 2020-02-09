@@ -21,33 +21,60 @@ factor_coeff=0.1
 add_clipping=1
 use_normalization=1
 normalization="max_normalization"
-
 sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
   $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
   $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
   $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
+
 
 # min_max_test
-change_random_seed=0
 normalization="min_max_normalization"
-result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results_random_seed/_"
-
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/_"
 sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
   $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
   $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
   $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
 
-change_random_seed=1
-result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results_random_seed/b_"
 
+# square_and_square_root test
+normalization="max_normalization"
+
+con_operator="square_and_square_root"
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/_"
 sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
   $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
   $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
   $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
 
-change_random_seed=1
-result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results_random_seed/c_"
 
+# pyramid weights test
+con_operator="original_unet"
+
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/pyramid_up_"
+pyramid_weight_list="1,2,3"
+sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
+  $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
+  $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
+  $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
+
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/pyramid_dowm_"
+pyramid_weight_list="3,2,1"
+sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
+  $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
+  $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
+  $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
+
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/pyramid_1_"
+pyramid_weight_list="1,1,1"
+ssim_loss_factor=1
+sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
+  $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
+  $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
+  $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization
+
+result_dir_prefix="/cs/snapless/raananf/yael_vinker/02_09/results/pyramid_5_"
+pyramid_weight_list="1,1,1"
+ssim_loss_factor=5
 sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train1.sh $change_random_seed $batch_size $num_epochs \
   $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
   $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \

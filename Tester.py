@@ -33,7 +33,6 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
-        self.normalize = tranforms.Normalize(0.5, 0.5)
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
 
