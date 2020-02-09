@@ -91,18 +91,26 @@ class MaxNormalization(nn.Module):
         super(MaxNormalization, self).__init__()
 
     def forward(self, tensor_batch):
-        tensor_batch = tensor_batch / torch.max(tensor_batch)
-        utils.printer.print_g_progress(tensor_batch, "MaxNormalization")
-        return tensor_batch
+        b_size = tensor_batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = tensor_batch[i]
+            cur_im = torch.div(cur_im, torch.max(cur_im))
+            output.append(cur_im)
+        return torch.stack(output)
 
 class MinMaxNormalization(nn.Module):
     def __init__(self):
         super(MinMaxNormalization, self).__init__()
 
     def forward(self, tensor_batch):
-        tensor_batch = (tensor_batch - torch.min(tensor_batch)) / (torch.max(tensor_batch) - torch.min(tensor_batch))
-        utils.printer.print_g_progress(tensor_batch, "MaxNormalization")
-        return tensor_batch
+        b_size = tensor_batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = tensor_batch[i]
+            cur_im = torch.div((cur_im - torch.min(cur_im)), (torch.max(cur_im) - torch.min(cur_im)))
+            output.append(cur_im)
+        return torch.stack(output)
 
 
 #

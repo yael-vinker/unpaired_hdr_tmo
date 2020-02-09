@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     net_G = model_save_util.create_G_net(opt.model, opt.device, opt.checkpoint, opt.input_dim, opt.last_layer,
                                          opt.filters, opt.con_operator, opt.unet_depth, opt.add_frame, opt.pyramid_loss,
-                                         opt.unet_norm, opt.add_clipping, opt.use_xaviar)
+                                         opt.unet_norm, opt.add_clipping, opt.normalization, opt.use_xaviar)
     net_D = model_save_util.create_D_net(opt.input_dim, opt.d_down_dim, opt.device, opt.checkpoint, opt.d_norm,
                                          opt.use_xaviar)
 
