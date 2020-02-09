@@ -59,7 +59,8 @@ class GanTrainer:
         # ====== DATASET ======
         self.train_data_loader_npy, self.train_data_loader_ldr = \
             data_loader_util.load_data(opt.data_root_npy, opt.data_root_ldr,
-                                       self.batch_size, addFrame=opt.add_frame, title="train")
+                                       self.batch_size, addFrame=opt.add_frame, title="train",
+                                       normalization=opt.normalization)
         self.input_dim = opt.input_dim
         self.input_images_mean = opt.input_images_mean
         self.log_factor = opt.log_factor

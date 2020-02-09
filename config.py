@@ -54,7 +54,7 @@ def parse_arguments():
     parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=1)
     parser.add_argument("--log_factor", type=float, default=1000)
-    parser.add_argument("--normalization", type=str, default='max_normalization', help='max/min_max')
+    parser.add_argument("--normalization", type=str, default='min_max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
     parser.add_argument("--epoch_to_save", type=int, default=5)

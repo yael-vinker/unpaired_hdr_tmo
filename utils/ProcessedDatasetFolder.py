@@ -25,7 +25,7 @@ def npy_loader(path, addFrame, hdrMode, normalization):
         if normalization == "max_normalization":
             input_im = input_im / 255
         elif normalization == "min_max_normalization":
-            input_im = input_im / 255
+            input_im = input_im / input_im.max()
     return input_im, color_im
     # if data.ndim == 2:
     #     data = data[:, :, None]

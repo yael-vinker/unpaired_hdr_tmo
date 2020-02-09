@@ -20,7 +20,7 @@ class Tester:
         self.to_crop = args.add_frame
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             data_loader_util.load_data(args.test_dataroot_npy, args.test_dataroot_ldr, args.batch_size, args.add_frame,
-                                       title="test")
+                                       title="test", normalization=args.normalization)
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
