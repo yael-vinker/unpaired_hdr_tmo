@@ -104,9 +104,7 @@ def to_minus1_1_range(im):
     return 2 * im - 1
 
 
-def back_to_color(im_hdr, fake, normalise=False):
-    if normalise:
-        fake = to_0_1_range(fake)
+def back_to_color(im_hdr, fake):
     # im_hdr = np.max(im_hdr) * to_0_1_range(im_hdr)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr - np.min(im_hdr)
@@ -122,15 +120,17 @@ def back_to_color(im_hdr, fake, normalise=False):
     norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
     norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
     norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
-    output_im = np.power(norm_im, 0.5) * fake
+    norm_im = np.power(norm_im, 0.5)
+    norm_im_gray = to_gray(norm_im)
+    norm_im_gray = norm_im_gray[:, :, None]
+    output_im = (norm_im / norm_im_gray) * fake
     # print_image_details(output_im, "output_im")
     # plt.imshow(output_im)
     # plt.show()
-    output_im = output_im / np.linalg.norm(norm_im)
     # print_image_details(to_0_1_range(output_im), "output_im")
     # plt.imshow(output_im)
     # plt.show()
-    return to_0_1_range(output_im)
+    return output_im
 
 
 def reshape_image(rgb_im):

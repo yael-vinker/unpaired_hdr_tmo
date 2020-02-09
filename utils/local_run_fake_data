@@ -1,4 +1,0 @@
-#!/bin/bash
-
-. /cs/labs/raananf/yael_vinker/my_venv/bin/activate
-python3.6 model_save_util.py

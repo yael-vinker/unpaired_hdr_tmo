@@ -67,18 +67,17 @@ class GanTrainer:
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
-        self.use_transform_exp = opt.use_transform_exp
-        self.transform_exp = custom_transform.Exp(opt.log_factor, opt.add_clipping, opt.apply_inverse_to_preprocess,
-                                                  opt.use_normalization, opt.use_factorise_data)
         self.use_normalization = opt.use_normalization
-        self.apply_inverse_to_preprocess = opt.apply_inverse_to_preprocess
+        self.normalization = opt.normalization
+        self.max_normalization = custom_transform.MaxNormalization()
+        self.min_max_normalization = custom_transform.MinMaxNormalization()
 
         # ====== SAVE RESULTS ======
         self.output_dir = opt.output_dir
         self.epoch_to_save = opt.epoch_to_save
         self.best_accG = 0
         self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.ssim_loss_g_factor,
-                                    self.transform_exp, self.log_factor, opt)
+                                    self.log_factor, opt)
 
     def train(self):
         printer.print_cuda_details(self.device.type)
@@ -134,11 +133,13 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         fake = self.netG(hdr_input)
-        if self.use_transform_exp:
-            fake = self.transform_exp(fake)
-            if self.use_normalization:
-                # normalise the output back to [-1, 1]
-                fake = self.normalize(fake)
+        if self.use_normalization:
+            if self.normalization == "max_normalization":
+                fake = self.max_normalization(fake)
+            elif self.normalization == "min_max_normalization":
+                fake = self.min_max_normalization(fake)
+            else:
+                assert 0, "Unsupported normalization"
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
@@ -167,13 +168,14 @@ class GanTrainer:
         # Since we just updated D, perform another forward pass of all-fake batch through D
         printer.print_g_progress(hdr_input, "hdr_inp__")
         fake = self.netG(hdr_input)
-        if self.use_transform_exp:
-            printer.print_g_progress(fake, "pre_exp__")
-            fake = self.transform_exp(fake)
-            printer.print_g_progress(fake, "post_exp_")
-            if self.use_normalization:
-                fake = self.normalize(fake)
-                printer.print_g_progress(fake, "post_norm")
+        if self.use_normalization:
+            if self.normalization == "max_normalization":
+                fake = self.max_normalization(fake)
+            elif self.normalization == "min_max_normalization":
+                fake = self.min_max_normalization(fake)
+            else:
+                assert 0, "Unsupported normalization"
+        printer.print_g_progress(fake, "output__")
         output_on_fake = self.netD(fake).view(-1)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
@@ -203,7 +205,6 @@ class GanTrainer:
             self.best_accG = self.accG
             printer.print_best_acc_error(self.best_accG, self.epoch)
             model_save_util.save_best_model(self.netG, self.output_dir, self.optimizerG)
-            self.tester.save_images_for_best_model(self.netG, self.output_dir, self.epoch)
 
     def verify_checkpoint(self):
         if self.isCheckpoint:

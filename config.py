@@ -9,7 +9,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     # ====== GENERAL SETTINGS ======
     parser.add_argument("--checkpoint", type=int, default=0)
-    parser.add_argument("--change_random_seed", type=int, default=0)
+    parser.add_argument("--change_random_seed", type=int, default=1)
 
     # ====== TRAINING ======
     parser.add_argument("--batch_size", type=int, default=4)
@@ -27,7 +27,7 @@ def parse_arguments():
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
     parser.add_argument("--d_norm", type=str, default='none')
-    parser.add_argument('--last_layer', type=str, default='none', help="none/tanh")
+    parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--use_xaviar', type=int, default=1)
 
     # ====== LOSS ======
@@ -51,11 +51,10 @@ def parse_arguments():
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
-    parser.add_argument("--use_transform_exp", type=int, default=1)  # int(False) = 0
     parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
-    parser.add_argument('--use_normalization', type=int, default=0)
-    parser.add_argument('--apply_inverse_to_preprocess', type=int, default=0)
+    parser.add_argument('--use_normalization', type=int, default=1)
     parser.add_argument("--log_factor", type=float, default=1000)
+    parser.add_argument("--normalization", type=str, default='max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
     parser.add_argument("--epoch_to_save", type=int, default=5)
@@ -66,12 +65,15 @@ def parse_arguments():
 
 
 def get_opt():
+    import numpy as np
     opt = parse_arguments()
     if opt.change_random_seed:
         manualSeed = random.randint(1, 10000)
     else:
         manualSeed = params.manualSeed
     torch.manual_seed(manualSeed)
+    np.random.seed(manualSeed)
+    random.seed(manualSeed)
     opt.manual_seed = manualSeed
     opt.data_root_npy = os.path.join(opt.data_root_npy)
     opt.data_root_ldr = os.path.join(opt.data_root_ldr)
@@ -89,9 +91,9 @@ def get_opt():
 
 def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, opt.con_operator, opt.unet_depth, opt.filters, opt.add_frame
-    output_dir = result_dir_pref + model_name + "_" + con_operator + "_last_act_" + opt.last_layer \
+    output_dir = result_dir_pref + "_random_seed_" + str(bool(opt.change_random_seed)) + "_" + model_name + "_" + con_operator + "_last_act_" + opt.last_layer \
                  + "_norm_g_" + opt.unet_norm + "_use_f_" + str(bool(opt.use_factorise_data)) + "_coeff_" \
-                 + str(opt.factor_coeff) + "_clip_" + str(bool(opt.add_clipping)) + "_normalise_" + str(bool(opt.use_normalization))
+                 + str(opt.factor_coeff) + "_clip_" + str(bool(opt.add_clipping)) + "_normalise_" + opt.normalization
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path

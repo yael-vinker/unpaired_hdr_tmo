@@ -4,7 +4,7 @@ import imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
+import tranforms as custom_transform
 # from old_files import TMQI
 from utils import printer
 import tranforms
@@ -15,7 +15,7 @@ import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
 
 class Tester:
-    def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, transform_exp_, log_factor_, args):
+    def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
         self.args = args
         self.to_crop = args.add_frame
         self.test_data_loader_npy, self.test_data_loader_ldr = \
@@ -27,15 +27,15 @@ class Tester:
         self.device = device
         self.test_D_losses, self.test_D_loss_fake, self.test_D_loss_real = [], [], []
         self.test_G_losses_d, self.test_G_loss_ssim = [], []
-        self.use_transform_exp = args.use_transform_exp
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.loss_g_d_factor = loss_g_d_factor_
         self.test_num_iter = 0
-        self.transform_exp = transform_exp_
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
         self.normalize = tranforms.Normalize(0.5, 0.5)
+        self.max_normalization = custom_transform.MaxNormalization()
+        self.min_max_normalization = custom_transform.MinMaxNormalization()
 
     def load_original_test_hdr_images(self, root):
         original_hdr_images = []
@@ -64,10 +64,7 @@ class Tester:
             self.test_D_loss_real.append(test_errD_real.item())
 
             fake_label = torch.full((b_size,), self.fake_label, device=self.device)
-            if self.use_transform_exp:
-                output_on_fake = netD(self.normalize(fake.detach())).view(-1)
-            else:
-                output_on_fake = netD(fake.detach()).view(-1)
+            output_on_fake = netD(fake.detach()).view(-1)
             self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
 
             test_errD_fake = criterion(output_on_fake, fake_label)
@@ -132,12 +129,15 @@ class Tester:
         test_hdr_batch = next(iter(self.test_data_loader_npy))
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
-
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
+        if self.args.use_normalization:
+            if self.args.normalization == "max_normalization":
+                fake = self.max_normalization(fake)
+            elif self.args.normalization == "min_max_normalization":
+                fake = self.min_max_normalization(fake)
+            else:
+                assert 0, "Unsupported normalization"
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
-
-        if self.use_transform_exp:
-            fake = self.transform_exp(fake)
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
@@ -149,24 +149,6 @@ class Tester:
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
-    def save_images_for_best_model(self, netG, out_dir, epoch):
-        out_dir = os.path.join(out_dir, "best_acc_images")
-        with torch.no_grad():
-            for im_and_q in self.test_original_hdr_images:
-                im_hdr_original = im_and_q['im_hdr_original']
-                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
-                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
-                if self.use_transform_exp:
-                    fake = self.transform_exp(fake)
-                fake_im_gray = torch.squeeze(fake, dim=0)
-                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
-                im_hdr_original = im_hdr_original.clone().permute(1, 2, 0).detach().cpu().numpy()
-                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
-                                                             fake_im_gray_numpy, self.args.use_normalization)
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
-                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
-
     def save_images_for_model(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "model_results", str(epoch))
         if not os.path.exists(out_dir):
@@ -176,123 +158,19 @@ class Tester:
             for im_and_q in self.test_original_hdr_images:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
+                printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
-                if self.use_transform_exp:
-                    fake = self.transform_exp(fake)
+                if self.args.use_normalization:
+                    if self.args.normalization == "max_normalization":
+                        fake = self.max_normalization(fake)
+                    elif self.args.normalization == "min_max_normalization":
+                        fake = self.min_max_normalization(fake)
+                    else:
+                        assert 0, "Unsupported normalization"
+                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
+                fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')
                 fake_im_gray = torch.squeeze(fake, dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
-                im_hdr_original = im_hdr_original.clone().permute(1, 2, 0).detach().cpu().numpy()
-                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
-                                                             fake_im_gray_numpy, self.args.use_normalization)
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color, epoch, color='rgb')
-                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, epoch, color='gray')
+                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
 
-    # ====== TMQI OLD METHODS ======
-    def update_best_Q(self, im_and_q, Q, epoch, im):
-        im_and_q['best_Q'] = Q
-        im_and_q['epoch'] = epoch
-        # hdr_image_utils.print_image_details(im, "fake_im_color")
-
-    def update_TMQI(self, netG, out_dir, epoch):
-        out_dir = os.path.join(out_dir, "tmqi")
-        with torch.no_grad():
-            for im_and_q in self.test_original_hdr_images:
-                im_hdr_original = im_and_q['im_hdr_original']
-                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
-                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
-                if self.use_transform_exp:
-                    fake = self.transform_exp(fake)
-                fake_im_gray = torch.squeeze(fake, dim=0)
-                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
-                fake_im_color = hdr_image_util.back_to_color(im_hdr_original,
-                                                             fake_im_gray_numpy)
-
-                Q, S, N = TMQI.TMQI(im_hdr_original, hdr_image_util.to_0_1_range(fake_im_color))
-                self.update_tmqi_arr(im_and_q, Q, S, N)
-                self.display_graph_and_image(fake_im_color, im_and_q, im_and_q['Q_arr'], im_and_q['N_arr'],
-                                             im_and_q['S_arr'], os.path.join(out_dir, (
-                        im_and_q["im_name"]) + "_graph" + ".png"))
-                image_quality_assessment_util.save_text_to_image(out_dir,
-                                                                 im_and_q['other_results'], im_and_q["im_name"])
-                if Q > im_and_q['best_Q']:
-                    self.update_best_Q(im_and_q, Q, epoch, fake_im_color)
-                    self.save_tmqi_plt_result(out_dir, im_and_q, Q, S, N, epoch,
-                                              hdr_image_util.to_0_1_range(fake_im_color), color='rgb')
-                    self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_color, color='rgb')
-                    self.save_tmqi_result_imageio(out_dir, im_and_q, hdr_image_util.to_0_1_range(fake_im_color),
-                                                  color='stretch_rgb')
-                    printer.print_tmqi_update(Q, color='rgb')
-                fake_im_gray_numpy_0_1 = np.squeeze(hdr_image_util.to_0_1_range(fake_im_gray_numpy))
-                Q_gray, S_gray, N_gray = TMQI.TMQI(im_hdr_original, np.squeeze(fake_im_gray_numpy))
-                if Q_gray > im_and_q['Q_gray']:
-                    im_and_q['Q_gray'] = Q_gray
-                    self.save_tmqi_plt_result(out_dir, im_and_q, Q_gray, S_gray, N_gray, epoch, fake_im_gray_numpy_0_1,
-                                              color='gray')
-                    self.save_tmqi_result_imageio(out_dir, im_and_q, fake_im_gray_numpy_0_1, color='gray')
-                    printer.print_tmqi_update(Q_gray, color='gray')
-                    # hdr_image_utils.print_image_details(fake_im_gray_numpy_0_1, "fake_im_gray_numpy")
-
-    @staticmethod
-    def update_tmqi_arr(im_and_q, Q, S, N):
-        if not np.isnan(Q):
-            im_and_q['Q_arr'].append(Q)
-        else:
-            im_and_q['Q_arr'].append(0)
-        if not np.isnan(N):
-            im_and_q['N_arr'].append(N)
-        else:
-            im_and_q['N_arr'].append(0)
-        if not np.isnan(S):
-            im_and_q['S_arr'].append(S)
-        else:
-            im_and_q['S_arr'].append(0)
-
-    def get_tmqi_plt_im_title(self, Q, S, N, epoch, im):
-        title = 'Q = ' + str(Q) + 'S = ' + str(S) + 'N = ' + str(N) + " epoch = " + str(epoch) + \
-                "min = " + str(np.min(im)) + " max = " + str(np.max(im))
-        return title
-
-    def get_tmqi_graph_title(self, im_and_q):
-        return "best Q = " + str(im_and_q['best_Q']) + " epoch = " + str(im_and_q['epoch'])
-
-    def get_rgb_imageio_im_file_name(self, im_and_q, color):
-        return im_and_q["im_name"] + "_imageio_" + color + ".png"
-
-    def save_tmqi_plt_result(self, out_dir, im_and_q, Q, S, N, epoch, im, color='rgb'):
-        plt.figure(figsize=(15, 15))
-        plt.axis("off")
-        title = self.get_tmqi_plt_im_title(Q, S, N, epoch, im)
-        plt.title(title)
-        if color == 'gray':
-            plt.imshow(im, cmap='gray')
-        else:
-            plt.imshow(im)
-        plt.savefig(os.path.join(out_dir, im_and_q["im_name"] + "_plt_" + color))
-        plt.close()
-
-    def save_tmqi_result_imageio(self, out_dir, im_and_q, im, color):
-        file_name = self.get_rgb_imageio_im_file_name(im_and_q, color)
-        im = (im * 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
-
-    def display_graph_and_image(self, im, im_and_q, graph_Q, graph_N, graph_S, path):
-        plt.figure(figsize=(15, 15))
-        plt.subplot(2, 1, 1)
-        plt.axis("off")
-        title = self.get_tmqi_graph_title(im_and_q)
-        plt.title(title)
-        plt.imshow(im)
-
-        plt.subplot(2, 1, 2)
-        plt.plot(range(len(graph_Q)), graph_Q, '-r', label='Q')
-
-        plt.plot(range(len(graph_N)), graph_N, '-b', label='N')
-        plt.plot(range(len(graph_S)), graph_S, '-y', label='S')
-
-        plt.xlabel("n iteration")
-        plt.legend(loc='upper left')
-
-        # save image
-        plt.savefig(path)  # should before show method
-        plt.close()

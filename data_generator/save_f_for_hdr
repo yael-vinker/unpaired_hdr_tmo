@@ -1,3 +1,0 @@
-#!/bin/bash
-. /cs/labs/raananf/yael_vinker/my_venv/bin/activate
-python3.6 create_dng_npy_data.py

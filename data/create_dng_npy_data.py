@@ -7,7 +7,7 @@ import numpy as np
 import torchvision.transforms as transforms
 
 import hdr_image_utils
-import params
+from utils import params
 import tranforms as transforms_
 
 

@@ -12,14 +12,12 @@ from torch import autograd
 from torchsummary import summary
 
 matplotlib.use('Agg')
-import params
 import time
-import gan_trainer_utils as g_t_utils
 import utils.plot_util as plot_util
 import utils.data_loader_util as data_loader_util
 import utils.model_save_util as model_save_util
-import ssim
-import printer
+from models import ssim
+from utils import printer, gan_trainer_utils as g_t_utils, params
 import tranforms as custom_transform
 # import torus.Unet as TorusUnet
 

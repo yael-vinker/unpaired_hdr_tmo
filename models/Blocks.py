@@ -1,5 +1,5 @@
 from torch import nn
-
+import torch
 
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, norm='none', activation="none"):
@@ -68,6 +68,23 @@ class LinearBlock(nn.Module):
         if self.activation:
             out = self.activation(out)
         return out
+
+class Exp(nn.Module):
+    def __init__(self):
+        super(Exp, self).__init__()
+
+    def forward(self, x):
+        return torch.exp(x)
+
+class Clip(nn.Module):
+    def __init__(self):
+        super(Clip, self).__init__()
+
+    def forward(self, x):
+        x = x * 1.05
+        return torch.clamp(x, min=0.0, max=1.0)
+
+
 
 #
 # class LambdaLR:

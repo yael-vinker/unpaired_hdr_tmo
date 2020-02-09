@@ -134,7 +134,6 @@ class TMQI_SSIM(torch.nn.Module):
         return _ssim_from_tmqi(img1, img2, window, self.window_size, channel, self.size_average)
 
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
-
     window = window / window.sum()
     factor = float(2 ** 8 - 1.)
     img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
@@ -162,9 +161,9 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
     for i in range(len(pyramid_weight_list)):
         ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
-        img1.clamp(min=0, max=img1.max().item())
+        img1.clamp(min=0.0, max=img1.max().item())
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-        img2.clamp(min=0, max=img2.max().item())
+        img2.clamp(min=0.0, max=img2.max().item())
     return torch.sum(torch.stack(ssim_loss_list))
 
 

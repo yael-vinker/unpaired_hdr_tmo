@@ -203,7 +203,7 @@ class Exp(object):
         self.normalised_data = normalised_data
         self.factorised_data = factorised_data
 
-    def __call__(self, tensor):
+    def __call__(self, tensor_batch):
         """
         Args:
             tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
@@ -211,24 +211,67 @@ class Exp(object):
         Returns:
             Tensor: Normalized Tensor image.
         """
-        # if self.normalised_data:
-        #     im_0_1 = (tensor - tensor.min()) / (tensor.max() - tensor.min())
-        # else:
-        #     im_0_1 = tensor
-        im_end = torch.exp(tensor)
-        import utils.printer
-        # utils.printer.print_g_progress(im_end, "in_exp__")
-        # if self.normalised_data:
-        im_end = im_end / im_end.max()
-        # utils.printer.print_g_progress(im_end, "max_div__")
-        # if self.factorised_data:
-        #     im_end = (im_end - im_end.min()) / (im_end.max() - im_end.min())
-        if self.add_clipping:
-            im_end = im_end * 1.1
-            im_end = torch.clamp(im_end, 0, 1)
-            # utils.printer.print_g_progress(im_end, "clip__")
-        return im_end
+        b_size = tensor_batch.shape[0]
+        for i in range(b_size):
+            tensor = tensor_batch[i]
+            print(tensor.max())
+            im_end = torch.exp(tensor)
+            if self.add_clipping:
+                im_end = im_end * 1.1
+                im_end = torch.clamp(im_end, min=0.0, max=1.0)
+            tensor_batch[i] = im_end
+        return tensor_batch
 
+        # im_end = torch.exp(tensor)
+        # im_end = im_end / im_end.max()
+        # if self.add_clipping:
+        #     im_end = im_end * 1.1
+        #     im_end = torch.clamp(im_end, min=0.0, max=1.0)
+        # # output.append(im_end)
+        # tensor_batch[i] = im_end
+
+
+
+
+        # if self.normalised_data:
+
+
+
+        # utils.printer.print_g_progress(im_end, "max_div__")
+        # # if self.factorised_data:
+        # #     im_end = (im_end - im_end.min()) / (im_end.max() - im_end.min())
+        # if self.add_clipping:
+        #     im_end = im_end * 1.1
+        #     im_end = torch.clamp(im_end, 0, 1)
+        #     # utils.printer.print_g_progress(im_end, "clip__")
+        # return im_end
+class MaxNormalization(object):
+    def __init__(self):
+        super(MaxNormalization, self).__init__()
+
+    def __call__(self, tensor_batch):
+        with torch.no_grad():
+            b_size = tensor_batch.shape[0]
+            for i in range(b_size):
+                cur_im = tensor_batch[i]
+                cur_im = cur_im / cur_im.max()
+                cur_im[torch.isnan(cur_im)] = 0
+                tensor_batch[i] = cur_im
+            return tensor_batch
+
+class MinMaxNormalization(object):
+    def __init__(self):
+        super(MinMaxNormalization, self).__init__()
+
+    def __call__(self, tensor_batch):
+        with torch.no_grad():
+            b_size = tensor_batch.shape[0]
+            for i in range(b_size):
+                cur_im = tensor_batch[i]
+                cur_im = (cur_im - cur_im.min()) / (cur_im.max() - cur_im.min())
+                cur_im[torch.isnan(cur_im)] = 0
+                tensor_batch[i] = cur_im
+            return tensor_batch
 
 image_transform_no_norm = torch_transforms.Compose([
     Scale(params.input_size),

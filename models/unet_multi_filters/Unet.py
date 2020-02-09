@@ -1,11 +1,12 @@
 # full assembly of the sub-parts to form the complete net
 
 from .unet_parts import *
+from models import Blocks
 import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, use_pyramid_loss, unet_norm):
+                 network, dilation, to_crop, use_pyramid_loss, unet_norm, add_clipping):
         super(UNet, self).__init__()
         self.use_pyramid_loss = use_pyramid_loss
         self.to_crop = to_crop
@@ -39,10 +40,17 @@ class UNet(nn.Module):
             if network == params.torus_network:
                 dilation = dilation // 2
         self.outc = outconv(down_ch, n_classes)
+        self.exp = Blocks.Exp()
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
+        if last_layer == 'sigmoid':
+            self.last_sig = nn.Sigmoid()
         else:
             self.last_sig = None
+        if add_clipping:
+            self.clip = Blocks.Clip()
+        else:
+            self.clip = None
 
 
     def forward(self, x):
@@ -53,37 +61,15 @@ class UNet(nn.Module):
             x_results.append(next_x)
 
         up_x = x_results[(self.depth)]
-        # x_pairs = []
         for i, up_layer in enumerate(self.up_path):
-            # x_pairs.append((x_results[(self.depth - (i + 1))], up_x))
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
-        # print("up_x")
-        # print(up_x.requires_grad)
         x = self.outc(up_x)
-        # print(x.requires_grad)
-        # utils.printer.print_g_progress(x, "before tanh")
+        x = self.exp(x)
         if self.last_sig:
-
-            # print("here",  self.last_sig)
             x = self.last_sig(x)
-            # utils.printer.print_g_progress(x, "after tanh")
-            # print(x.requires_grad)
+        if self.clip:
+            x = self.clip(x)
 
-
-        # import matplotlib.pyplot as plt
-        # for p in x_pairs:
-        #     plt.subplot(1,2,1)
-        #     plt.imshow(p[0][0].clone().permute(1, 2, 0).detach().cpu().numpy())
-        #     plt.subplot(1, 2, 2)
-        #     plt.imshow(p[1][0].clone().permute(1, 2, 0).detach().cpu().numpy())
-        #     plt.show()
-
-        # print("down res")
-        # for d_x in x_results:
-        #     print(d_x.shape)
-        # print("up res")
-        # for cur_x in up_x_results:
-        #     print(cur_x.shape)
         if self.to_crop:
             b, c, h, w = x.shape
             th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition

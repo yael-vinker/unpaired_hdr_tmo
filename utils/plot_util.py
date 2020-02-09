@@ -139,29 +139,6 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_
         plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
         plt.close()
 
-    color_fake = hdr_image_util.back_to_color_batch(color_test_hdr_image, fake)
-    color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
-    # color_fake = back_to_color_batch(color_test_hdr_image, fake)
-    # color_fake_exp = back_to_color_exp_batch(color_test_hdr_image, fake)
-    # color_display_group = [color_test_ldr_batch, color_test_hdr_image, color_fake]
-    # titles = ["Input Images", "Fake Images", "Exp Images"]
-    titles = ["Real (LDR) Images", "Input (HDR) Images", "Fake Images"]
-    # normalization_string_arr = ["0_1", "0_1", "exp"]
-    for i in range(output_len):
-        plt.figure(figsize=(15, 15))
-        for j in range(3):
-            if j == 2:
-                normalization_string = "none"
-            display_im = display_batch_as_grid(color_display_group[j], ncols_to_display=(i + 1) * 4,
-                                               normalization=normalization_string,
-                                               isHDR=False, batch_start_index=i * 4)
-            plt.subplot(3, 1, j + 1)
-            plt.axis("off")
-            plt.title(titles[j])
-            plt.imshow(display_im)
-        plt.savefig(os.path.join(new_out_dir, "color set " + str(i)))
-        plt.close()
-
 
 def plot_grad_flow(named_parameters, out_dir, epoch):
     ave_grads = []
