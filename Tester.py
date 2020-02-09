@@ -33,7 +33,6 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
-        self.normalize = tranforms.Normalize(0.5, 0.5)
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
 
@@ -145,7 +144,9 @@ class Tester:
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
+        hdr_image_util.print_image_details(im,"before saving")
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
+        im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
@@ -160,6 +161,7 @@ class Tester:
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
+                printer.print_g_progress(fake, "fake")
                 if self.args.use_normalization:
                     if self.args.normalization == "max_normalization":
                         fake = self.max_normalization(fake)
@@ -170,7 +172,9 @@ class Tester:
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')
-                fake_im_gray = torch.squeeze(fake, dim=0)
-                fake_im_gray_numpy = fake_im_gray.clone().permute(1, 2, 0).detach().cpu().numpy()
+                print(fake.shape)
+                fake_im_gray = torch.squeeze(fake[0], dim=0)
+                print(fake_im_gray.shape)
+                fake_im_gray_numpy = fake_im_gray.clone().detach().cpu().numpy()
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
 

@@ -105,17 +105,9 @@ def to_minus1_1_range(im):
 
 
 def back_to_color(im_hdr, fake):
-    # im_hdr = np.max(im_hdr) * to_0_1_range(im_hdr)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr - np.min(im_hdr)
-    # print_image_details(im_hdr, "im_hdr")
-    # plt.imshow(im_hdr)
-    # plt.show()
     im_gray_ = to_gray(im_hdr)
-    # print_image_details(im_gray_, "im_gray_")
-    # plt.imshow(im_gray_, cmap='gray')
-    # plt.show()
-
     norm_im = np.zeros(im_hdr.shape)
     norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
     norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
@@ -124,12 +116,9 @@ def back_to_color(im_hdr, fake):
     norm_im_gray = to_gray(norm_im)
     norm_im_gray = norm_im_gray[:, :, None]
     output_im = (norm_im / norm_im_gray) * fake
-    # print_image_details(output_im, "output_im")
-    # plt.imshow(output_im)
-    # plt.show()
-    # print_image_details(to_0_1_range(output_im), "output_im")
-    # plt.imshow(output_im)
-    # plt.show()
+    print(np.equal(to_gray(output_im), np.squeeze(fake)).all())
+    print_image_details(fake, "original gray")
+    print_image_details(to_gray(output_im), "return to gray")
     return output_im
 
 
