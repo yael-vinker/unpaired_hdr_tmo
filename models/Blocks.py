@@ -84,7 +84,8 @@ class Clip(nn.Module):
 
     def forward(self, x):
         x = x * 1.05
-        return torch.clamp(x, min=0.0, max=1.0)
+        x =torch.clamp(x, min=0.0, max=1.0)
+        return x
 
 class MaxNormalization(nn.Module):
     def __init__(self):
@@ -110,7 +111,7 @@ class MinMaxNormalization(nn.Module):
             cur_im = tensor_batch[i]
             cur_im = torch.div((cur_im - torch.min(cur_im)), (torch.max(cur_im) - torch.min(cur_im)))
             output.append(cur_im)
-        return torch.stack(output)
+        return torch.stack(output, dim=0)
 
 
 #

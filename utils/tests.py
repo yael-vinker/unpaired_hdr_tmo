@@ -3970,11 +3970,26 @@ def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
 if __name__ == '__main__':
-    epochs = ['96']
-    for ep in epochs:
-        gather_all_architectures("/Users/yaelvinker/Documents/university/lab/02_08/fix_exp",
-                             "/Users/yaelvinker/Documents/university/lab/02_08/new_arch_summary", ep, "02_08", "1")
-
+    # epochs = ['96']
+    # for ep in epochs:
+    #     gather_all_architectures("/Users/yaelvinker/Documents/university/lab/02_08/fix_exp",
+    #                          "/Users/yaelvinker/Documents/university/lab/02_08/new_arch_summary", ep, "02_08", "1")
+    x = torch.zeros((4,1,10,10))
+    x[0,0,0,0] = 1
+    x[0, 0, 1, 0] = 7
+    x[1, 0, 0, 0] = 2
+    x[2, 0, 0, 0] = 3
+    x[3, 0, 0, 0] = 4
+    output = []
+    for i in range(4):
+        output.append(x[i])
+    y = torch.stack(output)
+    print(torch.stack(output).shape)
+    print(torch.eq(x, y))
+    print((torch.eq(x, y)).all())
+    print(x.shape)
+    print(y[0])
+    print(x[0])
 
 # if __name__ == '__main__':
 #     import numpy as np

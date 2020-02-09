@@ -144,10 +144,15 @@ def print_TMQI_summary(q, s, n, num_epochs, epoch):
 
 
 def print_g_progress(fake, title=""):
-    fake_single = np.asarray(fake[0].cpu().detach())
-    print("fake [%s] --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
-          (title, float(np.max(fake_single)), float(np.min(fake_single)),
-           fake_single.dtype, str(fake_single.shape)))
+    with torch.no_grad():
+        fake_single = np.asarray(fake[0].cpu().detach())
+        print("fake1 [%s] --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (title, float(np.max(fake_single)), float(np.min(fake_single)),
+               fake_single.dtype, str(fake_single.shape)))
+        fake_single = np.asarray(fake[1].cpu().detach())
+        print("fake2 [%s] --- max[%.4f]  min[%.4f]  dtype[%s]  shape[%s]" %
+              (title, float(np.max(fake_single)), float(np.min(fake_single)),
+               fake_single.dtype, str(fake_single.shape)))
 
 def print_g_progress_tensor(fake, title=""):
     with torch.no_grad():

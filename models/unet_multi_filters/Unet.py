@@ -75,9 +75,7 @@ class UNet(nn.Module):
         # x = self.exp(x)
         if self.last_sig:
             x = self.last_sig(x)
-        x = self.normalization(x)
-        if self.clip:
-            x = self.clip(x)
+
 
         if self.to_crop:
             b, c, h, w = x.shape
@@ -86,5 +84,7 @@ class UNet(nn.Module):
             j = int(round((w - tw) / 2.))
             i, j, h, w = i, j, th, tw
             x = x[:, :, i: i + h, j:j + w]
-            return x
+        x = self.normalization(x)
+        if self.clip:
+            x = self.clip(x)
         return x

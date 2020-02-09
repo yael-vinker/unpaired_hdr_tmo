@@ -173,14 +173,6 @@ class GanTrainer:
         printer.print_g_progress(hdr_input, "hdr_inp")
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake, "output")
-        # if self.use_normalization:
-        #     if self.normalization == "max_normalization":
-        #         fake = self.max_normalization(fake)
-        #     elif self.normalization == "min_max_normalization":
-        #         fake = self.min_max_normalization(fake)
-        #     else:
-        #         assert 0, "Unsupported normalization"
-        printer.print_g_progress(fake, "norm")
         output_on_fake = self.netD(fake).view(-1)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
