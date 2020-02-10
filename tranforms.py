@@ -271,6 +271,15 @@ class MinMaxNormalization(object):
             output.append(cur_im)
         return torch.stack(output)
 
+class Clip(object):
+    def __init__(self):
+        super(Clip, self).__init__()
+
+    def __call__(self, x):
+        x = x * 1.05
+        x = torch.clamp(x, min=0.0, max=1.0)
+        return x
+
 image_transform_no_norm = torch_transforms.Compose([
     Scale(params.input_size),
     CenterCrop(params.input_size),

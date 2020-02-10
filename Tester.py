@@ -35,6 +35,7 @@ class Tester:
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
+        self.clip_transform = custom_transform.Clip()
         # import models.Blocks
         # self.max_normalization = models.Blocks.MaxNormalization()
         # self.min_max_normalization = models.Blocks.MinMaxNormalization()
@@ -164,6 +165,10 @@ class Tester:
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
+
+                fake = self.max_normalization(fake)
+                fake = self.clip_transform(fake)
+
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()

@@ -72,6 +72,7 @@ class GanTrainer:
         self.normalization = opt.normalization
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
+        self.clip_transform = custom_transform.Clip()
         # import models.Blocks
         # self.max_normalization = models.Blocks.MaxNormalization()
         # self.min_max_normalization = models.Blocks.MinMaxNormalization()
@@ -137,6 +138,10 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         fake = self.netG(hdr_input)
+
+        fake = self.max_normalization(fake)
+        fake = self.clip_transform(fake)
+
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
@@ -165,6 +170,10 @@ class GanTrainer:
         # Since we just updated D, perform another forward pass of all-fake batch through D
         printer.print_g_progress(hdr_input, "hdr_inp")
         fake = self.netG(hdr_input)
+
+        fake = self.max_normalization(fake)
+        fake = self.clip_transform(fake)
+
         printer.print_g_progress(fake, "output")
         output_on_fake = self.netD(fake).view(-1)
         # Real label = 1, so wo count number of samples on which G tricked D
