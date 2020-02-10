@@ -3974,28 +3974,49 @@ if __name__ == '__main__':
     # for ep in epochs:
     #     gather_all_architectures("/Users/yaelvinker/Documents/university/lab/02_08/fix_exp",
     #                          "/Users/yaelvinker/Documents/university/lab/02_08/new_arch_summary", ep, "02_08", "1")
-    x = torch.ones((4,1,10,10))
-    x[0,0,0,0] = 0.5
-    x[0, 0, 1, 0] = 7
-    x[1, 0, 0, 0] = 2
-    x[2, 0, 0, 0] = 3
-    x[3, 0, 0, 0] = 4
-    x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1 ,1)
-    x_min = x.view(x.shape[0], -1).min(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
-    n = x / x_max
-    print(x_min)
-    print(n.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1 ,1))
-    print(x / m)
+    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data_generator/hard_images/belgium.hdr", format='HDR-FI')
+    gray_im = hdr_image_util.to_gray(im)
+    gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+    brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp)
+    print("belgium ", brightness_factor* 255 * 0.1)
+    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data_generator/hard_images/cathedral.hdr", format='HDR-FI')
+    gray_im = hdr_image_util.to_gray(im)
+    gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+    brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp)
+    print("cathedral ", brightness_factor * 255 * 0.1)
+    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/data_generator/hard_images/synagogue.hdr", format='HDR-FI')
+    gray_im = hdr_image_util.to_gray(im)
+    gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+    brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp)
+    print("synagogue ", brightness_factor* 255 * 0.1)
 
-    output = []
-    for i in range(4):
-        output.append(x[i])
-    y = torch.stack(output)
-    print(torch.stack(output).shape)
-    print((torch.eq(x, y)).all())
-    print(x.shape)
-    print(y[0])
-    print(x[0])
+
+    b = np.load(os.path.join("/Users/yaelvinker/PycharmProjects/lab/data_generator/b1984.npy"), allow_pickle=True)[()]
+    val =np.asarray(list(b.values()))
+
+    val = val * 255 * 0.1
+    print(np.std(val))
+    print(np.mean(val))
+    print(np.max(val))
+    print(np.median(val))
+
+    a = np.asarray([721.9743549692752,
+        3148.3651122359115,
+        5551.411194663835,
+        41.522882630711905,
+        16586.49082955642,
+        130.39035891834058,
+        789.6127192856875,
+        3086.3298816154415,
+        1260.429918120939,
+        2454.995761544146,
+        452.29022691852634])
+    print()
+    print(np.std(a))
+    print(np.mean(a))
+    print(np.max(a))
+    print(np.median(a))
+
 
 # if __name__ == '__main__':
 #     import numpy as np

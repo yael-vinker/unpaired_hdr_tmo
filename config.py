@@ -46,7 +46,7 @@ def parse_arguments():
     parser.add_argument("--test_dataroot_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
-    parser.add_argument('--use_factorise_data', type=int, default=1)
+    parser.add_argument('--use_factorise_data', type=int, default=0)
     parser.add_argument('--factor_coeff', type=float, default=0.1)
 
     # ====== POST PROCESS ======
@@ -54,7 +54,7 @@ def parse_arguments():
     parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
-    parser.add_argument("--normalization", type=str, default='max_normalization', help='max/min_max')
+    parser.add_argument("--normalization", type=str, default='min_max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
     parser.add_argument("--epoch_to_save", type=int, default=5)
@@ -69,11 +69,12 @@ def get_opt():
     opt = parse_arguments()
     if opt.change_random_seed:
         manualSeed = random.randint(1, 10000)
+        # np.random.seed(manualSeed)
+        # random.seed(manualSeed)
     else:
         manualSeed = params.manualSeed
     torch.manual_seed(manualSeed)
-    np.random.seed(manualSeed)
-    random.seed(manualSeed)
+
     opt.manual_seed = manualSeed
     opt.data_root_npy = os.path.join(opt.data_root_npy)
     opt.data_root_ldr = os.path.join(opt.data_root_ldr)

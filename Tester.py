@@ -141,10 +141,15 @@ class Tester:
                               test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
-        printer.print_g_progress_tensor(im, "before saving")
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
         im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
+
+    def save_result_imageio_no_stretch(self, out_dir, im_and_q, im, epoch, color):
+        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
+        im = (im * 255).astype('uint8')
+        im = np.clip(im, 0, 255)
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
     def save_images_for_model(self, netG, out_dir, epoch):
@@ -164,5 +169,6 @@ class Tester:
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')
                 fake_im_gray = torch.squeeze(fake[0], dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().detach().cpu().numpy()
+                self.save_result_imageio_no_stretch(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray_source')
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
 

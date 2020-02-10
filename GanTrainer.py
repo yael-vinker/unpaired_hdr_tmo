@@ -250,7 +250,7 @@ class GanTrainer:
             self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
                                          self.mse_loss, self.ssim_loss, self.num_epochs)
             self.save_loss_plot(epoch, self.output_dir)
-            self.tester.save_images_for_model(self.netG, self.output_dir, self.epoch)
+            self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
 
     def save_gradient_flow(self, epoch):
         new_out_dir = os.path.join(self.output_dir, "gradient_flow")
