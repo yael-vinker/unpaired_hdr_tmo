@@ -39,12 +39,13 @@ def weights_init_xavier(m):
     classname = m.__class__.__name__
     if (classname.find('Conv2d') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
         # todo check the gain parameter
-        torch.nn.init.xavier_normal_(m.weight, gain=np.sqrt(2.0))
+        # gain = np.sqrt(2.0)
+        torch.nn.init.xavier_normal_(m.weight)
         if m.bias is not None:
             nn.init.constant(m.bias, 0)
 
     elif classname.find('BatchNorm2d') != -1:
-        nn.init.xavier_normal_(m.weight, gain=np.sqrt(2.0))
+        nn.init.xavier_normal_(m.weight)
         if m.bias is not None:
             nn.init.constant(m.bias, 0)
 

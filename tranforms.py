@@ -250,28 +250,26 @@ class MaxNormalization(object):
         super(MaxNormalization, self).__init__()
 
     def __call__(self, tensor_batch):
-        with torch.no_grad():
-            b_size = tensor_batch.shape[0]
-            for i in range(b_size):
-                cur_im = tensor_batch[i]
-                cur_im = cur_im / cur_im.max()
-                cur_im[torch.isnan(cur_im)] = 0
-                tensor_batch[i] = cur_im
-            return tensor_batch
+        b_size = tensor_batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = tensor_batch[i]
+            cur_im = cur_im / torch.max(cur_im)
+            output.append(cur_im)
+        return torch.stack(output)
 
 class MinMaxNormalization(object):
     def __init__(self):
         super(MinMaxNormalization, self).__init__()
 
     def __call__(self, tensor_batch):
-        with torch.no_grad():
-            b_size = tensor_batch.shape[0]
-            for i in range(b_size):
-                cur_im = tensor_batch[i]
-                cur_im = (cur_im - cur_im.min()) / (cur_im.max() - cur_im.min())
-                cur_im[torch.isnan(cur_im)] = 0
-                tensor_batch[i] = cur_im
-            return tensor_batch
+        b_size = tensor_batch.shape[0]
+        output = []
+        for i in range(b_size):
+            cur_im = tensor_batch[i]
+            cur_im = (cur_im - torch.min(cur_im)) / (torch.max(cur_im) - torch.min(cur_im) + params.epsilon)
+            output.append(cur_im)
+        return torch.stack(output)
 
 image_transform_no_norm = torch_transforms.Compose([
     Scale(params.input_size),

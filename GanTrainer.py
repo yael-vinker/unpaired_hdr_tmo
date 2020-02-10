@@ -70,11 +70,11 @@ class GanTrainer:
         self.to_crop = opt.add_frame
         self.use_normalization = opt.use_normalization
         self.normalization = opt.normalization
-        # self.max_normalization = custom_transform.MaxNormalization()
-        # self.min_max_normalization = custom_transform.MinMaxNormalization()
-        import models.Blocks
-        self.max_normalization = models.Blocks.MaxNormalization()
-        self.min_max_normalization = models.Blocks.MinMaxNormalization()
+        self.max_normalization = custom_transform.MaxNormalization()
+        self.min_max_normalization = custom_transform.MinMaxNormalization()
+        # import models.Blocks
+        # self.max_normalization = models.Blocks.MaxNormalization()
+        # self.min_max_normalization = models.Blocks.MinMaxNormalization()
 
         # ====== SAVE RESULTS ======
         self.output_dir = opt.output_dir
@@ -137,13 +137,6 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         fake = self.netG(hdr_input)
-        # if self.use_normalization:
-        #     if self.normalization == "max_normalization":
-        #         fake = self.max_normalization(fake)
-        #     elif self.normalization == "min_max_normalization":
-        #         fake = self.min_max_normalization(fake)
-        #     else:
-        #         assert 0, "Unsupported normalization"
         label.fill_(self.fake_label)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)

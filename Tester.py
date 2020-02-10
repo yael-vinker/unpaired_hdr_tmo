@@ -33,11 +33,11 @@ class Tester:
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
-        # self.max_normalization = custom_transform.MaxNormalization()
-        # self.min_max_normalization = custom_transform.MinMaxNormalization()
-        import models.Blocks
-        self.max_normalization = models.Blocks.MaxNormalization()
-        self.min_max_normalization = models.Blocks.MinMaxNormalization()
+        self.max_normalization = custom_transform.MaxNormalization()
+        self.min_max_normalization = custom_transform.MinMaxNormalization()
+        # import models.Blocks
+        # self.max_normalization = models.Blocks.MaxNormalization()
+        # self.min_max_normalization = models.Blocks.MinMaxNormalization()
 
     def load_original_test_hdr_images(self, root):
         original_hdr_images = []
@@ -165,19 +165,10 @@ class Tester:
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
-                # if self.args.use_normalization:
-                #     if self.args.normalization == "max_normalization":
-                #         fake = self.max_normalization(fake)
-                #     elif self.args.normalization == "min_max_normalization":
-                #         fake = self.min_max_normalization(fake)
-                #     else:
-                #         assert 0, "Unsupported normalization"
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')
-                print(fake.shape)
                 fake_im_gray = torch.squeeze(fake[0], dim=0)
-                print(fake_im_gray.shape)
                 fake_im_gray_numpy = fake_im_gray.clone().detach().cpu().numpy()
                 self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
 

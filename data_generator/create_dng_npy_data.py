@@ -155,13 +155,13 @@ def hdr_preprocess(im_path, args, reshape=False):
         brightness_factor = 1000
     gray_im = (gray_im / np.max(gray_im)) * brightness_factor
     gray_im_log = np.log(gray_im + 1)
-    if args.use_normalization:
-        if args.normalization == "max_normalization":
-            gray_im_log = gray_im_log / np.max(gray_im_log)
-        elif args.normalization == "min_max_normalization":
-            gray_im_log = (gray_im_log - np.min(gray_im_log)) / (np.max(gray_im_log) - np.min(gray_im_log))
-        else:
-            assert 0, "Unsupported normalization"
+    # if args.use_normalization:
+    #     if args.normalization == "max_normalization":
+    #         gray_im_log = gray_im_log / np.max(gray_im_log)
+    #     elif args.normalization == "min_max_normalization":
+    #         gray_im_log = (gray_im_log - np.min(gray_im_log)) / (np.max(gray_im_log) - np.min(gray_im_log))
+    #     else:
+    #         assert 0, "Unsupported normalization"
     return rgb_img, gray_im_log
 
 

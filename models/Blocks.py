@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 import utils.printer
-
+import utils.params as params
 
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, norm='none', activation="none"):
@@ -84,7 +84,7 @@ class Clip(nn.Module):
 
     def forward(self, x):
         x = x * 1.05
-        x =torch.clamp(x, min=0.0, max=1.0)
+        x = torch.clamp(x, min=0.0, max=1.0)
         return x
 
 class MaxNormalization(nn.Module):
@@ -96,7 +96,7 @@ class MaxNormalization(nn.Module):
         output = []
         for i in range(b_size):
             cur_im = tensor_batch[i]
-            cur_im = torch.div(cur_im, torch.max(cur_im))
+            cur_im = cur_im / torch.max(cur_im)
             output.append(cur_im)
         return torch.stack(output)
 
@@ -109,7 +109,7 @@ class MinMaxNormalization(nn.Module):
         output = []
         for i in range(b_size):
             cur_im = tensor_batch[i]
-            cur_im = torch.div((cur_im - torch.min(cur_im)), (torch.max(cur_im) - torch.min(cur_im)))
+            cur_im = (cur_im - torch.min(cur_im)) / (torch.max(cur_im) - torch.min(cur_im) + params.epsilon)
             output.append(cur_im)
         return torch.stack(output)
 

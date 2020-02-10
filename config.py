@@ -27,7 +27,7 @@ def parse_arguments():
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
     parser.add_argument("--d_norm", type=str, default='none')
-    parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
+    parser.add_argument('--last_layer', type=str, default='none', help="none/tanh")
     parser.add_argument('--use_xaviar', type=int, default=1)
 
     # ====== LOSS ======
@@ -54,7 +54,7 @@ def parse_arguments():
     parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
-    parser.add_argument("--normalization", type=str, default='min_max_normalization', help='max/min_max')
+    parser.add_argument("--normalization", type=str, default='max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
     parser.add_argument("--epoch_to_save", type=int, default=5)

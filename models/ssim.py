@@ -137,7 +137,7 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
     window = window / window.sum()
     factor = float(2 ** 8 - 1.)
     img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min() + params.epsilon)
-    img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min()+ params.epsilon)
+    img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min() + params.epsilon)
 
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
