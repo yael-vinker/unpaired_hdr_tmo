@@ -133,13 +133,6 @@ class Tester:
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
-        # if self.args.use_normalization:
-        #     if self.args.normalization == "max_normalization":
-        #         fake = self.max_normalization(fake)
-        #     elif self.args.normalization == "min_max_normalization":
-        #         fake = self.min_max_normalization(fake)
-        #     else:
-        #         assert 0, "Unsupported normalization"
         fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
@@ -165,10 +158,6 @@ class Tester:
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
-
-                fake = self.max_normalization(fake)
-                fake = self.clip_transform(fake)
-
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()

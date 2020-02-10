@@ -97,7 +97,11 @@ def reshape_im(im, new_y, new_x):
 
 
 def to_0_1_range(im):
-    return (im - np.min(im)) / (np.max(im) - np.min(im))
+    if np.max(im) - np.min(im) == 0:
+        im = (im - np.min(im)) / (np.max(im) - np.min(im) + params.epsilon)
+    else:
+        im = (im - np.min(im)) / (np.max(im) - np.min(im))
+    return im
 
 
 def to_minus1_1_range(im):
@@ -105,6 +109,7 @@ def to_minus1_1_range(im):
 
 
 def back_to_color(im_hdr, fake):
+    fake = to_0_1_range(fake)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr - np.min(im_hdr)
     im_gray_ = to_gray(im_hdr)
@@ -148,3 +153,11 @@ def back_to_color_batch(im_hdr_batch, fake_batch):
         norm_im = back_to_color(im_hdr, fake)
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
     return torch.stack(output)
+
+def display_tensor(tensor, cmap):
+    im = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    if cmap == "gray":
+        im = np.squeeze(im)
+    im = to_0_1_range(im)
+    plt.imshow(im, cmap=cmap)
+    # plt.show()

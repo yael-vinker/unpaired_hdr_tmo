@@ -245,6 +245,19 @@ class Exp(object):
         #     im_end = torch.clamp(im_end, 0, 1)
         #     # utils.printer.print_g_progress(im_end, "clip__")
         # return im_end
+
+
+class MaxNormalization(object):
+    def __init__(self):
+        super(MaxNormalization, self).__init__()
+
+    def __call__(self, tensor):
+        return tensor / tensor.max()
+
+
+
+
+
 class MaxNormalization(object):
     def __init__(self):
         super(MaxNormalization, self).__init__()

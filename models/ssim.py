@@ -136,8 +136,13 @@ class TMQI_SSIM(torch.nn.Module):
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
     window = window / window.sum()
     factor = float(2 ** 8 - 1.)
-    img1 = factor * (img1 - img1.min()) / (img1.max() - img1.min())
-    img2 = factor * (img2 - img2.min()) / (img2.max() - img2.min())
+    img1_max = img1.view(img1.shape[0], -1).max(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
+    img1_min = img1.view(img1.shape[0], -1).min(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
+    img2_max = img2.reshape(img2.shape[0], -1).max(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
+    img2_min = img2.reshape(img2.shape[0], -1).min(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
+
+    img1 = factor * (img1 - img1_min) / (img1_max - img1_min + params.epsilon)
+    img2 = factor * (img2 - img2_min) / (img2_max - img2_min + params.epsilon)
 
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
@@ -161,9 +166,7 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
     for i in range(len(pyramid_weight_list)):
         ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
-        img1.clamp(min=0.0, max=img1.max().item())
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-        img2.clamp(min=0.0, max=img2.max().item())
     return torch.sum(torch.stack(ssim_loss_list))
 
 

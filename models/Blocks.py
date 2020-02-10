@@ -83,7 +83,7 @@ class Clip(nn.Module):
         super(Clip, self).__init__()
 
     def forward(self, x):
-        x = x * 1.05
+        x = x * 1.1
         x = torch.clamp(x, min=0.0, max=1.0)
         return x
 
@@ -91,27 +91,18 @@ class MaxNormalization(nn.Module):
     def __init__(self):
         super(MaxNormalization, self).__init__()
 
-    def forward(self, tensor_batch):
-        b_size = tensor_batch.shape[0]
-        output = []
-        for i in range(b_size):
-            cur_im = tensor_batch[i]
-            cur_im = cur_im / torch.max(cur_im)
-            output.append(cur_im)
-        return torch.stack(output)
+    def forward(self, x):
+        x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
+        return x / x_max
 
 class MinMaxNormalization(nn.Module):
     def __init__(self):
         super(MinMaxNormalization, self).__init__()
 
-    def forward(self, tensor_batch):
-        b_size = tensor_batch.shape[0]
-        output = []
-        for i in range(b_size):
-            cur_im = tensor_batch[i]
-            cur_im = (cur_im - torch.min(cur_im)) / (torch.max(cur_im) - torch.min(cur_im) + params.epsilon)
-            output.append(cur_im)
-        return torch.stack(output)
+    def forward(self, x):
+        x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
+        x_min = x.view(x.shape[0], -1).min(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
+        return (x - x_min) / (x_max - x_min + params.epsilon)
 
 
 #

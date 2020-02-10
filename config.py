@@ -9,7 +9,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     # ====== GENERAL SETTINGS ======
     parser.add_argument("--checkpoint", type=int, default=0)
-    parser.add_argument("--change_random_seed", type=int, default=1)
+    parser.add_argument("--change_random_seed", type=int, default=0)
 
     # ====== TRAINING ======
     parser.add_argument("--batch_size", type=int, default=4)

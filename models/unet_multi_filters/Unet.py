@@ -81,13 +81,7 @@ class UNet(nn.Module):
             x = x[:, :, i: i + h, j:j + w]
         if self.last_sig:
             x = self.last_sig(x)
-        # with torch.no_grad():
-        #     print("after exp ", x[0].max(), x[0].mean(), x[0].min())
-        # x = self.normalization(x)
-        # with torch.no_grad():
-        #     print("after norm ", x[0].max(), x[0].mean(), x[0].min())
-        # if self.clip:
-        #     x = self.clip(x)
-        # with torch.no_grad():
-        #     print("after clip ", x[0].max(), x[0].mean(), x[0].min())
+        x = self.normalization(x)
+        if self.clip:
+            x = self.clip(x)
         return x
