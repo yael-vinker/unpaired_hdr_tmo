@@ -78,6 +78,7 @@ class Exp(nn.Module):
     def forward(self, x):
         return torch.exp(x)
 
+
 class Clip(nn.Module):
     def __init__(self):
         super(Clip, self).__init__()
@@ -87,6 +88,7 @@ class Clip(nn.Module):
         x = torch.clamp(x, min=0.0, max=1.0)
         return x
 
+
 class MaxNormalization(nn.Module):
     def __init__(self):
         super(MaxNormalization, self).__init__()
@@ -94,6 +96,15 @@ class MaxNormalization(nn.Module):
     def forward(self, x):
         x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
         return x / x_max
+
+
+class BugyMaxNormalization(nn.Module):
+    def __init__(self):
+        super(BugyMaxNormalization, self).__init__()
+
+    def forward(self, x):
+        return x / x.max()
+
 
 class MinMaxNormalization(nn.Module):
     def __init__(self):

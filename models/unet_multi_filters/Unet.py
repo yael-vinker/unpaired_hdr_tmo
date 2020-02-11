@@ -49,6 +49,8 @@ class UNet(nn.Module):
             self.last_sig = Blocks.Exp()
         if normalization == "max_normalization":
             self.normalization = Blocks.MaxNormalization()
+        elif normalization == "bugy_max_normalization":
+            self.normalization = Blocks.BugyMaxNormalization()
         elif normalization == "min_max_normalization":
             self.normalization = Blocks.MinMaxNormalization()
         else:
