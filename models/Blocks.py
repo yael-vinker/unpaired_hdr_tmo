@@ -97,6 +97,14 @@ class MaxNormalization(nn.Module):
         x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
         return x / x_max
 
+class MaxNormalizationEpsilon(nn.Module):
+    def __init__(self):
+        super(MaxNormalizationEpsilon, self).__init__()
+
+    def forward(self, x):
+        x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
+        return x / x_max - params.epsilon
+
 
 class BugyMaxNormalization(nn.Module):
     def __init__(self):

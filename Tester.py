@@ -47,26 +47,42 @@ class Tester:
             im_path = os.path.join(root, img_name)
             rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, self.args, reshape=True)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': rgb_img,
                                         'im_log_normalize_tensor': gray_im_log,
                                         'epoch': 0})
+            if counter == 1 or counter == 2:
+                self.get_test_image_special_factor(im_path, original_hdr_images, counter)
             counter += 1
         return original_hdr_images
+
+    def get_test_image_special_factor(self, im_path, original_hdr_images, counter):
+        special_factors = [self.args.factor_coeff * 0.1, 5, 10]
+        for f in special_factors:
+            rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess_change_f(im_path, self.args, f, reshape=True)
+            rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+
+            if self.to_crop:
+                gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+            original_hdr_images.append({'im_name': str(counter) + "_" + str(f),
+                                        'im_hdr_original': rgb_img,
+                                        'im_log_normalize_tensor': gray_im_log,
+                                        'epoch': 0})
 
     def update_test_loss(self, netD, criterion, ssim_loss, b_size, num_epochs, first_b_tonemap, fake, hdr_input, epoch):
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         with torch.no_grad():
-            real_label = torch.full((b_size,), self.real_label, device=self.device)
             test_D_output_on_real = netD(first_b_tonemap.detach()).view(-1)
             self.accDreal_counter += (test_D_output_on_real > 0.5).sum().item()
 
+            real_label = torch.full(test_D_output_on_real.shape, self.real_label, device=self.device)
             test_errD_real = criterion(test_D_output_on_real, real_label)
             self.test_D_loss_real.append(test_errD_real.item())
 
-            fake_label = torch.full((b_size,), self.fake_label, device=self.device)
+            fake_label = torch.full(test_D_output_on_real.shape, self.fake_label, device=self.device)
             output_on_fake = netD(fake.detach()).view(-1)
             self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
 
@@ -94,7 +110,7 @@ class Tester:
     @staticmethod
     def get_fake_test_images(first_b_hdr, netG):
         with torch.no_grad():
-            fake = netG(first_b_hdr)
+            fake = netG(first_b_hdr.detach())
             return fake
 
     def update_accuracy(self):
@@ -133,7 +149,8 @@ class Tester:
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
-        fake_ldr = self.get_fake_test_images(test_real_batch["input_im"].to(self.device), netG)
+        test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
+        fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)

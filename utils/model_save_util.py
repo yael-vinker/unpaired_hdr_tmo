@@ -84,14 +84,19 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                                  use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
                                  add_clipping=add_clipping, normalization=normalization).to(device_)
     else:
-        assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
+        assert 0, "Unsupported g model request: {}".format(model)
 
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
-def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar=False):
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model):
     # Create the Discriminator
-    new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
+    if d_model == "original":
+        new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
+    elif d_model == "patchD":
+        new_net = Discriminator.NLayerDiscriminator(input_dim_).to(device_)
+    else:
+        assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
 
 

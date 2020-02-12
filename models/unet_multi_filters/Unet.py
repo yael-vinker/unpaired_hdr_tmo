@@ -47,15 +47,6 @@ class UNet(nn.Module):
             self.last_sig = nn.Sigmoid()
         else:
             self.last_sig = Blocks.Exp()
-        if normalization == "max_normalization":
-            self.normalization = Blocks.MaxNormalization()
-        elif normalization == "bugy_max_normalization":
-            self.normalization = Blocks.BugyMaxNormalization()
-        elif normalization == "min_max_normalization":
-            self.normalization = Blocks.MinMaxNormalization()
-        else:
-            assert 0, "Unsupported normalization"
-
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
@@ -83,7 +74,6 @@ class UNet(nn.Module):
             x = x[:, :, i: i + h, j:j + w]
         if self.last_sig:
             x = self.last_sig(x)
-        x = self.normalization(x)
         if self.clip:
             x = self.clip(x)
         return x

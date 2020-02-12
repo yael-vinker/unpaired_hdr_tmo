@@ -36,6 +36,7 @@ class GanTrainer:
         self.lr_scheduler_D = lr_scheduler_D
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
+        self.d_model = opt.d_model
 
         # ====== LOSS ======
         self.pyramid_loss = opt.pyramid_loss
@@ -70,12 +71,6 @@ class GanTrainer:
         self.to_crop = opt.add_frame
         self.use_normalization = opt.use_normalization
         self.normalization = opt.normalization
-        self.max_normalization = custom_transform.MaxNormalization()
-        self.min_max_normalization = custom_transform.MinMaxNormalization()
-        self.clip_transform = custom_transform.Clip()
-        # import models.Blocks
-        # self.max_normalization = models.Blocks.MaxNormalization()
-        # self.min_max_normalization = models.Blocks.MinMaxNormalization()
 
         # ====== SAVE RESULTS ======
         self.output_dir = opt.output_dir
@@ -106,10 +101,8 @@ class GanTrainer:
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
                 hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
-                b_size = hdr_input.size(0)
-                label = torch.full((b_size,), self.real_label, device=self.device)
                 self.train_D(hdr_input, real_ldr)
-                self.train_G(label, hdr_input)
+                self.train_G(hdr_input)
                 # plot_util.plot_grad_flow(self.netG.named_parameters(), self.output_dir, 1)
         self.update_accuracy()
         if self.epoch > 20:
@@ -123,7 +116,6 @@ class GanTrainer:
         :param label: Tensor contains real labels for first loss
         :return: fake (Tensor) result of G on hdr_data, for G train
         """
-        label = torch.full((self.batch_size,), self.real_label, device=self.device)
         # Train with all-real batch
         self.netD.zero_grad()
         # Forward pass real batch through D
@@ -132,6 +124,8 @@ class GanTrainer:
         self.accDreal_counter += (output_on_real > 0.5).sum().item()
 
         # Calculate loss on all-real batch
+        label = torch.full(output_on_real.shape, self.real_label, device=self.device)
+        print(output_on_real.shape)
         self.errD_real = self.mse_loss(output_on_real, label)
         self.errD_real.backward()
 
@@ -155,22 +149,24 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
-    def train_G(self, label, hdr_input):
+    def train_G(self, hdr_input):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
         :param hdr_input: (Tensor)
         """
         self.netG.zero_grad()
-        label.fill_(self.real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
         printer.print_g_progress(hdr_input, "hdr_inp")
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake, "output")
         output_on_fake = self.netD(fake).view(-1)
+        print(output_on_fake.shape)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
+        # fake labels are real for generator cost
+        label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
         self.update_g_d_loss(output_on_fake, label)
         if self.to_crop:
             # if true, fake is already cropped in G's forward
@@ -232,6 +228,12 @@ class GanTrainer:
         self.accG = self.accG_counter / len_hdr_train_dset
         self.accDreal = self.accDreal_counter / len_ldr_train_dset
         self.accDfake = self.accDfake_counter / len_ldr_train_dset
+
+        if self.d_model == "patchD":
+            self.accG = self.accG / 900
+            self.accDreal = self.accDreal / 900
+            self.accDfake = self.accDfake / 900
+
         self.G_accuracy.append(self.accG)
         self.D_accuracy_real.append(self.accDreal)
         self.D_accuracy_fake.append(self.accDfake)

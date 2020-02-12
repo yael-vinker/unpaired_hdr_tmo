@@ -3969,7 +3969,15 @@ def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
             shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
+def patchD():
+    from torchsummary import summary
+    import models.Discriminator
+    netD = models.Discriminator.NLayerDiscriminator(1)
+    summary(netD, (1, 256, 256))
+    print(netD)
+
 if __name__ == '__main__':
+    patchD()
     # epochs = ['96']
     # for ep in epochs:
     #     gather_all_architectures("/Users/yaelvinker/Documents/university/lab/02_08/fix_exp",
