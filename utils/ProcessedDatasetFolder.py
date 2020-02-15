@@ -2,7 +2,7 @@ import numpy as np
 import torch
 # from __future__ import print_function
 from torchvision.datasets import DatasetFolder
-
+import utils.hdr_image_util as hdr_image_util
 from utils import params
 import utils.data_loader_util as data_loader_util
 IMG_EXTENSIONS_local = ('.npy')
@@ -18,9 +18,9 @@ def npy_loader(path, addFrame, hdrMode, normalization):
     data = np.load(path, allow_pickle=True)
     input_im = data[()]["input_image"]
     color_im = data[()]["display_image"]
-    if addFrame and hdrMode:
-        im = data_loader_util.add_frame_to_im(input_im)
-        return im, color_im
+    # if addFrame and hdrMode:
+    #     im = data_loader_util.add_frame_to_im(input_im)
+    #     return im, color_im
     if not hdrMode:
         if normalization == "max_normalization":
             input_im = input_im / input_im.max()
@@ -28,7 +28,13 @@ def npy_loader(path, addFrame, hdrMode, normalization):
             input_im = input_im / 255
         elif normalization == "min_max_normalization":
             input_im = (input_im - input_im.min()) / (input_im.max() - input_im.min())
-    return input_im, color_im
+    if hdrMode:
+        if addFrame:
+            input_im = data_loader_util.add_frame_to_im(input_im)
+        gray_original_im = hdr_image_util.to_gray_tensor(color_im)
+        gray_original_im = gray_original_im / gray_original_im.max()
+        return input_im, color_im, gray_original_im
+    return input_im, color_im, input_im
     # if data.ndim == 2:
     #     data = data[:, :, None]
     # image_tensor = torch.from_numpy(data).float()
@@ -64,8 +70,8 @@ class ProcessedDatasetFolder(DatasetFolder):
         path, target = self.samples[index]
         # if self.test_mode:
         # input_im, color_im = self.loader(path, self.test_mode)
-        input_im, color_im = self.loader(path, self.addFrame, self.hdrMode, self.normalization)
-        return {"input_im": input_im, "color_im": color_im}
+        input_im, color_im, gray_original = self.loader(path, self.addFrame, self.hdrMode, self.normalization)
+        return {"input_im": input_im, "color_im": color_im, "original_gray": gray_original}
         # else:
         #     input_im = self.loader(path, self.test_mode)
         # image, binary_window = self.loader(path)

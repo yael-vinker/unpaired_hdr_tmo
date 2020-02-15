@@ -91,6 +91,15 @@ def to_gray(im):
     return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
 
 
+def to_gray_tensor(rgb_tensor):
+    r_image = rgb_tensor[0]
+    g_image = rgb_tensor[1]
+    b_image = rgb_tensor[2]
+    grayscale_image = (0.299*r_image + 0.587*g_image + 0.114*b_image)
+    grayscale_image = grayscale_image[None, :, :]
+    return grayscale_image
+
+
 def reshape_im(im, new_y, new_x):
     return skimage.transform.resize(im, (new_y, new_x),
                                              mode='reflect', preserve_range=True).astype("float32")

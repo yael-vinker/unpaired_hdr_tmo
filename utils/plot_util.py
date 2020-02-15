@@ -110,22 +110,18 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
 
 def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_dir, batch_size, epoch, image_mean):
     test_ldr_batch = test_real_batch["input_im"]
-    color_test_ldr_batch = test_real_batch["color_im"]
     test_hdr_image = test_hdr_batch["input_im"]
-    color_test_hdr_image = test_hdr_batch["color_im"]
-
-    normalization_string = "0_1"
-    if image_mean == 0.5:
-        normalization_string = "none"
-
     output_len = int(batch_size / 4)
     display_group = [test_ldr_batch, fake_ldr, test_hdr_image, fake]
-    # titles = ["Input Images", "Fake Images", "Exp Images"]
     titles = ["Real (LDR) Images", "G(LDR)", "Input (HDR) Images", "Fake Images"]
     normalization_string_arr = ["0_1", "0_1", "0_1", "0_1"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
         for j in range(4):
+            if j == 0:
+                hdr_image_util.print_tensor_details(display_group[0][0], "real ldr")
+            if j == 1:
+                hdr_image_util.print_tensor_details(display_group[1][0], "fake ldr")
             display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4,
                                                normalization=normalization_string_arr[j],
                                                isHDR=False, batch_start_index=i * 4)

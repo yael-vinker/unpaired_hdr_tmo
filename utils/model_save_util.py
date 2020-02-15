@@ -40,12 +40,12 @@ def weights_init_xavier(m):
     if (classname.find('Conv2d') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
         # todo check the gain parameter
         # gain = np.sqrt(2.0)
-        torch.nn.init.xavier_normal_(m.weight)
+        torch.nn.init.xavier_normal_(m.weight, gain = np.sqrt(2.0))
         if m.bias is not None:
             nn.init.constant(m.bias, 0)
 
     elif classname.find('BatchNorm2d') != -1:
-        nn.init.xavier_normal_(m.weight)
+        nn.init.xavier_normal_(m.weight, gain = np.sqrt(2.0))
         if m.bias is not None:
             nn.init.constant(m.bias, 0)
 
@@ -512,6 +512,6 @@ if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
     save_fake_images_for_fid_hdr_input(0.1, "hdr")
 
-    # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/S0020.hdr"
+    # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
     # load_model(im_hdr_original)

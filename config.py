@@ -33,11 +33,11 @@ def parse_arguments():
 
     # ====== LOSS ======
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument("--ssim_loss_factor", type=float, default=1)
+    parser.add_argument("--ssim_loss_factor", type=float, default=5)
     parser.add_argument("--ssim_loss", type=str, default=params.ssim_custom)
     parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument("--pyramid_loss", type=int, default=1)
-    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="0.7,0.5,0.2")
+    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="0.0448,0.2856,0.3001,0.2363,0.1333")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -47,8 +47,8 @@ def parse_arguments():
     parser.add_argument("--test_dataroot_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
-    parser.add_argument('--use_factorise_data', type=int, default=0)
-    parser.add_argument('--factor_coeff', type=float, default=0.1)
+    parser.add_argument('--use_factorise_data', type=int, default=1)
+    parser.add_argument('--factor_coeff', type=float, default=1)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -85,7 +85,7 @@ def get_opt():
     opt.device = device
 
     opt.output_dir = create_dir(opt)
-    opt.pyramid_weight_list = [float(item) for item in opt.pyramid_weight_list.split(',')]
+    opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
     return opt
 

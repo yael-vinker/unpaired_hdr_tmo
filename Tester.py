@@ -47,24 +47,25 @@ class Tester:
             im_path = os.path.join(root, img_name)
             rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, self.args, reshape=True)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             original_hdr_images.append({'im_name': str(counter),
                                         'im_hdr_original': rgb_img,
                                         'im_log_normalize_tensor': gray_im_log,
                                         'epoch': 0})
-            if counter == 1 or counter == 2:
-                self.get_test_image_special_factor(im_path, original_hdr_images, counter)
+            # if counter == 1 or counter == 2:
+            #     self.get_test_image_special_factor(im_path, original_hdr_images, counter)
             counter += 1
         return original_hdr_images
 
     def get_test_image_special_factor(self, im_path, original_hdr_images, counter):
-        special_factors = [self.args.factor_coeff * 0.1, 5, 10]
+        special_factors = [self.args.factor_coeff * 0.01, 5, 10]
         for f in special_factors:
             rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess_change_f(im_path, self.args, f, reshape=True)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
+            # im_hdr_original_to_save = gray_im_log.clone().permute(1, 2, 0).detach().cpu().numpy()
+            # self.save_best_acc_result_imageio_temo("out", str(counter) + "_" + str(f), im_hdr_original_to_save, 0, color='original')
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             original_hdr_images.append({'im_name': str(counter) + "_" + str(f),
@@ -148,9 +149,13 @@ class Tester:
         test_hdr_batch = next(iter(self.test_data_loader_npy))
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
+        printer.print_g_progress_tensor(test_hdr_batch_image, "from test")
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
+        printer.print_g_progress_tensor(fake, "from test res")
         test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
+        printer.print_g_progress_tensor(test_real_batch_frame, "ldr from test")
         fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
+        printer.print_g_progress_tensor(fake_ldr, "fake ldr from test")
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
@@ -159,6 +164,12 @@ class Tester:
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
+        im = hdr_image_util.to_0_1_range(im)
+        im = (im * 255).astype('uint8')
+        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
+
+    def save_best_acc_result_imageio_temo(self, out_dir, im_and_q, im, epoch, color):
+        file_name = im_and_q + "_epoch_" + str(epoch) + "_" + color + ".png"
         im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')

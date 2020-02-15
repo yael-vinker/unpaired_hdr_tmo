@@ -101,12 +101,14 @@ class GanTrainer:
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
                 hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
+                hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
                 self.train_D(hdr_input, real_ldr)
-                self.train_G(hdr_input)
+                self.train_G(hdr_input, hdr_original_gray)
                 # plot_util.plot_grad_flow(self.netG.named_parameters(), self.output_dir, 1)
         self.update_accuracy()
         if self.epoch > 20:
             self.update_best_G_acc()
+
 
     def train_D(self, hdr_input, real_ldr):
         """
@@ -125,7 +127,6 @@ class GanTrainer:
 
         # Calculate loss on all-real batch
         label = torch.full(output_on_real.shape, self.real_label, device=self.device)
-        print(output_on_real.shape)
         self.errD_real = self.mse_loss(output_on_real, label)
         self.errD_real.backward()
 
@@ -149,7 +150,7 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
-    def train_G(self, hdr_input):
+    def train_G(self, hdr_input, hdr_original_gray):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
@@ -161,17 +162,17 @@ class GanTrainer:
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake, "output")
         output_on_fake = self.netD(fake).view(-1)
-        print(output_on_fake.shape)
         # Real label = 1, so wo count number of samples on which G tricked D
         self.accG_counter += (output_on_fake > 0.5).sum().item()
         # updates all G's losses
         # fake labels are real for generator cost
         label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
         self.update_g_d_loss(output_on_fake, label)
-        if self.to_crop:
+        # if self.to_crop:
             # if true, fake is already cropped in G's forward
-            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
-        self.update_ssim_loss(hdr_input, fake)
+            # hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+        # self.update_ssim_loss(hdr_input, fake)
+        self.update_ssim_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
     def update_g_d_loss(self, output_on_fake, label):
@@ -180,9 +181,6 @@ class GanTrainer:
         self.G_loss_d.append(self.errG_d.item())
 
     def update_ssim_loss(self, hdr_input, fake):
-        if self.use_normalization:
-            fake = fake + 1
-            hdr_input = hdr_input + 1
         self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input)
         self.errG_ssim.backward()
         self.G_loss_ssim.append(self.errG_ssim.item())

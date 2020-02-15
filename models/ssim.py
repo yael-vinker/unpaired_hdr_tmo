@@ -135,14 +135,15 @@ class TMQI_SSIM(torch.nn.Module):
 
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
     window = window / window.sum()
-    factor = float(2 ** 8 - 1.)
-    img1_max = img1.view(img1.shape[0], -1).max(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
-    img1_min = img1.view(img1.shape[0], -1).min(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
-    img2_max = img2.reshape(img2.shape[0], -1).max(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
-    img2_min = img2.reshape(img2.shape[0], -1).min(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
+    # factor = float(2 ** 8 - 1.)
+    # factor = float(1.)
+    # img1_max = img1.view(img1.shape[0], -1).max(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
+    # img1_min = img1.view(img1.shape[0], -1).min(dim=1)[0].reshape(img1.shape[0], 1, 1, 1)
+    # img2_max = img2.reshape(img2.shape[0], -1).max(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
+    # img2_min = img2.reshape(img2.shape[0], -1).min(dim=1)[0].reshape(img2.shape[0], 1, 1, 1)
 
-    img1 = factor * (img1 - img1_min) / (img1_max - img1_min + params.epsilon)
-    img2 = factor * (img2 - img2_min) / (img2_max - img2_min + params.epsilon)
+    # img1 = factor * (img1 - img1_min) / (img1_max - img1_min + params.epsilon)
+    # img2 = factor * (img2 - img2_min) / (img2_max - img2_min + params.epsilon)
 
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
@@ -157,17 +158,28 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
     sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
-    C2 = 10.
+    # C2 = 30.
+    C2 = 0.03 ** 2 / 2
     s_map = (sigma12 + C2) / (std1 * std2 + C2)
-    return 1 - s_map.mean()
+    s_map = torch.clamp(s_map, min=0.0, max=1.0)
+    return 1.0 - s_map.mean()
 
 def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_weight_list):
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
-        ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
+        # ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
+        ssim_loss_list.append(our_custom_ssim(img1, img2, window, window_size, channel))
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-    return torch.sum(torch.stack(ssim_loss_list))
+    # return torch.sum(torch.stack(ssim_loss_list))
+    ssim_loss_list = torch.stack(ssim_loss_list)
+    pow2 = ssim_loss_list ** pyramid_weight_list
+    output = torch.prod(pow2)
+    return output
+    #     ssim_loss_list.append(our_custom_ssim(img1, img2, window, window_size, channel))
+    #     img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
+    #     img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
+    # return torch.sum(torch.stack(ssim_loss_list) * torch.Tensor(pyramid_weight_list))
 
 
 class OUR_CUSTOM_SSIM(torch.nn.Module):

@@ -5,7 +5,7 @@ train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data
 train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
 
 test_dataroot_hdr = "data/hdr_log_data"
-test_dataroot_ldr = "data/ldr_npy"
+test_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
 test_dataroot_original_hdr = "data/hdr_data/hdr_data"
 apply_windows_loss = False
 
@@ -13,6 +13,7 @@ image_key = "hdr_image"
 window_image_key = "binary_windows"
 gray_input_image_key = "input_im"
 color_image_key = "color_im"
+original_gray_key = "original_gray"
 
 models_save_path = os.path.join("models")
 loss_path = os.path.join("loss_plot")

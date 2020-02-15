@@ -385,7 +385,9 @@ def rename_files(input_path):
 
 
 if __name__ == '__main__':
-    rename_files("/Users/yaelvinker/Documents/quality_assesment/105_images/durand_luminance_hdr")
+    save_clipped_open_exr("/Users/yaelvinker/Documents/university/lab/02_12/new_arch_summary/_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1.0_clip_True_normalise_bugy_max_normalization_d_model_original/color/",
+                          "/Users/yaelvinker/Documents/university/lab/02_12/new_arch_summary/_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1.0_clip_True_normalise_bugy_max_normalization_d_model_original/color_clip")
+    # rename_files("/Users/yaelvinker/Documents/quality_assesment/105_images/durand_luminance_hdr")
     # create_exr_reshaped_dataset_from_exr("/Users/yaelvinker/Documents/quality_assesment/our_gray", "/Users/yaelvinker/Documents/quality_assesment/our_gray_reshaped")
     # im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/old/JesseBrownsCabin1.png")
     # original_im = imageio.imread(im_path)
