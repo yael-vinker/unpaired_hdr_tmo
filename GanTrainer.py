@@ -46,7 +46,10 @@ class GanTrainer:
         if opt.ssim_loss == params.ssim_custom:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size)
         if opt.pyramid_loss:
-            self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size, pyramid_weight_list=opt.pyramid_weight_list)
+            self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
+                                                          pyramid_weight_list=opt.pyramid_weight_list,
+                                                          pyramid_pow=opt.pyramid_pow)
+
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
         self.errG_d, self.errG_ssim = None, None

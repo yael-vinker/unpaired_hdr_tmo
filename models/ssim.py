@@ -167,19 +167,22 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss=""):
 def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_weight_list):
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
-        # ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
+        ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size, channel))
+        img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
+        img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
+    return torch.sum(torch.stack(ssim_loss_list))
+
+
+def our_custom_ssim_pyramid_pow(img1, img2, window, window_size, channel, pyramid_weight_list):
+    ssim_loss_list = []
+    for i in range(len(pyramid_weight_list)):
         ssim_loss_list.append(our_custom_ssim(img1, img2, window, window_size, channel))
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-    # return torch.sum(torch.stack(ssim_loss_list))
     ssim_loss_list = torch.stack(ssim_loss_list)
     pow2 = ssim_loss_list ** pyramid_weight_list
     output = torch.prod(pow2)
     return output
-    #     ssim_loss_list.append(our_custom_ssim(img1, img2, window, window_size, channel))
-    #     img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
-    #     img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-    # return torch.sum(torch.stack(ssim_loss_list) * torch.Tensor(pyramid_weight_list))
 
 
 class OUR_CUSTOM_SSIM(torch.nn.Module):
@@ -208,13 +211,14 @@ class OUR_CUSTOM_SSIM(torch.nn.Module):
         return our_custom_ssim(img1, img2, window, self.window_size, channel, self.mse_loss)
 
 class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
-    def __init__(self, pyramid_weight_list, window_size=11):
+    def __init__(self, pyramid_weight_list, window_size=11, pyramid_pow=False):
         super(OUR_CUSTOM_SSIM_PYRAMID, self).__init__()
         self.window_size = window_size
         self.channel = 1
         self.window = create_window(window_size, self.channel)
         self.mse_loss = torch.nn.MSELoss()
         self.pyramid_weight_list = pyramid_weight_list
+        self.pyramid_pow = pyramid_pow
 
     def forward(self, img1, img2):
         (_, channel, _, _) = img1.size()
@@ -230,8 +234,10 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
 
             self.window = window
             self.channel = channel
-
+        if self.pyramid_pow:
+            return our_custom_ssim_pyramid_pow(img1, img2, window, self.window_size, channel, self.pyramid_weight_list)
         return our_custom_ssim_pyramid(img1, img2, window, self.window_size, channel, self.pyramid_weight_list)
+
 
 def ssim(img1, img2, window_size=11, size_average=True):
     (_, channel, _, _) = img1.size()

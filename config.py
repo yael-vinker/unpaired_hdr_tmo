@@ -38,6 +38,7 @@ def parse_arguments():
     parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument("--pyramid_loss", type=int, default=1)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="0.0448,0.2856,0.3001,0.2363,0.1333")
+    parser.add_argument('--pyramid_pow', type=int, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)

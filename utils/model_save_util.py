@@ -42,12 +42,12 @@ def weights_init_xavier(m):
         # gain = np.sqrt(2.0)
         torch.nn.init.xavier_normal_(m.weight, gain = np.sqrt(2.0))
         if m.bias is not None:
-            nn.init.constant(m.bias, 0)
+            nn.init.constant_(m.bias, 0)
 
     elif classname.find('BatchNorm2d') != -1:
         nn.init.xavier_normal_(m.weight, gain = np.sqrt(2.0))
         if m.bias is not None:
-            nn.init.constant(m.bias, 0)
+            nn.init.constant_(m.bias, 0)
 
 
 def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
