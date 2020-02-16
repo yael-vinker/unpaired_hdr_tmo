@@ -44,10 +44,10 @@ def weights_init_xavier(m):
         if m.bias is not None:
             nn.init.constant_(m.bias, 0)
 
-    elif classname.find('BatchNorm2d') != -1:
-        nn.init.xavier_normal_(m.weight, gain = np.sqrt(2.0))
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0)
+    # elif classname.find('BatchNorm2d') != -1:
+    #     nn.init.xavier_normal_(m.weight, gain=np.sqrt(2.0))
+    #     if m.bias is not None:
+    #         nn.init.constant_(m.bias, 0)
 
 
 def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
@@ -94,7 +94,7 @@ def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar,
     if d_model == "original":
         new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
     elif d_model == "patchD":
-        new_net = Discriminator.NLayerDiscriminator(input_dim_, down_dim).to(device_)
+        new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=3, norm_layer=norm).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)

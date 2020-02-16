@@ -26,7 +26,7 @@ def parse_arguments():
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
-    parser.add_argument("--d_norm", type=str, default='none')
+    parser.add_argument("--d_norm", type=str, default='batch_norm')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--use_xaviar', type=int, default=1)
     parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")

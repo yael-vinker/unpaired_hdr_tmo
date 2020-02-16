@@ -33,7 +33,6 @@ class Conv2dBlock(nn.Module):
         out1 = self.activation(out)
         return out1
 
-
 class ConvTranspose2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, activation="none"):
         super(ConvTranspose2dBlock, self).__init__()
