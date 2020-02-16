@@ -64,16 +64,17 @@ class UNet(nn.Module):
         up_x = x_results[(self.depth)]
         for i, up_layer in enumerate(self.up_path):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
-        x = self.outc(up_x)
+        x_out = self.outc(up_x)
+        # x_out = torch.cat([x, x_out], dim=1)
         if self.to_crop:
-            b, c, h, w = x.shape
+            b, c, h, w = x_out.shape
             th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
             i = int(round((h - th) / 2.))
             j = int(round((w - tw) / 2.))
             i, j, h, w = i, j, th, tw
-            x = x[:, :, i: i + h, j:j + w]
+            x_out = x_out[:, :, i: i + h, j:j + w]
         if self.last_sig:
-            x = self.last_sig(x)
+            x_out = self.last_sig(x_out)
         if self.clip:
-            x = self.clip(x)
-        return x
+            x_out = self.clip(x_out)
+        return x_out

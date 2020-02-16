@@ -29,7 +29,7 @@ def parse_arguments():
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='original', help="original/patchD")
+    parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")
 
     # ====== LOSS ======
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
@@ -39,6 +39,7 @@ def parse_arguments():
     parser.add_argument("--pyramid_loss", type=int, default=1)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="0.0448,0.2856,0.3001,0.2363,0.1333")
     parser.add_argument('--pyramid_pow', type=int, default=1)
+    parser.add_argument('--ssim_compare_to', type=str, default="log")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
