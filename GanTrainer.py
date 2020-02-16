@@ -50,15 +50,19 @@ class GanTrainer:
                                                           pyramid_weight_list=opt.pyramid_weight_list,
                                                           pyramid_pow=opt.pyramid_pow)
         self.ssim_compare_to = opt.ssim_compare_to
+        if opt.use_sigma_loss:
+            self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
+        else:
+            self.sigma_loss = None
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
-        self.errG_d, self.errG_ssim = None, None
+        self.errG_d, self.errG_ssim, self.errG_sigma = None, None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
-        self.G_loss_ssim, self.G_loss_d = [], []
+        self.G_loss_ssim, self.G_loss_d, self.G_loss_sigma = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
 
         # ====== DATASET ======
@@ -172,11 +176,8 @@ class GanTrainer:
         # fake labels are real for generator cost
         label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
         self.update_g_d_loss(output_on_fake, label)
-        # if self.to_crop:
-            # if true, fake is already cropped in G's forward
-            # hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
-        # self.update_ssim_loss(hdr_input, fake)
         self.update_ssim_loss(hdr_input, hdr_original_gray, fake)
+        self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
     def update_g_d_loss(self, output_on_fake, label):
@@ -193,8 +194,19 @@ class GanTrainer:
                 hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
             hdr_input = hdr_input / hdr_input.max()
             self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input)
-        self.errG_ssim.backward()
+        retain_graph = False
+        if self.update_ssim_loss:
+            retain_graph = True
+        self.errG_ssim.backward(retain_graph=retain_graph)
         self.G_loss_ssim.append(self.errG_ssim.item())
+
+    def update_sigma_loss(self, hdr_input_original, fake):
+        if self.sigma_loss:
+            x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(hdr_input_original.shape[0], 1, 1, 1)
+            hdr_input_original = hdr_input_original / x_max
+            self.errG_sigma = self.sigma_loss(fake, hdr_input_original)
+        self.errG_sigma.backward()
+        self.G_loss_sigma.append(self.errG_sigma.item())
 
     def update_best_G_acc(self):
         if self.accG > self.best_accG:
@@ -212,7 +224,7 @@ class GanTrainer:
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.D_loss_fake,
+        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.G_loss_sigma, self.D_loss_fake,
                                       self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
                                       (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
         plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
@@ -251,7 +263,7 @@ class GanTrainer:
         print("Single [[epoch]] iteration took [%.4f] seconds\n" % (time.time() - start))
         printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                            self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
-                                           self.ssim_loss_g_factor, self.errG_ssim)
+                                           self.ssim_loss_g_factor, self.errG_ssim, self.errG_sigma)
         printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG,
                                         self.best_accG)
         printer.print_best_acc_error(self.best_accG, self.epoch)

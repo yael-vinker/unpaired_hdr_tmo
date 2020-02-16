@@ -390,27 +390,45 @@ def create_window(window_size, channel):
     return window
 
 
+def run_ssim(b1, b2):
+    our_custom_sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=5)
+    our_ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=5)
+    ssim_loss_p = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=5,
+                                               pyramid_weight_list=torch.FloatTensor(
+                                                   [0.0448, 0.2856, 0.3001, 0.2363, 0.1333]))
+
+    print("\nour_ssim_loss")
+    print(our_ssim_loss(b1, b1))
+    print(our_ssim_loss(b2, b1))
+    print("\nour_sigma_loss")
+    print(our_custom_sigma_loss(b1, b1))
+    b2 = b2 / b2.max()
+    print(our_custom_sigma_loss(b2, b1))
+    print("\nssim")
+    print(1 - ssim.ssim(b2, b1))
+    print("\npyramid")
+    print(ssim_loss_p(b1, b1))
+    print(ssim_loss_p(b2, b1))
+
+
+
 def our_custom_ssim_test():
-
-    a = torch.Tensor([1,2,3,4])
-    b = torch.Tensor([0.5, 2, 3, 4])
-    print(a)
-    print(torch.prod(a))
-
     data1 = np.load("/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0/wrap/4696332335.npy", allow_pickle=True)
     data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_use_factorise_data_0_factor_coeff_1000_use_normalization_1/synagogue.npy", allow_pickle=True)
-    print(data[()].keys())
-    img1 = data[()]["input_image"]
+    # print(datta[()].keys())
+    img1 = data1[()]["input_image"]
 
     img2 = data1[()]["display_image"]
     im2 = hdr_image_util.to_gray_tensor(img2)
     # im2 = im2[None, :, :]
-    hdr_image_util.display_tensor(im2, 'gray')
-    plt.show()
+    # hdr_image_util.display_tensor(im2, 'gray')
+    # plt.show()
     img1 = img1 / 255
     print(img1.max())
     print(img1.min())
-    img2 = 2*img1 + 5
+    img2 = 20000*img1 + 5
+    # img2 = img2 / img2.max()
+
     # plt.subplot(2, 1, 1)
     # hdr_image_util.display_tensor(img1, "gray")
     # plt.subplot(2, 1, 2)
@@ -429,18 +447,7 @@ def our_custom_ssim_test():
     im_tone_mapped_tensor_tensor_b2 = torch.zeros([2, img1.shape[0], img1.shape[1], img1.shape[2]])
     im_tone_mapped_tensor_tensor_b2[0] = img2
     im_tone_mapped_tensor_tensor_b2[1] = img2
-    # im_tone_mapped_tensor = im_tone_mapped_tensor[None, None, :, :]
-    our_ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=5)
-    print("res")
-    print(our_ssim_loss(im_tone_mapped_tensor_tensor_b, im_tone_mapped_tensor_tensor_b))
-    print(our_ssim_loss(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
-    print("ssim")
-    print(1 - ssim.ssim(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
-    print("pyramid")
-    ssim_loss_p = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=5,
-                                                  pyramid_weight_list=torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]))
-    print(ssim_loss_p(im_tone_mapped_tensor_tensor_b, im_tone_mapped_tensor_tensor_b))
-    print(ssim_loss_p(im_tone_mapped_tensor_tensor_b2, im_tone_mapped_tensor_tensor_b))
+    run_ssim(im_tone_mapped_tensor_tensor_b, im_tone_mapped_tensor_tensor_b2)
 
     hdr_im = imageio.imread(
         "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/1.hdr",
@@ -459,24 +466,25 @@ def our_custom_ssim_test():
     t_m_hdr_tensor_b = torch.zeros([2, 1, t_m_hdr.shape[1], t_m_hdr.shape[2]])
     t_m_hdr_tensor_b[0, :] = t_m_hdr
     t_m_hdr_tensor_b[1, :] = t_m_hdr
+    run_ssim(hdr_im_tensor_b, t_m_hdr_tensor_b)
     # plt.subplot(2,1,1)
     # hdr_image_util.display_tensor(hdr_im_tensor, "gray")
     # plt.subplot(2,1,2)
     # hdr_image_util.display_tensor(t_m_hdr, "gray")
     # plt.show()
-    print()
-    print("res")
-    print(our_ssim_loss(t_m_hdr_tensor_b, t_m_hdr_tensor_b))
-    print(our_ssim_loss(hdr_im_tensor_b, t_m_hdr_tensor_b))
-    print("ssim")
-    print(1 - ssim.ssim(hdr_im_tensor_b, t_m_hdr_tensor_b))
-    print("pyramid")
-    ssim_loss_p = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=5,
-                                               pyramid_weight_list=torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]))
-    print(t_m_hdr_tensor_b.max(), t_m_hdr_tensor_b.min())
-    print(ssim_loss_p(hdr_im_tensor_b, hdr_im_tensor_b))
-    print()
-    print(ssim_loss_p(hdr_im_tensor_b, t_m_hdr_tensor_b))
+    # print()
+    # print("res")
+    # print(our_ssim_loss(t_m_hdr_tensor_b, t_m_hdr_tensor_b))
+    # print(our_ssim_loss(hdr_im_tensor_b, t_m_hdr_tensor_b))
+    # print("ssim")
+    # print(1 - ssim.ssim(hdr_im_tensor_b, t_m_hdr_tensor_b))
+    # print("pyramid")
+    # ssim_loss_p = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=5,
+    #                                            pyramid_weight_list=torch.FloatTensor([0.0448, 0.2856, 0.3001, 0.2363, 0.1333]))
+    # print(t_m_hdr_tensor_b.max(), t_m_hdr_tensor_b.min())
+    # print(ssim_loss_p(hdr_im_tensor_b, hdr_im_tensor_b))
+    # print()
+    # print(ssim_loss_p(hdr_im_tensor_b, t_m_hdr_tensor_b))
 
 
     # print(our_ssim_loss(im_tone_mapped_tensor, im_tone_mapped_tensor * 2))

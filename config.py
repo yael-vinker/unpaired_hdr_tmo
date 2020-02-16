@@ -36,10 +36,11 @@ def parse_arguments():
     parser.add_argument("--ssim_loss_factor", type=float, default=5)
     parser.add_argument("--ssim_loss", type=str, default=params.ssim_custom)
     parser.add_argument("--ssim_window_size", type=int, default=5)
-    parser.add_argument("--pyramid_loss", type=int, default=1)
-    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="0.0448,0.2856,0.3001,0.2363,0.1333")
-    parser.add_argument('--pyramid_pow', type=int, default=1)
-    parser.add_argument('--ssim_compare_to', type=str, default="log")
+    parser.add_argument("--pyramid_loss", type=int, default=0)
+    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1,1,1")
+    parser.add_argument('--pyramid_pow', type=int, default=0)
+    parser.add_argument('--ssim_compare_to', type=str, default="original")
+    parser.add_argument('--use_sigma_loss', type=int, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)

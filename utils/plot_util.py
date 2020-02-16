@@ -7,7 +7,7 @@ import numpy as np
 import utils.hdr_image_util as hdr_image_util
 
 
-def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss,
+def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D_real, title, iters_n, path, use_g_d_loss,
                         use_g_ssim_loss):
     if use_g_ssim_loss or use_g_d_loss:
         plt.figure()
@@ -17,6 +17,8 @@ def plot_general_losses(G_loss_d, G_loss_ssim, loss_D_fake, loss_D_real, title, 
             plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
         if use_g_ssim_loss:
             plt.plot(range(iters_n), G_loss_ssim, '-y', label='loss G SSIM')
+        if len(G_loss_sigma) != 0:
+            plt.plot(range(iters_n), G_loss_sigma, '-k', label='loss G sigma')
         plt.xlabel("n iteration")
         plt.legend(loc='upper left')
         plt.title(title)
