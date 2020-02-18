@@ -40,7 +40,8 @@ def parse_arguments():
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1,1,1")
     parser.add_argument('--pyramid_pow', type=int, default=0)
     parser.add_argument('--ssim_compare_to', type=str, default="original")
-    parser.add_argument('--use_sigma_loss', type=int, default=1)
+    parser.add_argument('--use_sigma_loss', type=int, default=0)
+    parser.add_argument('--use_c3_in_ssim', type=int, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -97,14 +98,15 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
-    output_dir = result_dir_pref + "_random_seed_" + str(bool(opt.change_random_seed)) \
+    output_dir = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed)) \
                  + "_" + model_name + "_" + \
                  con_operator + "_last_act_" + opt.last_layer \
-                 + "_norm_g_" + opt.unet_norm + "_use_f_" + str(bool(opt.use_factorise_data)) \
+                 + "_use_f_" + str(bool(opt.use_factorise_data)) \
                  + "_coeff_" + str(opt.factor_coeff) \
                  + "_clip_" + str(bool(opt.add_clipping)) \
-                 + "_normalise_" + opt.normalization \
-                 + "_d_model_" + opt.d_model
+                 + "_d_model_" + opt.d_model \
+                 + "_sigloss_" + str(bool(opt.use_sigma_loss)) \
+                 + "_pyramid_" + str(bool(opt.pyramid_loss))
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path

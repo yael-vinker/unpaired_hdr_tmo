@@ -25,7 +25,12 @@ echo "add_clipping $19"
 echo "use_normalization $20"
 echo "normalization $21"
 echo "last_layer $22"
-
+echo "d_model $24"
+echo "d_down_dim $25"
+echo "pyramid_loss $26"
+echo "d_norm $27"
+echo "use_sigma_loss $28"
+echo "use_c3_in_ssim $29"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -51,5 +56,10 @@ python3.6 -W ignore -u main_train.py \
   --use_normalization $20 \
   --normalization $21 \
   --last_layer $22 \
-  --pyramid_pow $23
-
+  --pyramid_pow $23 \
+  --d_model $24 \
+  --d_down_dim $25 \
+  --pyramid_loss $26 \
+  --d_norm $27 \
+  --use_sigma_loss $28 \
+  --use_c3_in_ssim $29

@@ -44,11 +44,12 @@ class GanTrainer:
         self.mse_loss = torch.nn.MSELoss()
         self.ssim_loss_name = opt.ssim_loss
         if opt.ssim_loss == params.ssim_custom:
-            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size)
+            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size, use_c3=opt.use_c3_in_ssim)
         if opt.pyramid_loss:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
-                                                          pyramid_pow=opt.pyramid_pow)
+                                                          pyramid_pow=opt.pyramid_pow, use_c3=opt.use_c3_in_ssim)
+        self.use_c3 = opt.use_c3_in_ssim
         self.ssim_compare_to = opt.ssim_compare_to
         if opt.use_sigma_loss:
             self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
@@ -69,7 +70,7 @@ class GanTrainer:
         self.train_data_loader_npy, self.train_data_loader_ldr = \
             data_loader_util.load_data(opt.data_root_npy, opt.data_root_ldr,
                                        self.batch_size, addFrame=opt.add_frame, title="train",
-                                       normalization=opt.normalization)
+                                       normalization=opt.normalization, use_c3=opt.use_c3_in_ssim)
         self.input_dim = opt.input_dim
         self.input_images_mean = opt.input_images_mean
         self.log_factor = opt.log_factor
@@ -186,14 +187,14 @@ class GanTrainer:
         self.G_loss_d.append(self.errG_d.item())
 
     def update_ssim_loss(self, hdr_input, hdr_input_original, fake):
-        if self.ssim_compare_to == "original":
-            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original)
-        else:
-            if self.to_crop:
-                # if true, fake is already cropped in G's forward
-                hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
-            hdr_input = hdr_input / hdr_input.max()
-            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input)
+        # if self.ssim_compare_to == "original":
+        self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original)
+        # else:
+        #     if self.to_crop:
+        #         # if true, fake is already cropped in G's forward
+        #         hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+        #     hdr_input = hdr_input / hdr_input.max()
+        #     self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input)
         retain_graph = False
         if self.update_ssim_loss:
             retain_graph = True
@@ -202,11 +203,13 @@ class GanTrainer:
 
     def update_sigma_loss(self, hdr_input_original, fake):
         if self.sigma_loss:
-            x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(hdr_input_original.shape[0], 1, 1, 1)
-            hdr_input_original = hdr_input_original / x_max
+            if not self.use_c3:
+                x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(
+                    hdr_input_original.shape[0], 1, 1, 1)
+                hdr_input_original = hdr_input_original / x_max
             self.errG_sigma = self.sigma_loss(fake, hdr_input_original)
-        self.errG_sigma.backward()
-        self.G_loss_sigma.append(self.errG_sigma.item())
+            self.errG_sigma.backward()
+            self.G_loss_sigma.append(self.errG_sigma.item())
 
     def update_best_G_acc(self):
         if self.accG > self.best_accG:

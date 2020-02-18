@@ -138,6 +138,23 @@ def apply_preprocess_for_ldr(im_path):
     return rgb_img, gray_im
 
 
+def hdr_sigma_preprocess(im_path, args, reshape=False):
+    rgb_img = hdr_image_util.read_hdr_image(im_path)
+    if reshape:
+        rgb_img = hdr_image_util.reshape_image(rgb_img)
+    gray_im = hdr_image_util.to_gray(rgb_img)
+    if args.use_factorise_data:
+        gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+        brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255 * args.factor_coeff
+        print(brightness_factor)
+    else:
+        # factor is log_factor 1000
+        brightness_factor = 1000
+    gray_im = (gray_im / np.max(gray_im)) * brightness_factor
+    gray_im_log = np.log(gray_im + 1)
+    return rgb_img, gray_im_log
+
+
 def hdr_preprocess(im_path, args, reshape=False):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if reshape:

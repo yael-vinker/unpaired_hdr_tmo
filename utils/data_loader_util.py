@@ -2,16 +2,16 @@ import torch
 from utils import params
 
 
-def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode, normalization):
+def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode, normalization, use_c3):
     from utils import ProcessedDatasetFolder
     npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, addFrame=addFrame, hdrMode=hdrMode,
-                                                                normalization=normalization)
+                                                                normalization=normalization, use_c3=use_c3)
     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
                                              shuffle=shuffle, num_workers=params.workers)
     return dataloader
 
 
-def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, normalization):
+def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, normalization, use_c3):
     from utils import printer
     """
     :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
@@ -20,9 +20,9 @@ def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, norma
     :return: DataLoader object of images in "dir_root"
     """
     train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, addFrame=addFrame, hdrMode=True,
-                                         normalization=normalization)
+                                         normalization=normalization, use_c3=use_c3)
     train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, addFrame=addFrame, hdrMode=False,
-                                         normalization=normalization)
+                                         normalization=normalization, use_c3=use_c3)
 
     printer.print_dataset_details([train_hdr_dataloader, train_ldr_dataloader],
                                   [train_root_npy, train_root_ldr],

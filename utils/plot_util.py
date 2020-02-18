@@ -120,10 +120,10 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
         for j in range(4):
-            if j == 0:
-                hdr_image_util.print_tensor_details(display_group[0][0], "real ldr")
-            if j == 1:
-                hdr_image_util.print_tensor_details(display_group[1][0], "fake ldr")
+            # if j == 0:
+            #     hdr_image_util.print_tensor_details(display_group[0][0], "real ldr")
+            # if j == 1:
+            #     hdr_image_util.print_tensor_details(display_group[1][0], "fake ldr")
             display_im = display_batch_as_grid(display_group[j], ncols_to_display=(i + 1) * 4,
                                                normalization=normalization_string_arr[j],
                                                isHDR=False, batch_start_index=i * 4)
