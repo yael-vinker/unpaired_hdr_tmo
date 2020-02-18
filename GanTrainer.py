@@ -207,7 +207,7 @@ class GanTrainer:
                 x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(
                     hdr_input_original.shape[0], 1, 1, 1)
                 hdr_input_original = hdr_input_original / x_max
-            self.errG_sigma = self.sigma_loss(fake, hdr_input_original)
+            self.errG_sigma = self.sigma_loss * self.sigma_loss(fake, hdr_input_original)
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 
