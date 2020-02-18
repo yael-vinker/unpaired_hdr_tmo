@@ -53,6 +53,7 @@ class GanTrainer:
         self.ssim_compare_to = opt.ssim_compare_to
         if opt.use_sigma_loss:
             self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
+            self.sig_loss_factor = opt.use_sigma_loss
         else:
             self.sigma_loss = None
 
@@ -207,7 +208,7 @@ class GanTrainer:
                 x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(
                     hdr_input_original.shape[0], 1, 1, 1)
                 hdr_input_original = hdr_input_original / x_max
-            self.errG_sigma = self.sigma_loss * self.sigma_loss(fake, hdr_input_original)
+            self.errG_sigma = self.sig_loss_factor * self.sigma_loss(fake, hdr_input_original)
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 

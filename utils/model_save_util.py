@@ -196,10 +196,10 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 # ====== USE TRAINED MODEL ======
 def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_images_path = get_hdr_source_path("test_source")
-    arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
+    input_images_path = get_hdr_source_path("open_exr_exr_format")
+    arch_dir = "/cs/snapless/raananf/yael_vinker/02_16/"
     models_names = get_models_names()
-    models_epoch = [0]
+    models_epoch = [495]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -233,13 +233,8 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
         print(img_name)
         im_path = os.path.join(input_images_path, img_name)
         if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr":
-            original_im = hdr_image_util.read_hdr_image(im_path)
-            print("original shape", original_im.shape)
-            # f = 10760.730115410688
-            # print(f)
-            # original_im = original_im * 255 * f
-            run_model_on_single_image(net_G, original_im, device, os.path.splitext(img_name)[0],
-                                      output_images_path, model_params)
+            run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
+                                      output_images_path)
 
 
 def load_g_model(model_params, device, net_path):
@@ -288,23 +283,22 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
     return new_net
 
 
-def run_model_on_single_image(G_net, original_im, device, im_name, output_path, model_params, addFrame=True):
-    transform_exp = tranforms.Exp(1000, model_params["clip"], False, model_params["normalise"],
-                                  model_params["factorised_data"])
-    preprocessed_im = tmqi.apply_preproccess_for_hdr_im_factorised(original_im, addFrame=True).to(device)
-    save_gray_tensor_as_numpy(preprocessed_im, output_path, im_name + "_input")
-
-    preprocessed_im_batch = preprocessed_im.unsqueeze(0)
-    exp_input = torch.squeeze(transform_exp(preprocessed_im_batch), dim=0)
-    save_gray_tensor_as_numpy(exp_input, output_path, im_name + "_input_exp")
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path):
+    import data_generator.create_dng_npy_data as create_dng_npy_data
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
+                                                              factor_coeff=1.0, reshape=False)
+    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+    save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
+    gray_im_log = gray_im_log.to(device)
+    preprocessed_im_batch = gray_im_log.unsqueeze(0)
 
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
-        ours_tone_map_gray = transform_exp(ours_tone_map_gray)
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
     save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
 
-    original_im_tensor = tranforms.hdr_im_transform(original_im).unsqueeze(0)
+    original_im_tensor = rgb_img.unsqueeze(0)
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
     save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
 
@@ -322,15 +316,16 @@ def save_fake_images_for_fid():
 # ====== GET PARAMS ======
 def get_model_params(model_name):
     model_params = {"model_name": model_name, "model": params.unet_network, "filters": 32, "depth": 4,
-                    "last_layer": 'none', "unet_norm": 'none', "con_operator": get_con_operator(model_name),
-                    "clip": get_clip_from_name(model_name), "normalise": get_normalise_from_name(model_name),
+                    "last_layer": 'sigmoid', "unet_norm": 'none', "con_operator": get_con_operator(model_name),
+                    "clip": get_clip_from_name(model_name),
                     "factorised_data": is_factorised_data(model_name)}
     return model_params
 
 
 def get_hdr_source_path(name):
     path_dict = {"test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
-        "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size"}
+                 "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
+                 "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size"}
     return path_dict[name]
 
 
@@ -344,7 +339,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["unet_square_and_square_root_last_act_none_norm_g_none_use_f_True_coeff_0.1_clip_False_normalise_False"]
+    models_names = ["bnorm_sigloss5_no_py_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1.0_clip_False_normalise_bugy_max_normalization_d_model_patchD"]
     return models_names
 
 
@@ -441,7 +436,7 @@ def run_discriminator_on_data():
     train_data_loader_hdr, train_data_loader_ldr = \
         data_loader_util.load_data(input_hdr_images_path, input_ldr_images_path,
                                    16, testMode=False, title="train")
-    arch_dir = "/cs/labs/raananf/yael_vinker/12_25/run/results/"
+    arch_dir = "/cs/snapless/raananf/yael_vinker/02_16/"
 
     filters = [32, 32, 32, 32,
                32, 32, 32, 32,
@@ -510,7 +505,7 @@ def run_discriminator_on_data():
 
 if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
-    save_fake_images_for_fid_hdr_input(0.1, "hdr")
+    save_fake_images_for_fid_hdr_input(1, "exr")
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
