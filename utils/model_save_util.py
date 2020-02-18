@@ -1,3 +1,9 @@
+import sys
+import inspect
+import os
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 from utils import params
 from models import Discriminator
 import imageio
@@ -10,12 +16,6 @@ import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
 import tranforms
 import models.unet_multi_filters.Unet as Generator
-import sys
-import inspect
-import os
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
 
 
 # ====== TRAIN RELATED ======
@@ -196,10 +196,10 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 # ====== USE TRAINED MODEL ======
 def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_images_path = get_hdr_source_path("open_exr_exr_format")
-    arch_dir = "/cs/snapless/raananf/yael_vinker/02_16/"
+    input_images_path = get_hdr_source_path("test_source")
+    arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [495]
+    models_epoch = [0]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -244,6 +244,7 @@ def load_g_model(model_params, device, net_path):
                               True, True, model_params["unet_norm"], model_params["clip"])
     checkpoint = torch.load(net_path)
     state_dict = checkpoint['modelG_state_dict']
+    print("from loaded model ", list(state_dict.keys())[0])
     if "module" in list(state_dict.keys())[0]:
         from collections import OrderedDict
         new_state_dict = OrderedDict()
@@ -285,7 +286,9 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path):
     import data_generator.create_dng_npy_data as create_dng_npy_data
-    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
+    # rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
+    #                                                           factor_coeff=1.0, reshape=False)
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess_gamma(im_path, use_factorised_data=True,
                                                               factor_coeff=1.0, reshape=False)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
@@ -325,7 +328,8 @@ def get_model_params(model_name):
 def get_hdr_source_path(name):
     path_dict = {"test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
                  "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
-                 "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size"}
+                 "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
+                 "hdr_test": "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"}
     return path_dict[name]
 
 
@@ -339,7 +343,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["bnorm_sigloss5_no_py_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1.0_clip_False_normalise_bugy_max_normalization_d_model_patchD"]
+    models_names = ["_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1_clip_True_normalise_bugy_max_normalization_d_model_original"]
     return models_names
 
 

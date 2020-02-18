@@ -1,4 +1,10 @@
 from __future__ import print_function
+import sys
+import inspect
+import os
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 import argparse
 import os
 import tranforms as transforms_
@@ -155,8 +161,10 @@ def hdr_sigma_preprocess(im_path, args, reshape=False):
     return rgb_img, gray_im_log
 
 
-def hdr_preprocess(im_path, use_factorised_data, factor_coeff, reshape=False):
+def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, factor_coeff, reshape=False):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    if np.min(rgb_img) < 0:
+        rgb_img = rgb_img + np.min(rgb_img)
     if reshape:
         rgb_img = hdr_image_util.reshape_image(rgb_img)
     gray_im = hdr_image_util.to_gray(rgb_img)
@@ -167,9 +175,31 @@ def hdr_preprocess(im_path, use_factorised_data, factor_coeff, reshape=False):
     else:
         # factor is log_factor 1000
         brightness_factor = 1000
-    gray_im = (gray_im / np.max(gray_im)) * brightness_factor
-    gray_im_log = np.log(gray_im + 1)
-    return rgb_img, gray_im_log
+    if use_factorise_gamma_data:
+        gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + 2 * np.log10(brightness_factor)))
+    else:
+        gray_im = (gray_im / np.max(gray_im)) * brightness_factor
+        gray_im = np.log(gray_im + 1)
+    return rgb_img, gray_im
+
+
+def hdr_preprocess_gamma(im_path, use_factorised_data, factor_coeff, reshape=False):
+    rgb_img = hdr_image_util.read_hdr_image(im_path)
+    if np.min(rgb_img) < 0:
+        rgb_img = rgb_img + np.min(rgb_img)
+    if reshape:
+        rgb_img = hdr_image_util.reshape_image(rgb_img)
+    gray_im = hdr_image_util.to_gray(rgb_img)
+    if use_factorised_data:
+        gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+        brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255 * factor_coeff
+        print(brightness_factor)
+    else:
+        # factor is log_factor 1000
+        brightness_factor = 1000
+    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + 2*np.log10(brightness_factor)))
+    # gray_im_log = np.log(gray_im + 1)
+    return rgb_img, gray_im_gamma
 
 
 def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
@@ -190,7 +220,7 @@ def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
 
 
 def apply_preprocess_for_hdr(im_path, args):
-    rgb_img, gray_im_log = hdr_preprocess(im_path, args, reshape=False)
+    rgb_img, gray_im_log = hdr_preprocess_gamma(im_path, args.use_factorise_data, args.factor_coeff, reshape=False)
     rgb_img = transforms_.image_transform_no_norm(rgb_img)
     gray_im_log = transforms_.image_transform_no_norm(gray_im_log)
     return rgb_img, gray_im_log
@@ -217,7 +247,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data")
     parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range")
-    parser.add_argument("--isLdr", type=int, default=1)
+    parser.add_argument("--isLdr", type=int, default=0)
     parser.add_argument("--number_of_images", type=int, default=3)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
     parser.add_argument("--factor_coeff", type=float, default=0.1)
@@ -228,12 +258,12 @@ if __name__ == '__main__':
         pref = "flicker"
     else:
         pref = "hdrplus"
-    output_dir_name = pref + "_use_factorise_data_" + str(args.use_factorise_data) + \
+    output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
                       "_factor_coeff_" + str(args.factor_coeff) + "_use_normalization_" + str(args.use_normalization)
     args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
     os.mkdir(args.output_dir)
     create_data(args)
-    print_result(args.output_dir)
+    # print_result(args.output_dir)
 
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
@@ -244,10 +274,10 @@ if __name__ == '__main__':
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0")
     #
-    # split_train_test_data(
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1")
+    split_train_test_data(
+        "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
+        "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
+        "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0")
     #
     # split_train_test_data(
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",

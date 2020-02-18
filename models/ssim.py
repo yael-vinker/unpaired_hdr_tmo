@@ -176,7 +176,7 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3):
         C3 = 0.03 ** 2 / 2
         s_map = (sigma12 + C3) / (std1 * std2 + C3)
     else:
-        s_map = sigma12 / (std1 * std2)
+        s_map = sigma12 / (std1 * std2 + 0.00001)
     s_map = torch.clamp(s_map, max=1.0)
     return 1 - s_map.mean()
 

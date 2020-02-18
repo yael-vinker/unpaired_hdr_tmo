@@ -23,7 +23,7 @@ def parse_arguments():
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
     parser.add_argument("--filters", type=int, default=params.filters)
     parser.add_argument("--unet_depth", type=int, default=4)
-    parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
+    parser.add_argument("--con_operator", type=str, default=params.gamma)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
     parser.add_argument("--d_norm", type=str, default='batch_norm')
@@ -52,6 +52,7 @@ def parse_arguments():
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
+    parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=1)
 
     # ====== POST PROCESS ======
@@ -98,10 +99,13 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
-    output_dir = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed)) \
+    if opt.change_random_seed:
+        result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+    output_dir = result_dir_pref \
                  + "_" + model_name + "_" + \
                  con_operator + "_last_act_" + opt.last_layer \
                  + "_use_f_" + str(bool(opt.use_factorise_data)) \
+                 + "_use_gamma_" + str(bool(opt.use_factorise_gamma_data)) \
                  + "_coeff_" + str(opt.factor_coeff) \
                  + "_clip_" + str(bool(opt.add_clipping)) \
                  + "_d_model_" + opt.d_model \

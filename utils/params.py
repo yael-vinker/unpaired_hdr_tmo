@@ -59,7 +59,7 @@ unet_network = "unet"
 torus_network = "torus"
 
 layer_factor_2_operators = ["original_unet"]
-layer_factor_3_operators = ["square", "square_root"]
+layer_factor_3_operators = ["square", "square_root", "gamma"]
 layer_factor_4_operators = ["square_and_square_root"]
 
 # con operators
@@ -67,6 +67,7 @@ original_unet = "original_unet"
 square = "square"
 square_root = "square_root"
 square_and_square_root = "square_and_square_root"
+gamma = "gamma"
 
 filters = 32
 

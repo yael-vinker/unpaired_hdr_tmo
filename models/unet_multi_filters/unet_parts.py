@@ -167,6 +167,9 @@ class up(nn.Module):
             square_x = torch.pow(x2, 2)
             square_root_x = torch.pow(x2 + params.epsilon, 0.5)
             x = torch.cat([x2, x1, square_x, square_root_x], dim=1)
+        elif con_operator == params.gamma:
+            square_root_x = torch.pow(x2 + params.epsilon, 0.02)
+            x = torch.cat([x2, x1, square_root_x], dim=1)
         else:
             assert 0, "Unsupported con_operator request: {}".format(con_operator)
         x = self.conv(x)

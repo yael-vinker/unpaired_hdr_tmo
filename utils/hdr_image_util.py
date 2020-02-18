@@ -61,13 +61,13 @@ def read_ldr_image_original_range(path):
 # ====== BRIGHTNESS FACTOR ======
 def get_bump(im):
     tmp = im
-    tmp[(tmp > 200) != 0] = 255
+    tmp[(tmp > 255) != 0] = 255
     tmp = tmp.astype('uint8')
 
     hist, bins = np.histogram(tmp, bins=255)
 
-    a0 = np.mean(hist[0:64])
-    a1 = np.mean(hist[65:200])
+    a0 = np.mean(hist[0:63])
+    a1 = np.mean(hist[64:200])
     return a1 / a0
 
 
@@ -82,6 +82,11 @@ def get_brightness_factor(im_hdr):
             f = f * 1.01
         else:
             if r > 1 / big:
+                im_hdr = im_hdr * f
+                im_hdr[(im_hdr > 255) != 0] = 255
+                tmp = im_hdr.astype('uint8')
+                plt.imshow(tmp, cmap='gray')
+                plt.show()
                 return f
     return f
 
@@ -129,7 +134,7 @@ def back_to_color(im_hdr, fake):
     norm_im = np.power(norm_im, 0.5)
     norm_im_gray = to_gray(norm_im)
     norm_im_gray = norm_im_gray[:, :, None]
-    output_im = (norm_im / norm_im_gray) * fake
+    output_im = (norm_im / (norm_im_gray + params.epsilon)) * fake
     return output_im
 
 

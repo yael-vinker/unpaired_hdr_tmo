@@ -739,17 +739,21 @@ def patchD():
 
 def f_gamma_test(im_path):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    if np.min(rgb_img) < 0:
+        rgb_img = rgb_img + np.min(rgb_img)
     gray_im = hdr_image_util.to_gray(rgb_img)
-    gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
+    gray_im_temp = hdr_image_util.reshape_im(gray_im, 256, 256)
     brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255
     print(brightness_factor)
-    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + 100*np.log10(brightness_factor)))
+    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + 2*np.log10(brightness_factor)))
     hdr_image_util.print_image_details(gray_im_gamma, "gamma")
+    plt.figure()
     plt.subplot(1,3,1)
     plt.axis("off")
     plt.imshow(gray_im / np.max(gray_im), cmap='gray')
     gray_im_prev = (gray_im / np.max(gray_im)) * brightness_factor
     gray_im_log = np.log(gray_im_prev + 1)
+
     plt.subplot(1, 3, 2)
     plt.axis("off")
     plt.imshow(gray_im_log / np.max(gray_im_log), cmap='gray')
@@ -760,6 +764,10 @@ def f_gamma_test(im_path):
     return rgb_img, gray_im_gamma
 
 if __name__ == '__main__':
-    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/1.hdr")
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/cathedral.hdr")
+    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
+    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/2a.hdr")
     # our_custom_ssim_test()
     # patchD()
