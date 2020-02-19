@@ -32,10 +32,10 @@ def npy_loader(path, addFrame, hdrMode, normalization, use_c3):
         if addFrame:
             input_im = data_loader_util.add_frame_to_im(input_im)
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
-        if use_c3:
-            gray_original_im = gray_original_im / gray_original_im.max()
-        return input_im, color_im, gray_original_im
-    return input_im, color_im, input_im
+        # if use_c3:
+        gray_original_im_norm = gray_original_im / gray_original_im.max()
+        return input_im, color_im, gray_original_im_norm, gray_original_im
+    return input_im, color_im, input_im, input_im
     # if data.ndim == 2:
     #     data = data[:, :, None]
     # image_tensor = torch.from_numpy(data).float()
@@ -72,9 +72,9 @@ class ProcessedDatasetFolder(DatasetFolder):
         path, target = self.samples[index]
         # if self.test_mode:
         # input_im, color_im = self.loader(path, self.test_mode)
-        input_im, color_im, gray_original = self.loader(path, self.addFrame, self.hdrMode,
+        input_im, color_im, gray_original_norm, gray_original = self.loader(path, self.addFrame, self.hdrMode,
                                                         self.normalization, self.use_c3)
-        return {"input_im": input_im, "color_im": color_im, "original_gray": gray_original}
+        return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original, "original_gray": gray_original}
         # else:
         #     input_im = self.loader(path, self.test_mode)
         # image, binary_window = self.loader(path)
