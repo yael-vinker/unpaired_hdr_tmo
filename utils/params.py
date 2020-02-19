@@ -14,6 +14,8 @@ window_image_key = "binary_windows"
 gray_input_image_key = "input_im"
 color_image_key = "color_im"
 original_gray_key = "original_gray"
+original_gray_norm_key = "original_gray_norm"
+
 
 models_save_path = os.path.join("models")
 loss_path = os.path.join("loss_plot")

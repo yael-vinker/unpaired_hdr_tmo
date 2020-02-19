@@ -76,6 +76,7 @@ class GanTrainer:
         self.input_images_mean = opt.input_images_mean
         self.log_factor = opt.log_factor
         self.normalize = custom_transform.Normalize(0.5, 0.5)
+        self.use_factorise_gamma_data = opt.use_factorise_gamma_data
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
@@ -111,9 +112,10 @@ class GanTrainer:
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
                 hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
+                hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
                 self.train_D(hdr_input, real_ldr)
-                self.train_G(hdr_input, hdr_original_gray)
+                self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray)
                 # plot_util.plot_grad_flow(self.netG.named_parameters(), self.output_dir, 1)
         self.update_accuracy()
         if self.epoch > 20:
@@ -160,7 +162,7 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
-    def train_G(self, hdr_input, hdr_original_gray):
+    def train_G(self, hdr_input, hdr_original_gray_norm, hdr_original_gray):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
@@ -178,7 +180,7 @@ class GanTrainer:
         # fake labels are real for generator cost
         label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
         self.update_g_d_loss(output_on_fake, label)
-        self.update_ssim_loss(hdr_input, hdr_original_gray, fake)
+        self.update_ssim_loss(hdr_original_gray_norm, fake)
         self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
@@ -187,28 +189,22 @@ class GanTrainer:
         self.errG_d.backward(retain_graph=True)
         self.G_loss_d.append(self.errG_d.item())
 
-    def update_ssim_loss(self, hdr_input, hdr_input_original, fake):
-        # if self.ssim_compare_to == "original":
-        self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original)
-        # else:
-        #     if self.to_crop:
-        #         # if true, fake is already cropped in G's forward
-        #         hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
-        #     hdr_input = hdr_input / hdr_input.max()
-        #     self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input)
+    def update_ssim_loss(self, hdr_input_original_gray_norm, fake):
+        self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
         retain_graph = False
         if self.update_ssim_loss:
             retain_graph = True
         self.errG_ssim.backward(retain_graph=retain_graph)
         self.G_loss_ssim.append(self.errG_ssim.item())
 
-    def update_sigma_loss(self, hdr_input_original, fake):
+    def update_sigma_loss(self, hdr_input_original_gray, fake):
         if self.sigma_loss:
-            if not self.use_c3:
-                x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(
-                    hdr_input_original.shape[0], 1, 1, 1)
-                hdr_input_original = hdr_input_original / x_max
-            self.errG_sigma = self.sig_loss_factor * self.sigma_loss(fake, hdr_input_original)
+            # if (not self.use_c3) and (not self.use_factorise_gamma_data):
+            #     print("normalize input before sigma loss")
+            #     x_max = hdr_input_original.view(hdr_input_original.shape[0], -1).max(dim=1)[0].reshape(
+            #         hdr_input_original.shape[0], 1, 1, 1)
+            #     hdr_input_original = hdr_input_original / x_max
+            self.errG_sigma = self.sig_loss_factor * self.sigma_loss(fake, hdr_input_original_gray)
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 

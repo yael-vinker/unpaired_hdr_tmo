@@ -196,6 +196,7 @@ def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
     std2_normalise = std2 / mu2
     std2_normalise = torch.pow(std2_normalise, 0.8)
+    # std2 = torch.pow(std2, 0.85)
     return mse_loss(std1, std2_normalise)
 
 
