@@ -185,6 +185,9 @@ def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, facto
 
 def hdr_preprocess_gamma(im_path, use_factorised_data, factor_coeff, reshape=False):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    hdr_image_util.print_image_details(rgb_img, "before")
+    plt.imshow(rgb_img / np.max(rgb_img))
+    plt.show()
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.min(rgb_img)
     if reshape:
@@ -197,7 +200,7 @@ def hdr_preprocess_gamma(im_path, use_factorised_data, factor_coeff, reshape=Fal
     else:
         # factor is log_factor 1000
         brightness_factor = 1000
-    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + 2*np.log10(brightness_factor)))
+    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + np.log10(brightness_factor)))
     # gray_im_log = np.log(gray_im + 1)
     return rgb_img, gray_im_gamma
 
@@ -221,8 +224,11 @@ def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
 
 def apply_preprocess_for_hdr(im_path, args):
     rgb_img, gray_im_log = hdr_preprocess_gamma(im_path, args.use_factorise_data, args.factor_coeff, reshape=False)
+    plt.imshow(gray_im_log, cmap='gray')
+    plt.show()
     rgb_img = transforms_.image_transform_no_norm(rgb_img)
     gray_im_log = transforms_.image_transform_no_norm(gray_im_log)
+    display_tensor(gray_im_log, True)
     return rgb_img, gray_im_log
 
 
@@ -243,26 +249,50 @@ def create_data(args):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data")
-    parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range")
-    parser.add_argument("--isLdr", type=int, default=0)
-    parser.add_argument("--number_of_images", type=int, default=3)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
-    parser.add_argument("--factor_coeff", type=float, default=0.1)
+    parser.add_argument("--factor_coeff", type=float, default=1)
     parser.add_argument("--use_normalization", help='if to change range to [-1, 1]', type=int, default=0)
 
     args = parser.parse_args()
-    if args.isLdr:
-        pref = "flicker"
-    else:
-        pref = "hdrplus"
-    output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
-                      "_factor_coeff_" + str(args.factor_coeff) + "_use_normalization_" + str(args.use_normalization)
-    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
-    os.mkdir(args.output_dir)
-    create_data(args)
+
+    im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/data_generator/hard_images/synagogue.hdr")
+    rgb_img, gray_im = apply_preprocess_for_hdr(im_path, args)
+    data = {'input_image': gray_im, 'display_image': rgb_img}
+    output_path = os.path.join('/Users/yaelvinker/PycharmProjects/lab/data_generator/temp_f/a.npy')
+    np.save(output_path, data)
+    print(output_path)
+
+
+
+    im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/data_generator/merged_0006_20160726_113607_220.npy")
+    data = np.load(im_path, allow_pickle=True)
+    input_im = data[()]["input_image"]
+    color_im = data[()]["display_image"]
+    hdr_image_util.print_tensor_details(input_im, "input_im ")
+    display_tensor(input_im, True)
+    hdr_image_util.print_tensor_details(color_im, "display_image ")
+    display_tensor(color_im, False)
+    #
+    # parser = argparse.ArgumentParser(description="Parser for gan network")
+    # parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/ldr_data/ldr_data")
+    # parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range")
+    # parser.add_argument("--isLdr", type=int, default=0)
+    # parser.add_argument("--number_of_images", type=int, default=3)
+    # parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
+    # parser.add_argument("--factor_coeff", type=float, default=0.1)
+    # parser.add_argument("--use_normalization", help='if to change range to [-1, 1]', type=int, default=0)
+    #
+    # args = parser.parse_args()
+    # if args.isLdr:
+    #     pref = "flicker"
+    # else:
+    #     pref = "hdrplus"
+    # output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
+    #                   "_factor_coeff_" + str(args.factor_coeff) + "_use_normalization_" + str(args.use_normalization)
+    # args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
+    # os.mkdir(args.output_dir)
+    # create_data(args)
     # print_result(args.output_dir)
 
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
@@ -274,11 +304,11 @@ if __name__ == '__main__':
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0")
     #
-    split_train_test_data(
-        "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
-        "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
-        "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0")
-    #
+    # split_train_test_data(
+    #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
+    #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
+    #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0")
+    # #
     # split_train_test_data(
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
     #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",

@@ -398,12 +398,13 @@ def run_ssim(b1, b2):
                                                    [0.0448, 0.2856, 0.3001, 0.2363, 0.1333]))
 
     print("\nour_ssim_loss")
+    b2a = b2 / b2.max()
     print(our_ssim_loss(b1, b1))
-    print(our_ssim_loss(b2, b1))
+    print(our_ssim_loss(b2a, b1))
     print("\nour_sigma_loss")
     print(our_custom_sigma_loss(b1, b1))
-    b2 = b2 / b2.max()
-    print(our_custom_sigma_loss(b2, b1))
+
+    print(our_custom_sigma_loss(b1, b2))
     print("\nssim")
     print(1 - ssim.ssim(b2, b1))
     print("\npyramid")
@@ -459,7 +460,7 @@ def our_custom_ssim_test():
     hdr_im_tensor_b[0, :] = hdr_im_tensor
     hdr_im_tensor_b[1, :] = hdr_im_tensor
     t_m_hdr = np.log(hdr_im / np.max(hdr_im) * 1000 + 1)
-    t_m_hdr = t_m_hdr / t_m_hdr.max()
+    # t_m_hdr = t_m_hdr / t_m_hdr.max()
     t_m_hdr = torch.from_numpy(t_m_hdr)
     t_m_hdr = t_m_hdr[None, :, :]
 
@@ -745,7 +746,7 @@ def f_gamma_test(im_path):
     gray_im_temp = hdr_image_util.reshape_im(gray_im, 256, 256)
     brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255
     print(brightness_factor)
-    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + 2*np.log10(brightness_factor)))
+    gray_im_gamma = (gray_im / np.max(gray_im)) ** (1 / (1 + np.log10(brightness_factor)))
     hdr_image_util.print_image_details(gray_im_gamma, "gamma")
     plt.figure()
     plt.subplot(1,3,1)
@@ -764,10 +765,11 @@ def f_gamma_test(im_path):
     return rgb_img, gray_im_gamma
 
 if __name__ == '__main__':
-    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
-    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/cathedral.hdr")
-    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
-    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
-    f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/2a.hdr")
-    # our_custom_ssim_test()
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/2a.hdr")
+    # # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
+    # # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/cathedral.hdr")
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
+
+    our_custom_ssim_test()
     # patchD()

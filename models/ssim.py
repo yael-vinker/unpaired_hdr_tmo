@@ -194,8 +194,9 @@ def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
 
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
-    std2 = torch.pow(std2, 0.85)
-    return mse_loss(std1, std2)
+    std2_normalise = std2 / mu2
+    std2_normalise = torch.pow(std2_normalise, 0.8)
+    return mse_loss(std1, std2_normalise)
 
 
 def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_weight_list, mse_loss, use_c3):
