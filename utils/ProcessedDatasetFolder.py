@@ -74,7 +74,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         # input_im, color_im = self.loader(path, self.test_mode)
         input_im, color_im, gray_original_norm, gray_original = self.loader(path, self.addFrame, self.hdrMode,
                                                         self.normalization, self.use_c3)
-        return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original, "original_gray": gray_original}
+        return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm, "original_gray": gray_original}
         # else:
         #     input_im = self.loader(path, self.test_mode)
         # image, binary_window = self.loader(path)

@@ -706,9 +706,9 @@ def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
     import shutil
     # copyfile(src, dst)
     for arch_name in os.listdir(arch_dir):
-        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, epoch)
-        old_name = im_number + "_epoch_" + epoch + "_gray.png"
-        cur_output_path = os.path.join(output_path, epoch, im_number)
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "model_results", epoch)
+        old_name = im_number + "_epoch_" + epoch + "_gray_source.png"
+        cur_output_path = os.path.join(output_path, epoch, im_number + "_gray_source")
         output_name = date + "_" + arch_name + ".png"
         if not os.path.exists(cur_output_path):
             os.makedirs(cur_output_path)
@@ -740,9 +740,11 @@ def patchD():
 
 def f_gamma_test(im_path):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    print(rgb_img.shape)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.min(rgb_img)
     gray_im = hdr_image_util.to_gray(rgb_img)
+
     gray_im_temp = hdr_image_util.reshape_im(gray_im, 256, 256)
     brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255
     print(brightness_factor)
@@ -765,11 +767,20 @@ def f_gamma_test(im_path):
     return rgb_img, gray_im_gamma
 
 if __name__ == '__main__':
+    epochs = ["600", "430"]
+    im_numbers = ["8", "1", "2"]
+    for epoch in epochs:
+        for im_number in im_numbers:
+            gather_all_architectures("/cs/snapless/raananf/yael_vinker/03_17/results",
+                    "/cs/snapless/raananf/yael_vinker/03_17/arch_summary", epoch, "03_17", im_number)
+    # gather_all_architectures_accuracy("/cs/snapless/raananf/yael_vinker/03_17/results",
+    #                                   "/cs/snapless/raananf/yael_vinker/03_17/arch_summary",
+    #                                   "600", "03_17")
     # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/2a.hdr")
-    # # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
+    # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
     # # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/cathedral.hdr")
     # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
     # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
 
-    our_custom_ssim_test()
+    # our_custom_ssim_test()
     # patchD()

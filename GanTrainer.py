@@ -190,12 +190,13 @@ class GanTrainer:
         self.G_loss_d.append(self.errG_d.item())
 
     def update_ssim_loss(self, hdr_input_original_gray_norm, fake):
-        self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
-        retain_graph = False
-        if self.update_ssim_loss:
-            retain_graph = True
-        self.errG_ssim.backward(retain_graph=retain_graph)
-        self.G_loss_ssim.append(self.errG_ssim.item())
+        if self.ssim_loss_g_factor:
+            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
+            retain_graph = False
+            if self.sigma_loss:
+                retain_graph = True
+            self.errG_ssim.backward(retain_graph=retain_graph)
+            self.G_loss_ssim.append(self.errG_ssim.item())
 
     def update_sigma_loss(self, hdr_input_original_gray, fake):
         if self.sigma_loss:
