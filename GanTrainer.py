@@ -44,11 +44,13 @@ class GanTrainer:
         self.mse_loss = torch.nn.MSELoss()
         self.ssim_loss_name = opt.ssim_loss
         if opt.ssim_loss == params.ssim_custom:
-            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size, use_c3=opt.use_c3_in_ssim)
+            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size, use_c3=opt.use_c3_in_ssim,
+                                                  apply_sig_mu_ssim=opt.apply_sig_mu_ssim)
         if opt.pyramid_loss:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
-                                                          pyramid_pow=opt.pyramid_pow, use_c3=opt.use_c3_in_ssim)
+                                                          pyramid_pow=opt.pyramid_pow, use_c3=opt.use_c3_in_ssim,
+                                                          apply_sig_mu_ssim=opt.apply_sig_mu_ssim)
         self.use_c3 = opt.use_c3_in_ssim
         self.ssim_compare_to = opt.ssim_compare_to
         if opt.use_sigma_loss:
@@ -186,7 +188,10 @@ class GanTrainer:
 
     def update_g_d_loss(self, output_on_fake, label):
         self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
-        self.errG_d.backward(retain_graph=True)
+        retain_graph = False
+        if self.ssim_loss_g_factor:
+            retain_graph = True
+        self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
 
     def update_ssim_loss(self, hdr_input_original_gray_norm, fake):

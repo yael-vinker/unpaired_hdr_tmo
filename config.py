@@ -42,6 +42,7 @@ def parse_arguments():
     parser.add_argument('--ssim_compare_to', type=str, default="original")
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--use_c3_in_ssim', type=int, default=1)
+    parser.add_argument('--apply_sig_mu_ssim', type=int, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -101,6 +102,8 @@ def create_dir(opt):
                                                                                  opt.filters, opt.add_frame
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+    if opt.apply_sig_mu_ssim:
+        result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + \
                  con_operator + "_last_act_" + opt.last_layer \
@@ -110,7 +113,7 @@ def create_dir(opt):
                  + "_clip_" + str(bool(opt.add_clipping)) \
                  + "_d_model_" + opt.d_model \
                  + "_sigloss_" + str(bool(opt.use_sigma_loss)) \
-                 + "_pyramid_" + str(bool(opt.pyramid_loss))
+                 + "_pyramid_" + opt.pyramid_weight_list
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path
