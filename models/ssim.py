@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 from utils import params
+import torch
 
 
 def gaussian(window_size, sigma):
@@ -181,10 +182,12 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
         s_map = (sigma12 + C3) / (std1 * std2 + C3)
     else:
         s_map = sigma12 / (std1 * std2 + 0.00001)
-    s_map = torch.clamp(s_map, max=1.0)
+    # s_map = torch.clamp(s_map, max=1.0)
+    ones = torch.ones(s_map.shape, requires_grad=True)
     if apply_sig_mu_ssim:
-        return 1 - ((std2 / mu2) * s_map).mean()
-    return 1 - s_map.mean()
+        s_map = (std2 / mu2) * s_map
+        return (ones - s_map).mean()
+    return (ones - s_map).mean()
 
 
 def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):

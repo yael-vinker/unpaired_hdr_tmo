@@ -189,7 +189,7 @@ class GanTrainer:
     def update_g_d_loss(self, output_on_fake, label):
         self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
         retain_graph = False
-        if self.ssim_loss_g_factor:
+        if self.ssim_loss_g_factor or self.sigma_loss:
             retain_graph = True
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
