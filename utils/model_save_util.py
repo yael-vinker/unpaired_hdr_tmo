@@ -199,7 +199,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     input_images_path = get_hdr_source_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [0]
+    models_epoch = [340]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -242,7 +242,7 @@ def load_g_model(model_params, device, net_path):
                               model_params["last_layer"], model_params["filters"],
                               model_params["con_operator"], model_params["depth"],
                               True, True, model_params["unet_norm"], model_params["clip"])
-    checkpoint = torch.load(net_path)
+    checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     state_dict = checkpoint['modelG_state_dict']
     print("from loaded model ", list(state_dict.keys())[0])
     if "module" in list(state_dict.keys())[0]:
@@ -320,7 +320,7 @@ def save_fake_images_for_fid():
 def get_model_params(model_name):
     model_params = {"model_name": model_name, "model": params.unet_network, "filters": 32, "depth": 4,
                     "last_layer": 'sigmoid', "unet_norm": 'none', "con_operator": get_con_operator(model_name),
-                    "clip": get_clip_from_name(model_name),
+                    "clip": False,
                     "factorised_data": is_factorised_data(model_name)}
     return model_params
 
@@ -343,7 +343,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["_random_seed_False_unet_square_and_square_root_last_act_sigmoid_norm_g_none_use_f_True_coeff_1_clip_True_normalise_bugy_max_normalization_d_model_original"]
+    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_1,4,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
     return models_names
 
 

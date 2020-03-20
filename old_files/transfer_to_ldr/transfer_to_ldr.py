@@ -20,6 +20,7 @@ IMAGE_HEIGHT = 256
 
 
 def save_results(res_im, path_name):
+    print(path_name)
     matplotlib.image.imsave(path_name, res_im)
 
 
@@ -92,13 +93,18 @@ def read_hdr_img_rgb(path_name):
     :param path: .hdr extension of the wanted image path
     :return: RGB image with hdr values
     """
-    path = pathlib.Path(path_name)
-    im = imageio.imread(path, format='HDR-FI')
-    # print_image_details(im, "before : " + path_name)
-    im = skimage.exposure.rescale_intensity(im, out_range=(0, 1000))
-    im = im / 1000
-    # im = im / np.max(im)
-    return im
+
+    path_lib_path = pathlib.Path(path_name)
+    file_extension = os.path.splitext(path_name)[1]
+    if file_extension == ".hdr":
+        im = imageio.imread(path_lib_path, format="HDR-FI").astype('float32')
+    elif file_extension == ".dng":
+        im = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
+    elif file_extension == ".exr":
+        im = imageio.imread(path_lib_path, format="EXR-FI").astype('float32')
+    else:
+        raise Exception('invalid hdr file format: {}'.format(file_extension))
+    return im / np.max(im)
     # im = img_as_float(cv2.imread(path, -1))[:, :, ::-1]  # read the hdr image as float64
     # return im  # cv2 returns gbr
 
@@ -116,7 +122,8 @@ def read_img(path):
     :return: RGB image with hdr values, scale dto the defined values
     """
     im_rgb = read_hdr_img_rgb(path)
-    return resize_image(im_rgb)
+    return im_rgb
+    # return resize_image(im_rgb)
 
 
 def log_transform(im):
@@ -241,12 +248,14 @@ def print_image_details(im, title):
 
 
 def get_window_size(im_height, im_width):
+    WINDOW_SIZE_FACTOR = min(im_height / 10, im_width / 10)
     win_height = int(im_height / WINDOW_SIZE_FACTOR)
     win_width = int(im_width / WINDOW_SIZE_FACTOR)
     if win_height % 2 == 0:
         win_height += 1
     if win_width % 2 == 0:
         win_width += 1
+    print("wind h ", win_height, "wind width ", win_width)
     return win_height, win_width
 
 
@@ -280,7 +289,7 @@ def yiq2rgb(imYIQ):
     return rgb_matrix
 
 
-def fix_high_luminance(im_log, im_rgb, output_path):
+def fix_high_luminance(im_log, im_rgb, output_path=""):
     """
 
     :param im_log: grayscale image after log transform
@@ -341,15 +350,15 @@ def fix_high_luminance(im_log, im_rgb, output_path):
             title = "max_wind = " + str(np.nanmax(true_wind)) + "\n" + "min_wind = " + str(
                 np.nanmin(true_wind)) + "\n" + "mean_wind = " + str(np.nanmean(true_wind))
 
-            draw_results(show_wind, True, "HDR", show_wind_fix, False, "NEW", title, False, True,
-                         output_path + str(pos))
+            # draw_results(show_wind, True, "HDR", show_wind_fix, False, "NEW", title, False, True,
+            #              output_path + str(pos))
 
             # plot_image_coor(show_wind)
 
-    for pos_h in hdr_points:
-        new_im[pos_h[0], pos_h[1], 0] = 1
-        new_im[pos_h[0], pos_h[1], 1] = 0
-        new_im[pos_h[0], pos_h[1], 2] = 0
+    # for pos_h in hdr_points:
+    #     new_im[pos_h[0], pos_h[1], 0] = 1
+    #     new_im[pos_h[0], pos_h[1], 1] = 0
+    #     new_im[pos_h[0], pos_h[1], 2] = 0
 
     return new_im
 
@@ -359,7 +368,7 @@ def get_file_name(path):
     return str(pre)
 
 
-def run_single(rgb_img, output_path):
+def run_single(rgb_img, output_path=""):
     # print("=============== run single =============")
     yiq_img = rgb2yiq(rgb_img)
     gray_img = np.copy(yiq_img[:, :, 0])
@@ -384,12 +393,27 @@ def run(input_path, output_path, train):
         rgb_img = read_img(im_path)
         print_image_details(rgb_img, "befor : " + img_name)
         fixed_rgb = run_single(rgb_img, output_path + get_file_name(img_name))
+        plt.imshow(fixed_rgb)
+        plt.show()
+        yiq_img = rgb2yiq(fixed_rgb)
+        gray_img = np.copy(yiq_img[:, :, 0])
+        plt.imshow(gray_img, cmap='gray')
+        plt.show()
         # plot_image_coor(fixed_rgb)
         draw_results(rgb_img, True, "origin", fixed_rgb, False, "ldr", output_path + get_file_name(img_name) + "_comp",
                      False, True)
-        save_results(fixed_rgb, output_path + get_file_name(img_name))
+        save_results(fixed_rgb, output_path + get_file_name(img_name) + ".jpg")
         print_image_details(fixed_rgb, "afrter : " + img_name)
     print("=============== finish image processing =====================")
 
 
-run("transfer_to_ldr/hdr_images_small_wrap", "transfer_to_ldr/tone_mapped/", False)
+def run_single_window_tone_map(im_path, reshape=False):
+    rgb_img = read_img(im_path)
+    fixed_rgb = run_single(rgb_img)
+    # plt.imshow(fixed_rgb)
+    # plt.show()
+    return fixed_rgb
+
+
+
+# run("/Users/yaelvinker/PycharmProjects/lab/old_files/transfer_to_ldr/hdr_im", "/Users/yaelvinker/PycharmProjects/lab/old_files/transfer_to_ldr/res/", False)

@@ -55,6 +55,7 @@ def parse_arguments():
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=1)
+    parser.add_argument('--window_tm_data', type=int, default=1)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -105,15 +106,21 @@ def create_dir(opt):
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     output_dir = result_dir_pref \
-                 + "_" + model_name + "_" + \
-                 con_operator + "_last_act_" + opt.last_layer \
-                 + "_use_f_" + str(bool(opt.use_factorise_data)) \
-                 + "_use_gamma_" + str(bool(opt.use_factorise_gamma_data)) \
-                 + "_coeff_" + str(opt.factor_coeff) \
-                 + "_clip_" + str(bool(opt.add_clipping)) \
+                 + "_" + model_name + "_" + con_operator \
                  + "_d_model_" + opt.d_model \
-                 + "_sigloss_" + str(bool(opt.use_sigma_loss)) \
-                 + "_pyramid_" + opt.pyramid_weight_list
+                 + "_ssim_" + str(opt.ssim_loss_factor)
+    if opt.pyramid_loss:
+        output_dir = output_dir + "_pyramid_" + opt.pyramid_weight_list
+    output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)
+    if opt.window_tm_data:
+        output_dir = output_dir + "_window_tm_data"
+    else:
+        output_dir = output_dir + "_use_f_" + str(bool(opt.use_factorise_data)) \
+                 + "_coeff_" + str(opt.factor_coeff) \
+                 + "_gamma_input_" + str(bool(opt.use_factorise_gamma_data))
+
+
+
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path

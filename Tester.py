@@ -47,7 +47,8 @@ class Tester:
             im_path = os.path.join(root, img_name)
             rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, self.args.use_factorise_data,
                                                                       self.args.use_factorise_gamma_data,
-                                                                      self.args.factor_coeff, reshape=True)
+                                                                      self.args.factor_coeff, reshape=True,
+                                                                      window_tone_map=self.args.window_tm_data)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
