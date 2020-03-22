@@ -82,11 +82,6 @@ def get_brightness_factor(im_hdr):
             f = f * 1.01
         else:
             if r > 1 / big:
-                im_hdr = im_hdr * f
-                im_hdr[(im_hdr > 255) != 0] = 255
-                tmp = im_hdr.astype('uint8')
-                plt.imshow(tmp, cmap='gray')
-                plt.show()
                 return f
     return f
 
@@ -125,7 +120,7 @@ def to_minus1_1_range(im):
 def back_to_color(im_hdr, fake):
     fake = to_0_1_range(fake)
     if np.min(im_hdr) < 0:
-        im_hdr = im_hdr - np.min(im_hdr)
+        im_hdr = im_hdr + np.abs(np.min(im_hdr))
     im_gray_ = to_gray(im_hdr)
     norm_im = np.zeros(im_hdr.shape)
     norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)

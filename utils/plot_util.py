@@ -11,8 +11,9 @@ def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D
                         use_g_ssim_loss):
     if use_g_ssim_loss or use_g_d_loss:
         plt.figure()
-        plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
-        plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+        if len(loss_D_fake) != 0 and len(loss_D_real) != 0:
+            plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+            plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
         if use_g_d_loss:
             plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
         if use_g_ssim_loss:
@@ -28,8 +29,9 @@ def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D
         plt.close()
 
     plt.figure()
-    plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
-    plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+    if len(loss_D_fake) != 0 and len(loss_D_real) != 0:
+        plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+        plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
     if use_g_d_loss:
         plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
 

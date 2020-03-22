@@ -91,7 +91,7 @@ def save_brightness_factor_for_image(input_dir, output_dir, old_f, isLdr):
         else:
             rgb_img = hdr_image_util.read_hdr_image(im_path)
         if np.min(rgb_img) < 0:
-            rgb_img = rgb_img - np.min(rgb_img)
+            rgb_img = rgb_img + np.abs(np.min(rgb_img))
         else:
             print("not neg")
         rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 2),
@@ -170,7 +170,7 @@ def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, facto
     else:
         rgb_img = hdr_image_util.read_hdr_image(im_path)
         if np.min(rgb_img) < 0:
-            rgb_img = rgb_img + np.min(rgb_img)
+            rgb_img = rgb_img + np.abs(np.min(rgb_img))
         if reshape:
             rgb_img = hdr_image_util.reshape_image(rgb_img)
         gray_im = hdr_image_util.to_gray(rgb_img)
@@ -192,7 +192,7 @@ def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, facto
 def hdr_preprocess_gamma(im_path, use_factorised_data, factor_coeff, reshape=False):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
-        rgb_img = rgb_img + np.min(rgb_img)
+        rgb_img = rgb_img + np.abs(np.min(rgb_img))
     if reshape:
         rgb_img = hdr_image_util.reshape_image(rgb_img)
     gray_im = hdr_image_util.to_gray(rgb_img)
@@ -235,7 +235,7 @@ def apply_preprocess_for_hdr(im_path, args):
 def apply_window_tone_map_for_hdr(im_path, args=""):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
-        rgb_img = rgb_img + np.min(rgb_img)
+        rgb_img = rgb_img + np.abs(np.min(rgb_img))
     import old_files.transfer_to_ldr.transfer_to_ldr as run_window_tone_map
     rgb_im_tone_map = run_window_tone_map.run_single_window_tone_map(im_path, reshape=False)
     gray_im = hdr_image_util.to_gray(rgb_im_tone_map)
@@ -250,7 +250,7 @@ def create_data(args):
         if args.isLdr:
             rgb_img, gray_im = apply_preprocess_for_ldr(im_path)
         else:
-            if args.window_tone_map:
+            if args.window_tm_data:
                 rgb_img, gray_im = apply_window_tone_map_for_hdr(im_path, args)
                 rgb_img = transforms_.image_transform_no_norm(rgb_img)
                 gray_im = transforms_.image_transform_no_norm(gray_im)
@@ -267,13 +267,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data")
-    parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/window_res")
+    parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/")
     parser.add_argument("--isLdr", type=int, default=0)
-    parser.add_argument("--number_of_images", type=int, default=3)
-    parser.add_argument("--use_factorise_data", type=int, default=0)  # bool
-    parser.add_argument("--factor_coeff", type=float, default=0.0)
+    parser.add_argument("--number_of_images", type=int, default=7)
+    parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
+    parser.add_argument("--factor_coeff", type=float, default=1.0)
     parser.add_argument("--use_normalization", help='if to change range to [-1, 1]', type=int, default=0)
-    parser.add_argument("--window_tm_data", type=int, default=1)
+    parser.add_argument("--window_tm_data", type=int, default=0)
 
     args = parser.parse_args()
     if args.isLdr:
@@ -288,8 +288,8 @@ if __name__ == '__main__':
     args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
-    create_data(args)
-    # print_result(args.output_dir)
+    # create_data(args)
+    print_result(args.output_dir)
 
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",

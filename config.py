@@ -42,7 +42,8 @@ def parse_arguments():
     parser.add_argument('--ssim_compare_to', type=str, default="original")
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--use_c3_in_ssim', type=int, default=1)
-    parser.add_argument('--apply_sig_mu_ssim', type=int, default=1)
+    parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
+    parser.add_argument('--train_with_D', type=int, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -55,7 +56,7 @@ def parse_arguments():
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=1)
-    parser.add_argument('--window_tm_data', type=int, default=1)
+    parser.add_argument('--window_tm_data', type=int, default=0)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -101,6 +102,8 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if not opt.train_with_D:
+        result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
     if opt.apply_sig_mu_ssim:

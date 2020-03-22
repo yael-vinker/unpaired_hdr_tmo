@@ -162,7 +162,6 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
 
 
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, apply_sig_mu_ssim):
-
     window = window / window.sum()
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
@@ -182,8 +181,9 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
         s_map = (sigma12 + C3) / (std1 * std2 + C3)
     else:
         s_map = sigma12 / (std1 * std2 + 0.00001)
-    # s_map = torch.clamp(s_map, max=1.0)
     ones = torch.ones(s_map.shape, requires_grad=True)
+    if torch.cuda.is_available():
+        ones = ones.cuda()
     if apply_sig_mu_ssim:
         s_map = (std2 / mu2) * s_map
         return (ones - s_map).mean()

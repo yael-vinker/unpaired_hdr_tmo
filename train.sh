@@ -32,6 +32,8 @@ echo "d_norm ${27}"
 echo "use_sigma_loss ${28}"
 echo "use_c3_in_ssim ${29}"
 echo "milestones ${30}"
+echo "loss_g_d_factor ${31}"
+echo "train_with_D ${32}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -64,4 +66,6 @@ python3.6 -W ignore -u main_train.py \
   --d_norm ${27} \
   --use_sigma_loss ${28} \
   --use_c3_in_ssim ${29} \
-  --milestones ${30}
+  --milestones ${30} \
+  --loss_g_d_factor ${31} \
+  --train_with_D ${32}

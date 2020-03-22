@@ -19,6 +19,7 @@ def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, norma
     :param b_size: batch size
     :return: DataLoader object of images in "dir_root"
     """
+    print("loading hdr train data from ", train_root_npy)
     train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, addFrame=addFrame, hdrMode=True,
                                          normalization=normalization, use_c3=use_c3)
     train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, addFrame=addFrame, hdrMode=False,

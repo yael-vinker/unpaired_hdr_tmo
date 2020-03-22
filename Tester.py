@@ -58,6 +58,11 @@ class Tester:
                                         'epoch': 0})
             # if counter == 1 or counter == 2:
             #     self.get_test_image_special_factor(im_path, original_hdr_images, counter)
+
+            # plt.imshow(gray_im_log.clone().permute(1, 2, 0).detach().cpu().squeeze().numpy(), cmap='gray')
+            # title = "max %.4f min %.4f mean %.4f" % (gray_im_log.max().item(),gray_im_log.min().item(), gray_im_log.mean().item())
+            # plt.title(title, fontSize=8)
+            # plt.show()
             counter += 1
         return original_hdr_images
 
@@ -162,8 +167,8 @@ class Tester:
         plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
-        self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
-                              test_real_first_b, fake, test_hdr_batch_image, epoch)
+        # self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
+        #                       test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
