@@ -766,13 +766,131 @@ def f_gamma_test(im_path):
     plt.show()
     return rgb_img, gray_im_gamma
 
+def struct_loss_res(path):
+    import sys
+    import inspect
+    import os
+    current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    parent_dir = os.path.dirname(current_dir)
+    sys.path.insert(0, parent_dir)
+    import torch.optim as optim
+    import tranforms as my_transforms
+
+    ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=5, use_c3=False,
+                                     apply_sig_mu_ssim=False)
+
+    hdr_im = imageio.imread(path, format="HDR-FI").astype('float32')
+    if np.min(hdr_im) < 0:
+        hdr_im = hdr_im + np.abs(np.min(hdr_im))
+    hdr_im = hdr_image_util.to_gray(hdr_im)
+    hdr_im = my_transforms.image_transform_no_norm(hdr_im)
+    print(hdr_im.shape, hdr_im.max(), hdr_im.min())
+    hdr_im = hdr_im[None, :, :, :]
+    hdr_im_numpy = hdr_im[0].permute(1, 2, 0).detach().cpu().numpy()
+    # im = (im - np.min(im)) / (np.max(im) - np.min(im))
+    # im = (im * 255).astype('uint8')
+    # imageio.imwrite("/Users/yaelvinker/PycharmProjects/lab/utils/original_im.png", im)
+
+    img2 = torch.FloatTensor(hdr_im.size()).uniform_(0, 1)
+    img1 = Variable(hdr_im, requires_grad=False)
+    img2 = Variable(img2, requires_grad=True)
+
+    optimizer = optim.Adam([img2], lr=0.01)
+
+    i = 0
+    img_list = []
+    img_list2 = []
+    ssim_value = ssim_loss(img1, img2).item()
+    print("Initial ssim:", ssim_value)
+    while ssim_value > 0.0002:
+        if i % 1000 == 0:
+            im = img2[0].permute(1, 2, 0).detach().cpu().numpy()
+            sub = im - hdr_im_numpy
+            print("sub",sub.shape, sub.max(), sub.min())
+            data = {'sub': sub}
+            np.save("/Users/yaelvinker/PycharmProjects/lab/utils/sub.npy", data)
+            imageio.imwrite("/Users/yaelvinker/PycharmProjects/lab/utils/sub.png", im)
+            print(ssim_value)
+            print("im",im.shape, im.max(), im.min())
+            im = (im - np.min(im)) / (np.max(im) - np.min(im))
+            im = (im * 255).astype('uint8')
+            img_list2.append(im)
+            imageio.imwrite("/Users/yaelvinker/PycharmProjects/lab/utils/res.png", im)
+
+        optimizer.zero_grad()
+        ssim_out = ssim_loss(img1, img2)
+        ssim_value = ssim_out.item()
+        ssim_out.backward()
+        optimizer.step()
+        i += 1
+    imageio.mimsave("/Users/yaelvinker/PycharmProjects/lab/utils/res.gif", img_list2, fps=5)
+
+def sub_test():
+    import tranforms as my_transforms
+    hdr_im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr", format="HDR-FI").astype('float32')
+    hdr_im = hdr_image_util.to_gray(hdr_im)
+
+    hdr_im = my_transforms.image_transform_no_norm(hdr_im)
+
+    hdr_im = hdr_im[None, :, :, :]
+    hdr_im_numpy = np.squeeze(hdr_im[0].permute(1, 2, 0).detach().cpu().numpy())
+    hdr_im_numpy = (hdr_im_numpy - np.min(hdr_im_numpy)) / (np.max(hdr_im_numpy) - np.min(hdr_im_numpy))
+    print("input", hdr_im_numpy.min(), hdr_im_numpy.mean(), hdr_im_numpy.max())
+
+    plt.subplot(3,2,1)
+    plt.axis("off")
+    plt.title("input")
+    plt.imshow(hdr_im_numpy, cmap='gray')
+    plt.subplot(3, 2, 2)
+    plt.hist(hdr_im_numpy.ravel(), 256, [hdr_im_numpy.min(), hdr_im_numpy.max()])
+
+    data = np.load("/Users/yaelvinker/Downloads/output.npy", allow_pickle=True)
+    input_im = np.squeeze(data[()]["sub"])
+    print("output", input_im.min(), input_im.mean(), input_im.max())
+    # input_im = np.clip(input_im,hdr_im_numpy.min(), 256)
+    input_im = (input_im - np.min(input_im)) / (np.max(input_im) - np.min(input_im))
+
+    plt.subplot(3,2,3)
+    plt.axis("off")
+    plt.title("output")
+    plt.imshow(input_im, cmap='gray')
+    plt.subplot(3, 2, 4)
+    plt.hist(input_im.ravel(), 256, [input_im.min(), input_im.max()])
+
+
+    # res = (hdr_im_numpy) / (input_im + 0.0001)
+    res = (hdr_im_numpy) - (input_im)
+    (unique, counts) = np.unique(res, return_counts=True)
+    print((unique[counts>1]))
+    print((counts[unique>1]))
+    frequencies = np.asarray((unique, counts)).T
+    print(frequencies.shape)
+    # frequencies = np.sort(frequencies)[:2]
+
+    print(np.sort(frequencies)[0])
+    print(np.sort(frequencies)[-1])
+    print("div",res.min(), res.mean(), res.max())
+    res = np.clip(res, -0.175,1)
+    # res = (res - np.min(res)) / (np.max(res) - np.min(res))
+    # im = (im * 255).astype('uint8')
+    plt.subplot(3,2,5)
+    plt.axis("off")
+    plt.title("sub")
+    plt.imshow(res, cmap='gray')
+    plt.subplot(3, 2, 6)
+    plt.hist(res.ravel(), 256, [res.min(), res.max()])
+    plt.show()
+
+
 if __name__ == '__main__':
-    epochs = ["600", "430"]
-    im_numbers = ["8", "1", "2"]
-    for epoch in epochs:
-        for im_number in im_numbers:
-            gather_all_architectures("/cs/snapless/raananf/yael_vinker/03_17/results",
-                    "/cs/snapless/raananf/yael_vinker/03_17/arch_summary", epoch, "03_17", im_number)
+    sub_test()
+    # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    # epochs = ["600", "430"]
+    # im_numbers = ["8", "1", "2"]
+    # for epoch in epochs:
+    #     for im_number in im_numbers:
+    #         gather_all_architectures("/cs/snapless/raananf/yael_vinker/03_17/results",
+    #                 "/cs/snapless/raananf/yael_vinker/03_17/arch_summary", epoch, "03_17", im_number)
     # gather_all_architectures_accuracy("/cs/snapless/raananf/yael_vinker/03_17/results",
     #                                   "/cs/snapless/raananf/yael_vinker/03_17/arch_summary",
     #                                   "600", "03_17")

@@ -118,7 +118,7 @@ def to_minus1_1_range(im):
 
 
 def back_to_color(im_hdr, fake):
-    fake = to_0_1_range(fake)
+    # fake = to_0_1_range(fake)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr + np.abs(np.min(im_hdr))
     im_gray_ = to_gray(im_hdr)

@@ -199,7 +199,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     input_images_path = get_hdr_source_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [340]
+    models_epoch = [690]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -343,7 +343,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_1,4,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
+    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_2,4,6,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
     return models_names
 
 
@@ -376,8 +376,10 @@ def is_factorised_data(model_name):
 
 # ====== SAVE IMAGES ======
 def save_gray_tensor_as_numpy(tensor, output_path, im_name):
+    tensor = tensor.clamp(0, 1)
     tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    tensor_0_1 = np.squeeze(hdr_image_util.to_0_1_range(tensor))
+    # tensor_0_1 = np.squeeze(hdr_image_util.to_0_1_range(tensor))
+    tensor_0_1 = np.squeeze(tensor)
     im = (tensor_0_1 * 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)
@@ -385,7 +387,8 @@ def save_gray_tensor_as_numpy(tensor, output_path, im_name):
 
 
 def save_color_tensor_as_numpy(tensor, output_path, im_name):
-    tensor = hdr_image_util.to_0_1_range(tensor.clone().permute(1, 2, 0).detach().cpu().numpy())
+    # tensor = hdr_image_util.to_0_1_range(tensor.clone().permute(1, 2, 0).detach().cpu().numpy())
+    tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
     im = (tensor * 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)
