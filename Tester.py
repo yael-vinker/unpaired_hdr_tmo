@@ -22,7 +22,7 @@ class Tester:
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             data_loader_util.load_data(args.test_dataroot_npy, args.test_dataroot_ldr, args.batch_size, args.add_frame,
                                        title="test", normalization=args.normalization, use_c3=args.use_c3_in_ssim,
-                                       apply_wind_norm=args.apply_wind_norm)
+                                       apply_wind_norm=args.apply_wind_norm, device=args.device)
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0

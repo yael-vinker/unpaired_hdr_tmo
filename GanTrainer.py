@@ -75,7 +75,7 @@ class GanTrainer:
             data_loader_util.load_data(opt.data_root_npy, opt.data_root_ldr,
                                        self.batch_size, addFrame=opt.add_frame, title="train",
                                        normalization=opt.normalization, use_c3=opt.use_c3_in_ssim,
-                                       apply_wind_norm=opt.apply_wind_norm)
+                                       apply_wind_norm=opt.apply_wind_norm, device=opt.device)
         self.input_dim = opt.input_dim
         self.input_images_mean = opt.input_images_mean
         self.log_factor = opt.log_factor

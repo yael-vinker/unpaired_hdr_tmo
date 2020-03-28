@@ -2,17 +2,17 @@ import torch
 from utils import params
 
 
-def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode, normalization, use_c3, apply_wind_norm):
+def load_data_set(data_root, batch_size_, shuffle, addFrame, hdrMode, normalization, use_c3, apply_wind_norm, device):
     from utils import ProcessedDatasetFolder
     npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=data_root, addFrame=addFrame, hdrMode=hdrMode,
                                                                 normalization=normalization, use_c3=use_c3,
-                                                                apply_wind_norm=apply_wind_norm)
+                                                                apply_wind_norm=apply_wind_norm, device=device)
     dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=batch_size_,
-                                             shuffle=shuffle, num_workers=params.workers)
+                                             shuffle=shuffle, num_workers=params.workers, pin_memory=True)
     return dataloader
 
 
-def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, normalization, use_c3, apply_wind_norm):
+def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, normalization, use_c3, apply_wind_norm, device):
     from utils import printer
     """
     :param isHdr: True if images in "dir_root" are in .hdr format, False otherwise.
@@ -22,9 +22,11 @@ def load_data(train_root_npy, train_root_ldr, batch_size, addFrame, title, norma
     """
     print("loading hdr train data from ", train_root_npy)
     train_hdr_dataloader = load_data_set(train_root_npy, batch_size, shuffle=True, addFrame=addFrame, hdrMode=True,
-                                         normalization=normalization, use_c3=use_c3, apply_wind_norm=apply_wind_norm)
+                                         normalization=normalization, use_c3=use_c3, apply_wind_norm=apply_wind_norm,
+                                         device=device)
     train_ldr_dataloader = load_data_set(train_root_ldr, batch_size, shuffle=True, addFrame=addFrame, hdrMode=False,
-                                         normalization=normalization, use_c3=use_c3, apply_wind_norm=apply_wind_norm)
+                                         normalization=normalization, use_c3=use_c3, apply_wind_norm=apply_wind_norm,
+                                         device=device)
 
     printer.print_dataset_details([train_hdr_dataloader, train_ldr_dataloader],
                                   [train_root_npy, train_root_ldr],

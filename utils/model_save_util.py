@@ -422,7 +422,7 @@ def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_p
 def run_model_for_path(device, train_dataroot_npy, train_dataroot_ldr, output_path, model_path, batch_size=4):
     train_data_loader_npy, train_ldr_loader = data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
                                                                          batch_size, testMode=False, title="train",
-                                                                         apply_wind_norm=False)
+                                                                         apply_wind_norm=False, device=device)
 
     G_net = load_g_model(device, model_path)
     num_iters = 0

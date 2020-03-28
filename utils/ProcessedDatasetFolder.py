@@ -10,7 +10,7 @@ import torch.nn.functional as F
 IMG_EXTENSIONS_local = ('.npy')
 
 
-def npy_loader(path, addFrame, hdrMode, normalization, use_c3, apply_wind_norm):
+def npy_loader(path, addFrame, hdrMode, normalization, use_c3, apply_wind_norm, device):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
     :param path: image path
@@ -33,12 +33,12 @@ def npy_loader(path, addFrame, hdrMode, normalization, use_c3, apply_wind_norm):
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
         if apply_wind_norm:
-            input_im = hdr_windows_loader(5, gray_original_im_norm, input_im)
+            input_im = hdr_windows_loader(5, gray_original_im_norm, input_im, device)
         return input_im, color_im, gray_original_im_norm, gray_original_im
     return input_im, color_im, input_im, input_im
 
 
-def hdr_windows_loader(wind_size, a, b):
+def hdr_windows_loader(wind_size, a, b, device):
     """
 
     :param wind_size:
@@ -50,6 +50,10 @@ def hdr_windows_loader(wind_size, a, b):
     # hdr_image_util.print_tensor_details(b, "b")
     m = nn.ZeroPad2d(wind_size // 2)
     a, b = m(a), m(b)
+    # if not a.is_cuda and torch.cuda.is_available():
+    #     a = a.cuda()
+    # if not b.is_cuda and torch.cuda.is_available():
+    #     b = b.cuda()
     # a, b = data_loader_util.add_frame_to_im(a), data_loader_util.add_frame_to_im(b)
     a, b = torch.unsqueeze(a, dim=0), torch.unsqueeze(b, dim=0)
     windows = a.unfold(dimension=2, size=5, step=1)
@@ -57,7 +61,7 @@ def hdr_windows_loader(wind_size, a, b):
     windows = windows.reshape(windows.shape[0], windows.shape[1],
                               windows.shape[2], windows.shape[3],
                               wind_size * wind_size)
-    window = torch.ones((1, 1, wind_size, wind_size))
+    window = torch.ones((1, 1, wind_size, wind_size)).to(device)
     window = window / window.sum()
     mu1 = F.conv2d(a, window, padding=0, groups=1)
     mu2 = F.conv2d(b, window, padding=0, groups=1)
@@ -99,7 +103,7 @@ class ProcessedDatasetFolder(DatasetFolder):
     """
 
     def __init__(self, root, addFrame, hdrMode, normalization, transform=None, target_transform=None,
-                 loader=npy_loader, use_c3=False, apply_wind_norm=False):
+                 loader=npy_loader, use_c3=False, apply_wind_norm=False, device=torch.device("cpu")):
         super(ProcessedDatasetFolder, self).__init__(root, loader, IMG_EXTENSIONS_local,
                                                      transform=transform,
                                                      target_transform=target_transform)
@@ -109,6 +113,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.normalization = normalization
         self.use_c3 = use_c3
         self.apply_wind_norm = apply_wind_norm
+        self.device = device
 
     def __getitem__(self, index):
         """
@@ -122,7 +127,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         # if self.test_mode:
         # input_im, color_im = self.loader(path, self.test_mode)
         input_im, color_im, gray_original_norm, gray_original = self.loader(path, self.addFrame, self.hdrMode,
-                                                        self.normalization, self.use_c3, self.apply_wind_norm)
+                                                        self.normalization, self.use_c3, self.apply_wind_norm, self.device)
         return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm, "original_gray": gray_original}
         # else:
         #     input_im = self.loader(path, self.test_mode)
