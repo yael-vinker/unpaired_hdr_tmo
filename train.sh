@@ -12,7 +12,6 @@ echo "con_operator $7"
 echo "use_xaviar $8"
 echo "ssim_loss_factor $9"
 echo "pyramid_weight_list ${10}"
-echo "pyramid_pow ${23}"
 echo "data_root_npy ${11}"
 echo "data_root_ldr ${12}"
 echo "test_dataroot_npy ${13}"
@@ -25,6 +24,7 @@ echo "add_clipping ${19}"
 echo "use_normalization ${20}"
 echo "normalization ${21}"
 echo "last_layer ${22}"
+echo "pyramid_pow ${23}"
 echo "d_model ${24}"
 echo "d_down_dim ${25}"
 echo "pyramid_loss ${26}"
@@ -34,6 +34,9 @@ echo "use_c3_in_ssim ${29}"
 echo "milestones ${30}"
 echo "loss_g_d_factor ${31}"
 echo "train_with_D ${32}"
+echo "add_frame ${33}"
+echo "input_dim ${34}"
+echo "apply_wind_norm ${35}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -68,4 +71,7 @@ python3.6 -W ignore -u main_train.py \
   --use_c3_in_ssim ${29} \
   --milestones ${30} \
   --loss_g_d_factor ${31} \
-  --train_with_D ${32}
+  --train_with_D ${32} \
+  --add_frame ${33} \
+  --input_dim ${34} \
+  --apply_wind_norm ${35}

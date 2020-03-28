@@ -52,15 +52,17 @@ def parse_arguments():
     parser.add_argument("--test_dataroot_original_hdr", type=str, default=params.test_dataroot_original_hdr)
     parser.add_argument("--test_dataroot_ldr", type=str, default=params.test_dataroot_ldr)
     parser.add_argument("--input_dim", type=int, default=1)
+    parser.add_argument("--output_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=1)
     parser.add_argument('--window_tm_data', type=int, default=0)
+    parser.add_argument('--apply_wind_norm', type=int, default=0)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
-    parser.add_argument("--add_clipping", type=int, default=1)  # int(False) = 0
+    parser.add_argument("--add_clipping", type=int, default=0)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
     parser.add_argument("--normalization", type=str, default='bugy_max_normalization', help='max/min_max')
@@ -106,6 +108,8 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+    if opt.apply_wind_norm:
+        result_dir_pref = result_dir_pref + "apply_wind_norm_"
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     output_dir = result_dir_pref \
