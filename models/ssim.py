@@ -180,7 +180,7 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
         C3 = 0.03 ** 2 / 2
         s_map = (sigma12 + C3) / (std1 * std2 + C3)
     else:
-        s_map = sigma12 / (std1 * std2 + 0.00001)
+        s_map = sigma12 / (std1 * std2 + 0.0001)
     ones = torch.ones(s_map.shape, requires_grad=True)
     if torch.cuda.is_available():
         ones = ones.cuda()
@@ -203,7 +203,7 @@ def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
 
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
-    std2_normalise = std2 / mu2
+    std2_normalise = std2 / (torch.max(mu2, torch.zeros_like(sigma2_sq) + params.epsilon))
     std2_normalise = torch.pow(std2_normalise, 0.8)
     # std2 = torch.pow(std2, 0.85)
     return mse_loss(std1, std2_normalise)

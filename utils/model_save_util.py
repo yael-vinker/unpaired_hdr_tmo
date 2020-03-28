@@ -67,22 +67,21 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, use_pyramid_loss, unet_norm, add_clipping, normalization, use_xaviar):
+                 add_frame, use_pyramid_loss, unet_norm, add_clipping, normalization, use_xaviar, output_dim):
     # Create the Generator (UNet architecture)
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor,
-                                 con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
-                                 to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping, normalization=normalization).to(device_)
+        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
+                                 layer_factor=layer_factor, con_operator=con_operator, filters=filters,
+                                 bilinear=False, network=model, dilation=0, to_crop=add_frame,
+                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm, add_clipping=add_clipping,
+                                 normalization=normalization).to(device_)
     elif model == params.torus_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor,
-                                 con_operator=con_operator, filters=filters, bilinear=False,
-                                 network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
-                                 add_clipping=add_clipping, normalization=normalization).to(device_)
+        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
+                                 layer_factor=layer_factor, con_operator=con_operator, filters=filters,
+                                 bilinear=False, network=params.torus_network, dilation=2, to_crop=add_frame,
+                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm, add_clipping=add_clipping,
+                                 normalization=normalization).to(device_)
     else:
         assert 0, "Unsupported g model request: {}".format(model)
 
@@ -260,16 +259,16 @@ def load_g_model(model_params, device, net_path):
 
 
 def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, use_pyramid_loss, unet_norm, add_clipping):
+                 add_frame, use_pyramid_loss, unet_norm, add_clipping, output_dim=1):
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
+        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
                                  to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
                                  add_clipping=add_clipping, normalization='max_normalization').to(device_)
     elif model == params.torus_network:
-        new_net = Generator.UNet(input_dim_, input_dim_, last_layer, depth=unet_depth_,
+        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False,
                                  network=params.torus_network, dilation=2, to_crop=add_frame,
@@ -422,7 +421,8 @@ def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_p
 
 def run_model_for_path(device, train_dataroot_npy, train_dataroot_ldr, output_path, model_path, batch_size=4):
     train_data_loader_npy, train_ldr_loader = data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
-                                                                         batch_size, testMode=False, title="train")
+                                                                         batch_size, testMode=False, title="train",
+                                                                         apply_wind_norm=False)
 
     G_net = load_g_model(device, model_path)
     num_iters = 0

@@ -881,9 +881,124 @@ def sub_test():
     plt.hist(res.ravel(), 256, [res.min(), res.max()])
     plt.show()
 
+def create_window(window_size=5, channel=1):
+    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+    print(window)
+    return window
+
+def normalization_test():
+    from torch import nn
+    from data_generator import create_dng_npy_data
+    import tranforms
+    import utils.data_loader_util as data_loader_util
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/synagogue.npy", allow_pickle=True)
+    # input_im = data[()]["input_image"]
+    # color_im = data[()]["display_image"]
+    im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, 1,
+                                                              1,
+                                                              1, reshape=True,
+                                                              window_tone_map=0)
+    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    input_im = gray_im_log
+    gray_original_im = hdr_image_util.to_gray_tensor(rgb_img)
+    gray_original_im_norm = gray_original_im / gray_original_im.max()
+    print(torch.isnan(gray_original_im_norm).any())
+    wind_size = 5
+    # input_im = data_loader_util.add_frame_to_im(input_im)
+    # gray_original_im_norm = data_loader_util.add_frame_to_im(gray_original_im_norm)
+    m = nn.ZeroPad2d(wind_size // 2)
+    input_im = m(input_im)
+    gray_original_im_norm = m(gray_original_im_norm)
+    hdr_image_util.print_tensor_details(input_im, "input_im")
+    hdr_image_util.print_tensor_details(gray_original_im_norm, "gray_original_im_norm")
+
+    b = torch.unsqueeze(input_im, dim=0)
+    b_wind = b[:, :, 0:5, 0:5]
+    a = torch.unsqueeze(gray_original_im_norm, dim=0)
+    a_wind = a[:, :, 0:5, 0:5]
+
+    # a = torch.rand((1, 1, 20, 20))
+    windows = a.unfold(dimension=2, size=5, step=1)
+    windows = windows.unfold(dimension=3, size=5, step=1)
+    windows = windows.reshape(windows.shape[0], windows.shape[1],
+                              windows.shape[2], windows.shape[3],
+                              wind_size * wind_size)
+
+
+    # window = create_window()
+    window = torch.ones((1,1,5,5))
+    window = window / window.sum()
+    mu1 = F.conv2d(a, window, padding=0, groups=1)
+    print(torch.isnan(mu1).any())
+    mu2 = F.conv2d(b, window, padding=0, groups=1)
+    print(torch.isnan(mu2).any())
+    # print("mu1", mu1[0,0,100,100], torch.mean(a_wind))
+    # print("mu2", mu2[0,0,100,100], torch.mean(b_wind))
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+
+    sigma1_sq = F.conv2d(a * a, window, padding=0, groups=1) - mu1_sq
+    print(torch.isnan(sigma1_sq).any())
+    sigma2_sq = F.conv2d(b * b, window, padding=0, groups=1) - mu2_sq
+    print(torch.isnan(sigma2_sq).any())
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
+    print(torch.isnan(std1).any())
+    std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
+    print(torch.isnan(std2).any())
+    norm_std2 = std2 / (torch.max(mu2, torch.zeros_like(sigma1_sq)) + params.epsilon)
+    # std2_normalise = std2 / torch.max(sigma1_sq, torch.zeros_like(sigma1_sq) + params.epsilon)
+    # # std2_normalise = torch.pow(std2_normalise, 0.8)
+    # std2_normalise = torch.pow((std2 / mu2), 0.8)
+
+    compressed_std = torch.pow(norm_std2, 0.8)
+    print("\ntarget mu", mu2[0, 0, 100, 100])
+    print("target std", compressed_std[0, 0, 100, 100])
+    print(torch.isnan(compressed_std).any())
+    # print("\nstd1", std1[0,0,100,100], torch.std(a_wind))
+    # print("compressed_std", compressed_std[0,0,100,100], torch.std(b_wind))
+
+
+    mu1 = mu1.unsqueeze(dim=4)
+    std1 = std1.unsqueeze(dim=4)
+    mu1 = mu1.expand(-1, -1, -1, -1, wind_size * wind_size)
+    std1 = std1.expand(-1, -1, -1, -1, wind_size * wind_size)
+    windows = windows - mu1
+    windows = windows / (std1 + params.epsilon)
+    print(torch.isnan(windows).any())
+
+    # print("\nmu1", torch.mean(windows[0, 0, 0, 0]))
+    # print("std1", torch.std(windows[0, 0, 0, 0]))
+
+    mu2 = mu2.unsqueeze(dim=4)
+    compressed_std = compressed_std.unsqueeze(dim=4)
+    mu2 = mu2.expand(-1, -1, -1, -1, 25)
+    compressed_std = compressed_std.expand(-1, -1, -1, -1, 25)
+    windows = windows * compressed_std
+    windows = windows + mu2
+    # print("\nmu1", torch.mean(windows[0, 0, 100,100]))
+    # print("std1", torch.std(windows[0, 0, 100,100]))
+    print(windows.shape)
+    print("\nres mu", torch.mean(windows[0, 0, 100, 100]))
+    print("res std", torch.std(windows[0, 0, 100, 100]))
+    windows = windows.permute(0, 4, 2, 3, 1)
+    # print(windows.shape)
+    windows = windows.squeeze(dim=4)
+    # print(windows.shape)
+    # hdr_image_util.print_tensor_details(windows, "b")
+    print(torch.isnan(windows).any())
+
+
+
+
+
+
 
 if __name__ == '__main__':
-    sub_test()
+    normalization_test()
+    # sub_test()
     # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
     # epochs = ["600", "430"]
     # im_numbers = ["8", "1", "2"]

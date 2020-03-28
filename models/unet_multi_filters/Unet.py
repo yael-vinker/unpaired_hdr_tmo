@@ -5,7 +5,7 @@ from models import Blocks
 import utils.printer
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, last_layer, depth, layer_factor, con_operator, filters, bilinear,
+    def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
                  network, dilation, to_crop, use_pyramid_loss, unet_norm, add_clipping, normalization):
         super(UNet, self).__init__()
         self.use_pyramid_loss = use_pyramid_loss
@@ -39,7 +39,7 @@ class UNet(nn.Module):
             ch = ch // 2
             if network == params.torus_network:
                 dilation = dilation // 2
-        self.outc = outconv(down_ch, n_classes)
+        self.outc = outconv(down_ch, output_dim)
         # self.exp = Blocks.Exp()
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
@@ -51,8 +51,6 @@ class UNet(nn.Module):
             self.clip = Blocks.Clip()
         else:
             self.clip = None
-
-
 
     def forward(self, x):
         next_x = self.inc(x)

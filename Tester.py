@@ -13,6 +13,7 @@ import utils.hdr_image_util as hdr_image_util
 import utils.image_quality_assessment_util as image_quality_assessment_util
 import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
+from utils.ProcessedDatasetFolder import hdr_windows_loader
 
 class Tester:
     def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
@@ -20,7 +21,8 @@ class Tester:
         self.to_crop = args.add_frame
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             data_loader_util.load_data(args.test_dataroot_npy, args.test_dataroot_ldr, args.batch_size, args.add_frame,
-                                       title="test", normalization=args.normalization, use_c3=args.use_c3_in_ssim)
+                                       title="test", normalization=args.normalization, use_c3=args.use_c3_in_ssim,
+                                       apply_wind_norm=args.apply_wind_norm)
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
@@ -36,9 +38,8 @@ class Tester:
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
         self.clip_transform = custom_transform.Clip()
-        # import models.Blocks
-        # self.max_normalization = models.Blocks.MaxNormalization()
-        # self.min_max_normalization = models.Blocks.MinMaxNormalization()
+        self.apply_wind_norm = args.apply_wind_norm
+        self.wind_size = args.ssim_window_size
 
     def load_original_test_hdr_images(self, root):
         original_hdr_images = []
@@ -162,9 +163,9 @@ class Tester:
         printer.print_g_progress_tensor(fake, "from test res")
         test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
         printer.print_g_progress_tensor(test_real_batch_frame, "ldr from test")
-        fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
-        printer.print_g_progress_tensor(fake_ldr, "fake ldr from test")
-        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr,
+        # fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
+        # printer.print_g_progress_tensor(fake_ldr, "fake ldr from test")
+        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
         # self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
@@ -198,6 +199,11 @@ class Tester:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
+                if self.apply_wind_norm:
+                    gray_original_im = hdr_image_util.to_gray_tensor(im_hdr_original)
+                    gray_original_im_norm = gray_original_im / gray_original_im.max()
+                    im_log_normalize_tensor = hdr_windows_loader(self.wind_size, gray_original_im_norm,
+                                                                 im_log_normalize_tensor)
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)

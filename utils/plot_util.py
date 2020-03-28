@@ -114,7 +114,8 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
 
 def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_dir, batch_size, epoch, image_mean):
     test_ldr_batch = test_real_batch["input_im"]
-    test_hdr_image = test_hdr_batch["input_im"]
+    # test_hdr_image = test_hdr_batch["input_im"]
+    test_hdr_image = test_hdr_batch["original_gray_norm"]
     output_len = int(batch_size / 4)
     display_group = [test_ldr_batch, fake_ldr, test_hdr_image, fake]
     titles = ["Real (LDR) Images", "G(LDR)", "Input (HDR) Images", "Fake Images"]
