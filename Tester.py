@@ -203,7 +203,7 @@ class Tester:
                     gray_original_im = hdr_image_util.to_gray_tensor(im_hdr_original)
                     gray_original_im_norm = gray_original_im / gray_original_im.max()
                     im_log_normalize_tensor = hdr_windows_loader(self.wind_size, gray_original_im_norm,
-                                                                 im_log_normalize_tensor)
+                                                                 im_log_normalize_tensor, self.device)
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)

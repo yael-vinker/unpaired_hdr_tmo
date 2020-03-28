@@ -46,23 +46,22 @@ def hdr_windows_loader(wind_size, a, b, device):
     :param b: target_im
     :return:
     """
-    # hdr_image_util.print_tensor_details(a, "a")
-    # hdr_image_util.print_tensor_details(b, "b")
     m = nn.ZeroPad2d(wind_size // 2)
     a, b = m(a), m(b)
-    # if not a.is_cuda and torch.cuda.is_available():
-    #     a = a.cuda()
-    # if not b.is_cuda and torch.cuda.is_available():
-    #     b = b.cuda()
-    # a, b = data_loader_util.add_frame_to_im(a), data_loader_util.add_frame_to_im(b)
     a, b = torch.unsqueeze(a, dim=0), torch.unsqueeze(b, dim=0)
     windows = a.unfold(dimension=2, size=5, step=1)
     windows = windows.unfold(dimension=3, size=5, step=1)
     windows = windows.reshape(windows.shape[0], windows.shape[1],
                               windows.shape[2], windows.shape[3],
                               wind_size * wind_size)
-    window = torch.ones((1, 1, wind_size, wind_size)).to(device)
+    window = torch.ones((1, 1, wind_size, wind_size))
     window = window / window.sum()
+    if a.is_cuda:
+        window = window.cuda(a.get_device())
+        if not b.is_cuda:
+            b = b.cuda(a.get_device())
+    b = b.type_as(a)
+    window = window.type_as(a)
     mu1 = F.conv2d(a, window, padding=0, groups=1)
     mu2 = F.conv2d(b, window, padding=0, groups=1)
     mu1_sq = mu1.pow(2)
@@ -73,8 +72,7 @@ def hdr_windows_loader(wind_size, a, b, device):
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon, 0.5)
     norm_std2 = std2 / (torch.max(mu2, torch.zeros_like(sigma1_sq)) + params.epsilon)
     compressed_std = torch.pow(norm_std2, 0.8)
-    # print("\ntarget mu", mu2[0, 0, 100, 100])
-    # print("target std", compressed_std[0, 0, 100, 100])
+    print("\ntarget mu", mu2[0, 0, 100, 100], " target std", compressed_std[0, 0, 100, 100])
     mu1, std1 = mu1.unsqueeze(dim=4), std1.unsqueeze(dim=4)
     mu1 = mu1.expand(-1, -1, -1, -1, wind_size * wind_size)
     std1 = std1.expand(-1, -1, -1, -1, wind_size * wind_size)
@@ -84,8 +82,7 @@ def hdr_windows_loader(wind_size, a, b, device):
     mu2, compressed_std = mu2.expand(-1, -1, -1, -1, 25), compressed_std.expand(-1, -1, -1, -1, 25)
     windows = windows * compressed_std
     windows = windows + mu2
-    # print("\nres mu", torch.mean(windows[0, 0, 100, 100]))
-    # print("res std", torch.std(windows[0, 0, 100, 100]))
+    print("\nres mu", torch.mean(windows[0, 0, 100, 100])," res std", torch.std(windows[0, 0, 100, 100]))
     windows = windows.permute(0, 4, 2, 3, 1)
     windows = windows.squeeze(dim=4)
     windows = windows.squeeze(dim=0)
