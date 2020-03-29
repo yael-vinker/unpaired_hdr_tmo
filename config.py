@@ -59,6 +59,8 @@ def parse_arguments():
     parser.add_argument('--factor_coeff', type=float, default=1)
     parser.add_argument('--window_tm_data', type=int, default=0)
     parser.add_argument('--apply_wind_norm', type=int, default=0)
+    parser.add_argument('--std_norm_factor', type=float, default=0.8)
+    parser.add_argument('--wind_norm_option', type=str, default="a")
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -80,24 +82,49 @@ def get_opt():
     opt = parse_arguments()
     if opt.change_random_seed:
         manualSeed = random.randint(1, 10000)
-        # np.random.seed(manualSeed)
-        # random.seed(manualSeed)
     else:
         manualSeed = params.manualSeed
     torch.manual_seed(manualSeed)
     opt.manual_seed = manualSeed
+    opt = define_dirs(opt)
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    opt.device = device
+    opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
+    opt.milestones = [int(item) for item in opt.milestones.split(',')]
+    opt.dataset_properties = get_dataset_properties(opt)
+    return opt
+
+
+def define_dirs(opt):
     opt.data_root_npy = os.path.join(opt.data_root_npy)
     opt.data_root_ldr = os.path.join(opt.data_root_ldr)
     opt.test_data_root_npy = os.path.join(opt.test_dataroot_npy)
     opt.test_data_root_ldr = os.path.join(opt.test_dataroot_ldr)
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # device = torch.device("cpu")
-    opt.device = device
-
     opt.output_dir = create_dir(opt)
-    opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
-    opt.milestones = [int(item) for item in opt.milestones.split(',')]
     return opt
+
+
+def get_dataset_properties(opt):
+    dataset_properties = {"train_root_npy": opt.data_root_npy,
+                          "train_root_ldr": opt.data_root_ldr,
+                          "test_dataroot_npy": opt.test_dataroot_npy,
+                          "test_dataroot_original_hdr": opt.test_dataroot_original_hdr,
+                          "test_dataroot_ldr": opt.test_dataroot_ldr,
+                          "input_dim": opt.input_dim,
+                          "output_dim": opt.output_dim,
+                          "input_images_mean": opt.input_images_mean,
+                          "use_factorise_data": opt.use_factorise_data,
+                          "use_factorise_gamma_data": opt.use_factorise_gamma_data,
+                          "factor_coeff": opt.factor_coeff,
+                          "window_tm_data": opt.window_tm_data,
+                          "apply_wind_norm": opt.apply_wind_norm,
+                          "std_norm_factor": opt.std_norm_factor,
+                          "add_frame": opt.add_frame,
+                          "batch_size": opt.batch_size,
+                          "normalization": opt.normalization,
+                          "use_c3": opt.use_c3_in_ssim,
+                          "wind_norm_option": opt.wind_norm_option}
+    return dataset_properties
 
 
 def create_dir(opt):
@@ -109,7 +136,7 @@ def create_dir(opt):
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
     if opt.apply_wind_norm:
-        result_dir_pref = result_dir_pref + "apply_wind_norm_"
+        result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     output_dir = result_dir_pref \

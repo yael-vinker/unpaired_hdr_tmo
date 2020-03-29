@@ -13,16 +13,15 @@ import utils.hdr_image_util as hdr_image_util
 import utils.image_quality_assessment_util as image_quality_assessment_util
 import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
-from utils.ProcessedDatasetFolder import hdr_windows_loader
+from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
+    hdr_windows_loader_c, hdr_windows_loader_d
 
 class Tester:
     def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
         self.args = args
         self.to_crop = args.add_frame
         self.test_data_loader_npy, self.test_data_loader_ldr = \
-            data_loader_util.load_data(args.test_dataroot_npy, args.test_dataroot_ldr, args.batch_size, args.add_frame,
-                                       title="test", normalization=args.normalization, use_c3=args.use_c3_in_ssim,
-                                       apply_wind_norm=args.apply_wind_norm, device=args.device)
+            data_loader_util.load_test_data(args.dataset_properties, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy_test, self.D_accuracy_real_test, self.D_accuracy_fake_test = [], [], []
         self.real_label, self.fake_label = 1, 0
@@ -40,8 +39,15 @@ class Tester:
         self.clip_transform = custom_transform.Clip()
         self.apply_wind_norm = args.apply_wind_norm
         self.wind_size = args.ssim_window_size
+        self.std_norm_factor = args.std_norm_factor
+        self.loader_map = {"a": hdr_windows_loader_a,
+                           "b": hdr_windows_loader_b,
+                           "c": hdr_windows_loader_c,
+                           "d": hdr_windows_loader_d}
+        self.input_loader = self.loader_map[args.wind_norm_option]
 
     def load_original_test_hdr_images(self, root):
+        print("using input loader number ", self.args.wind_norm_option)
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):
@@ -202,8 +208,8 @@ class Tester:
                 if self.apply_wind_norm:
                     gray_original_im = hdr_image_util.to_gray_tensor(im_hdr_original)
                     gray_original_im_norm = gray_original_im / gray_original_im.max()
-                    im_log_normalize_tensor = hdr_windows_loader(self.wind_size, gray_original_im_norm,
-                                                                 im_log_normalize_tensor, self.device)
+                    im_log_normalize_tensor = self.input_loader(self.wind_size, gray_original_im_norm,
+                                                                 im_log_normalize_tensor, self.std_norm_factor)
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)

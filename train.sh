@@ -37,6 +37,8 @@ echo "train_with_D ${32}"
 echo "add_frame ${33}"
 echo "input_dim ${34}"
 echo "apply_wind_norm ${35}"
+echo "std_norm_factor ${36}"
+echo "wind_norm_option ${37}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -74,4 +76,7 @@ python3.6 -W ignore -u main_train.py \
   --train_with_D ${32} \
   --add_frame ${33} \
   --input_dim ${34} \
-  --apply_wind_norm ${35}
+  --apply_wind_norm ${35} \
+  --std_norm_factor ${36} \
+  --wind_norm_option ${37}
+
