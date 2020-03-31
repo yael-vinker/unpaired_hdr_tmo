@@ -16,6 +16,9 @@ import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
 import tranforms
 import models.unet_multi_filters.Unet as Generator
+import data_generator.create_dng_npy_data as create_dng_npy_data
+from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
+    hdr_windows_loader_c, hdr_windows_loader_d
 
 
 # ====== TRAIN RELATED ======
@@ -198,7 +201,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     input_images_path = get_hdr_source_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [690]
+    models_epoch = [190]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -233,14 +236,16 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
         im_path = os.path.join(input_images_path, img_name)
         if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr":
             run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                      output_images_path)
+                                      output_images_path, model_params)
 
 
 def load_g_model(model_params, device, net_path):
-    G_net = get_trained_G_net(model_params["model"], device, 1,
+    G_net = get_trained_G_net(model_params["model"], device, 25,
                               model_params["last_layer"], model_params["filters"],
                               model_params["con_operator"], model_params["depth"],
-                              True, True, model_params["unet_norm"], model_params["clip"])
+                              add_frame=False, use_pyramid_loss=True, unet_norm=model_params["unet_norm"],
+                              add_clipping=model_params["clip"])
+
     checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     state_dict = checkpoint['modelG_state_dict']
     print("from loaded model ", list(state_dict.keys())[0])
@@ -283,16 +288,22 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
     return new_net
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path):
-    import data_generator.create_dng_npy_data as create_dng_npy_data
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params):
     # rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
     #                                                           factor_coeff=1.0, reshape=False)
-    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess_gamma(im_path, use_factorised_data=True,
-                                                              factor_coeff=1.0, reshape=False)
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
+                                                              use_factorise_gamma_data=True, factor_coeff=1.0,
+                                                              reshape=False, window_tone_map=False)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-    gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+    # gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
     gray_im_log = gray_im_log.to(device)
+    if model_params["apply_wind_norm"]:
+        gray_original_im = hdr_image_util.to_gray_tensor(rgb_img)
+        gray_original_im_norm = gray_original_im / gray_original_im.max()
+        im_log_normalize_tensor = model_params["input_loader"](model_params["wind_size"], gray_original_im_norm,
+                                                    gray_im_log, model_params["std_norm_factor"])
+        gray_im_log = im_log_normalize_tensor
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
 
     with torch.no_grad():
@@ -320,7 +331,11 @@ def get_model_params(model_name):
     model_params = {"model_name": model_name, "model": params.unet_network, "filters": 32, "depth": 4,
                     "last_layer": 'sigmoid', "unet_norm": 'none', "con_operator": get_con_operator(model_name),
                     "clip": False,
-                    "factorised_data": is_factorised_data(model_name)}
+                    "factorised_data": is_factorised_data(model_name),
+                    "input_loader": get_input_loader(model_name),
+                    "wind_size": 5,
+                    "std_norm_factor": get_std_norm_factor(model_name),
+                    "apply_wind_norm": get_apply_wind_norm(model_name)}
     return model_params
 
 
@@ -342,8 +357,41 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_2,4,6,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
+    models_names = ["apply_wind_norm_b_factor_0.8_unet_square_and_square_root_d_model_patchD_ssim_0.5_pyramid_1,1,1,1,4_sigloss_0_use_f_True_coeff_1.0_gamma_input_True"]
     return models_names
+
+
+def get_apply_wind_norm(model_name):
+    if "apply_wind_norm" in model_name:
+        return True
+    else:
+        return False
+
+
+def get_input_loader(model_name):
+    if "apply_wind_norm_a" in model_name:
+        return hdr_windows_loader_a
+    if "apply_wind_norm_b" in model_name:
+        return hdr_windows_loader_b
+    if "apply_wind_norm_c" in model_name:
+        return hdr_windows_loader_c
+    if "apply_wind_norm_d" in model_name:
+        return hdr_windows_loader_d
+    else:
+        return None
+
+
+def get_std_norm_factor(model_name):
+    if "apply_wind_norm" in model_name:
+        if "factor_0.8" in model_name:
+            return 0.8
+        if "factor_0.9" in model_name:
+            return 0.9
+        if "factor_1" in model_name:
+            return 1
+    else:
+        return None
+
 
 
 def get_clip_from_name(model_name):
