@@ -36,7 +36,7 @@ def parse_arguments():
     parser.add_argument("--ssim_loss_factor", type=float, default=5)
     parser.add_argument("--ssim_loss", type=str, default=params.ssim_custom)
     parser.add_argument("--ssim_window_size", type=int, default=5)
-    parser.add_argument("--pyramid_loss", type=int, default=0)
+    parser.add_argument("--pyramid_loss", type=int, default=1)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1,1,1")
     parser.add_argument('--pyramid_pow', type=int, default=0)
     parser.add_argument('--ssim_compare_to', type=str, default="original")
@@ -44,7 +44,7 @@ def parse_arguments():
     parser.add_argument('--use_c3_in_ssim', type=int, default=1)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--train_with_D', type=int, default=1)
-    parser.add_argument('--struct_methods', type=str, default="struct_loss_a")
+    parser.add_argument('--struct_method', type=str, default="struct_loss_a")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -142,7 +142,7 @@ def create_dir(opt):
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
                  + "_d_model_" + opt.d_model \
-                 + "_" + opt.struct_methods + "_" + str(opt.ssim_loss_factor)
+                 + "_" + opt.struct_method + "_" + str(opt.ssim_loss_factor)
     if opt.pyramid_loss:
         output_dir = output_dir + "_pyramid_" + opt.pyramid_weight_list
     output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)
