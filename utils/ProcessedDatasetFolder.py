@@ -28,12 +28,12 @@ def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm
         elif normalization == "min_max_normalization":
             input_im = (input_im - input_im.min()) / (input_im.max() - input_im.min())
     if hdrMode:
-        if addFrame:
-            input_im = data_loader_util.add_frame_to_im(input_im)
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
         if apply_wind_norm:
             input_im = get_window_input(5, gray_original_im_norm, input_im, std_norm_factor)
+        if addFrame:
+            input_im = data_loader_util.add_frame_to_im(input_im)
         return input_im, color_im, gray_original_im_norm, gray_original_im
     return input_im, color_im, input_im, input_im
 

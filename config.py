@@ -44,6 +44,7 @@ def parse_arguments():
     parser.add_argument('--use_c3_in_ssim', type=int, default=1)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--train_with_D', type=int, default=1)
+    parser.add_argument('--struct_methods', type=str, default="struct_loss_a")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -78,7 +79,6 @@ def parse_arguments():
 
 
 def get_opt():
-    import numpy as np
     opt = parse_arguments()
     if opt.change_random_seed:
         manualSeed = random.randint(1, 10000)
@@ -142,7 +142,7 @@ def create_dir(opt):
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
                  + "_d_model_" + opt.d_model \
-                 + "_ssim_" + str(opt.ssim_loss_factor)
+                 + "_" + opt.struct_methods + "_" + str(opt.ssim_loss_factor)
     if opt.pyramid_loss:
         output_dir = output_dir + "_pyramid_" + opt.pyramid_weight_list
     output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)

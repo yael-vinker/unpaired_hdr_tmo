@@ -39,6 +39,7 @@ echo "input_dim ${34}"
 echo "apply_wind_norm ${35}"
 echo "std_norm_factor ${36}"
 echo "wind_norm_option ${37}"
+echo "struct_methods ${38}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -78,5 +79,6 @@ python3.6 -W ignore -u main_train.py \
   --input_dim ${34} \
   --apply_wind_norm ${35} \
   --std_norm_factor ${36} \
-  --wind_norm_option ${37}
+  --wind_norm_option ${37} \
+  --struct_methods ${38}
 
