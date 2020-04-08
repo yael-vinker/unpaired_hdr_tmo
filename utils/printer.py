@@ -169,7 +169,7 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
         output_str = output_str + ' \tLoss_G_SSIM: %.4f'
         format_str = format_str + (errG_ssim.item(),)
     if errG_sigma:
-        output_str = output_str + ' \tLoss_G_SIGMA: %.4f'
+        output_str = output_str + ' \tLoss_G_intensity: %.4f'
         format_str = format_str + (errG_sigma.item(),)
     print(output_str % format_str)
 

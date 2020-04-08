@@ -19,7 +19,7 @@ def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D
         if use_g_ssim_loss:
             plt.plot(range(iters_n), G_loss_ssim, '-y', label='loss G SSIM')
         if len(G_loss_sigma) != 0:
-            plt.plot(range(iters_n), G_loss_sigma, '-k', label='loss G sigma')
+            plt.plot(range(iters_n), G_loss_sigma, '-k', label='loss G intensity')
         plt.xlabel("n iteration")
         plt.legend(loc='upper left')
         plt.title(title)

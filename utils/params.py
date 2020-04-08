@@ -1,12 +1,12 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
+train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
 train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
 
-test_dataroot_hdr = "data/hdr_log_data"
+test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
 test_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
-test_dataroot_original_hdr = "data/hdr_data/hdr_data"
+test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data"
 apply_windows_loss = False
 
 image_key = "hdr_image"
@@ -36,7 +36,7 @@ workers = 1
 # Batch size during training
 batch_size = 28
 
-epsilon = 1e-10
+epsilon = 1e-08
 
 # Spatial size of training images. All images will be resized to this
 # size using a transformer.

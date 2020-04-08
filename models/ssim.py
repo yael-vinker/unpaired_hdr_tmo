@@ -7,6 +7,7 @@ from torch.autograd import Variable
 
 from utils import params
 import torch
+from torch import nn
 
 
 def gaussian(window_size, sigma):
@@ -78,13 +79,10 @@ class TMQI_SSIM(torch.nn.Module):
 
 class OUR_CUSTOM_SSIM(torch.nn.Module):
     def __init__(self, window_size=11, use_c3=False, apply_sig_mu_ssim=False,
-                 struct_method="our_custom_ssim", std_norm_factor=1):
+                 struct_method="reg_ssim", std_norm_factor=1):
         super(OUR_CUSTOM_SSIM, self).__init__()
         self.struct_methods = {
-            "reg_ssim": our_custom_ssim,
-            "struct_loss": structural_loss,
-            "struct_loss_a": structural_loss_a,
-            "struct_loss_b": structural_loss_b
+            "reg_ssim": our_custom_ssim
         }
         self.window_size = window_size
         self.channel = 1
@@ -109,9 +107,7 @@ class OUR_CUSTOM_SSIM(torch.nn.Module):
             window = window.type_as(img1)
             self.window = window
             self.channel = channel
-        if self.struct_method == "reg_ssim":
-            return self.our_custom_ssim(img1, img2, window, self.window_size, channel, self.mse_loss, self.use_c3, self.apply_sig_mu_ssim)
-        return self.struct_loss(self.window_size, img1, img2, self.std_norm_factor)
+        return our_custom_ssim(img1, img2, window, self.window_size, channel, self.mse_loss, self.use_c3, self.apply_sig_mu_ssim)
 
 
 class OUR_SIGMA_SSIM(torch.nn.Module):
@@ -140,6 +136,15 @@ class OUR_SIGMA_SSIM(torch.nn.Module):
         return our_custom_sigma_loss(img1, img2, window, self.window_size, channel, self.mse_loss)
 
 
+class IntensityLoss(torch.nn.Module):
+    def __init__(self, epsilon):
+        super(IntensityLoss, self).__init__()
+        self.epsilon = epsilon
+
+    def forward(self, fake):
+        return -(fake / (fake + self.epsilon)).mean()
+
+
 class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=11, pyramid_pow=False, use_c3=False,
                  apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1):
@@ -153,10 +158,7 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
         self.use_c3 = use_c3
         self.apply_sig_mu_ssim = apply_sig_mu_ssim
         self.struct_methods = {
-            "reg_ssim": our_custom_ssim,
-            "struct_loss": structural_loss,
-            "struct_loss_a": structural_loss_a,
-            "struct_loss_b": structural_loss_b
+            "reg_ssim": our_custom_ssim
         }
         self.struct_method = struct_method
         self.struct_loss = self.struct_methods[struct_method]
@@ -176,16 +178,8 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
 
             self.window = window
             self.channel = channel
-        # if self.pyramid_pow:
-        #     return our_custom_ssim_pyramid_pow(img1, img2, window, self.window_size, channel,
-        #                                        self.pyramid_weight_list, self.mse_loss, self.use_c3)
-        if self.struct_method == "reg_ssim":
-            return our_custom_ssim_pyramid(img1, img2, window, self.window_size, channel, self.pyramid_weight_list,
+        return our_custom_ssim_pyramid(img1, img2, window, self.window_size, channel, self.pyramid_weight_list,
                                            self.mse_loss, self.use_c3, self.apply_sig_mu_ssim)
-        return our_custom_ssim_pyramid_new(self.window_size, img1, img2, self.std_norm_factor, self.pyramid_weight_list,
-                                        self.struct_loss)
-
-
 
 
 def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, apply_sig_mu_ssim):
@@ -207,7 +201,7 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
         C3 = 0.03 ** 2 / 2
         s_map = (sigma12 + C3) / (std1 * std2 + C3)
     else:
-        s_map = sigma12 / (std1 * std2 + 0.0001)
+        s_map = sigma12 / (std1 * std2 + params.epsilon)
     ones = torch.ones(s_map.shape, requires_grad=True)
     if torch.cuda.is_available():
         ones = ones.cuda()
@@ -215,92 +209,6 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
         s_map = (std2 / mu2) * s_map
         return (ones - s_map).mean()
     return (ones - s_map).mean()
-
-
-def structural_loss(wind_size, a, b, std_norm_factor):
-    """
-    compute L2[(a - mu_a) / std_a, (b - mu_b) / std_b)] where a is G(gamma(hdr)
-
-    :param wind_size:
-    :param a: original_im
-    :param b: target_im
-    :param std_norm_factor
-    :return:
-    """
-    mse_loss = torch.nn.MSELoss()
-    a, b, window = get_window_and_set_device(wind_size, a, b)
-    windows = get_im_as_windows(a, wind_size)
-
-    windows_b = get_im_as_windows(b, wind_size)
-    print(windows_b.shape)
-    print("\na_original : mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-
-    mu1 = get_mu(a, window, wind_size)
-    mu2 = get_mu(b, window, wind_size)
-
-    std1 = get_std(windows, mu1, wind_size)
-    std2 = get_std(windows_b, mu2, wind_size)
-    windows = windows - mu1
-    windows = windows / (std1 + params.epsilon)
-    print("\na : res mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-
-    windows_b = windows_b - mu2
-    windows_b = windows_b / (std2 + params.epsilon)
-    print("\nb : res mu", torch.mean(windows_b[0, 0, 5, 5])," res std", torch.std(windows_b[0, 0, 5, 5]))
-    windows, windows_b = fix_shape(windows), fix_shape(windows_b)
-    print(windows.shape, windows_b.shape)
-    return mse_loss(windows, windows_b)
-
-
-def structural_loss_a(wind_size, a, b, std_norm_factor):
-    """
-    compute L2[(a-mu_a),(b-mu_b)*s)] where a is G(gamma(hdr)
-    :param wind_size:
-    :param a: original_im
-    :param b: target_im
-    :param std_norm_factor
-    :return:
-    """
-    mse_loss = torch.nn.MSELoss()
-    a, b, window = get_window_and_set_device(wind_size, a, b)
-    windows = get_im_as_windows(a, wind_size)
-    windows_b = get_im_as_windows(b, wind_size)
-    print("\na_original : mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-    mu1 = get_mu(a, window, wind_size)
-    mu2 = get_mu(b, window, wind_size)
-    std2 = get_std(windows_b, mu2, wind_size)
-    windows = windows - mu1
-    print("\na : res mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-    windows_b = windows_b - mu2
-    windows_b = std_norm_factor * windows_b * (mu1 / (std2 + params.epsilon))
-    print("\nb : res mu", torch.mean(windows_b[0, 0, 5, 5])," res std", torch.std(windows_b[0, 0, 5, 5]))
-    windows, windows_b = fix_shape(windows), fix_shape(windows_b)
-    return mse_loss(windows, windows_b)
-
-
-def structural_loss_b(wind_size, a, b, std_norm_factor):
-    """
-    compute L2[(a-mu_a),(b-mu_b)*s)] where a is G(gamma(hdr)
-    :param wind_size:
-    :param a: original_im
-    :param b: target_im
-    :param std_norm_factor
-    :return:
-    """
-    mse_loss = torch.nn.MSELoss()
-    a, b, window = get_window_and_set_device(wind_size, a, b)
-    windows = get_im_as_windows(a, wind_size)
-    windows_b = get_im_as_windows(b, wind_size)
-    print("\na_original : mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-    mu1 = get_mu(a, window, wind_size)
-    mu2 = get_mu(b, window, wind_size)
-    windows = windows - mu1
-    print("\na : res mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
-    windows_b = windows_b - mu2
-    windows_b = std_norm_factor * windows_b * (mu1 / (mu2 + params.epsilon))
-    print("\nb : res mu", torch.mean(windows_b[0, 0, 5, 5])," res std", torch.std(windows_b[0, 0, 5, 5]))
-    windows, windows_b = fix_shape(windows), fix_shape(windows_b)
-    return mse_loss(windows, windows_b)
 
 
 def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
@@ -332,12 +240,11 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
     return torch.sum(torch.stack(ssim_loss_list))
 
-
 def our_custom_ssim_pyramid_new(window_size, img1, img2, std_norm_factor, pyramid_weight_list,
-                            struct_loss):
+                            struct_loss, window):
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
-        ssim_loss_list.append(pyramid_weight_list[i] * struct_loss(window_size, img1, img2, std_norm_factor))
+        ssim_loss_list.append(pyramid_weight_list[i] * struct_loss(window_size, img1, img2, std_norm_factor, window))
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
     return torch.sum(torch.stack(ssim_loss_list))
@@ -452,8 +359,10 @@ def get_window_and_set_device(wind_size, a, b):
 
 
 def get_im_as_windows(a, wind_size):
-    windows = a.unfold(dimension=2, size=5, step=1)
-    windows = windows.unfold(dimension=3, size=5, step=1)
+    m = nn.ZeroPad2d(wind_size // 2)
+    a = m(a)
+    windows = a.unfold(dimension=2, size=wind_size, step=1)
+    windows = windows.unfold(dimension=3, size=wind_size, step=1)
     windows = windows.reshape(windows.shape[0], windows.shape[1],
                               windows.shape[2], windows.shape[3],
                               wind_size * wind_size)
@@ -469,14 +378,44 @@ def get_mu(x, window, wind_size):
 
 def get_std(windows, mu1, wind_size):
     x_minus_mu = windows - mu1
-    x_minus_mu_sq = x_minus_mu.pow(2)
-    x_minus_mu_sq = x_minus_mu_sq.squeeze(dim=1)
-    x_minus_mu_sq = x_minus_mu_sq.permute(0, 3, 1, 2)
+    x_minus_mu = x_minus_mu.squeeze(dim=1)
+    x_minus_mu = x_minus_mu.permute(0, 3, 1, 2)
     wind_a = torch.ones((1, wind_size * wind_size, 1, 1))
+    if windows.is_cuda:
+        wind_a = wind_a.cuda(windows.get_device())
     wind_a = wind_a / wind_a.sum()
-    mu_x_minus_mu_sq = F.conv2d(x_minus_mu_sq, wind_a, padding=0, groups=1)
+    mu_x_minus_mu_sq = F.conv2d(x_minus_mu * x_minus_mu, wind_a, padding=0, groups=1)
     std1 = torch.pow(torch.max(mu_x_minus_mu_sq, torch.zeros_like(mu_x_minus_mu_sq)) + params.epsilon, 0.5)
     std1 = std1.expand(-1, wind_size * wind_size, -1, -1)
     std1 = std1.permute(0, 2, 3, 1)
     std1 = std1.unsqueeze(dim=1)
     return std1
+
+
+def print_mu(mu, title, x):
+    print("\n-------- %s --------" % title)
+    print(mu.shape)
+    print("min[%.4f] max[%.4f] mean[%.4f]" % (mu.min(), mu.max(), mu.mean()))
+    real_wind = x[0, 0, 100-2: 100+3, 100-2: 100+3]
+
+    a = mu[0, 0, 100, 100]
+    if mu.dim() > 4:
+        a = a[0]
+    if "std" in title:
+        print("wind[100, 100] -- real[%.4f] custom[%.4f]" % (torch.std(real_wind), a))
+    else:
+        print("wind[100, 100] -- real[%.4f] custom[%.4f]" % (torch.mean(real_wind), a))
+
+    a = mu[0, 0, 2, 2]
+    if mu.dim() > 4:
+        a = a[0]
+    real_wind = x[0, 0, 0: 5, 0: 5]
+    if "std" in title:
+        print("wind[2, 2] -- real[%.4f] custom[%.4f]" % (torch.std(real_wind), a))
+    else:
+        print("wind[2, 2] -- real[%.4f] custom[%.4f]" % (torch.mean(real_wind), a))
+
+    a = mu[0, 0, 0, 0]
+    if mu.dim() > 4:
+        a = a[0]
+    print("wind [0, 0]  [%.4f]" % a)

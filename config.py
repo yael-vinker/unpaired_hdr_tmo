@@ -44,7 +44,9 @@ def parse_arguments():
     parser.add_argument('--use_c3_in_ssim', type=int, default=1)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--train_with_D', type=int, default=1)
-    parser.add_argument('--struct_method', type=str, default="struct_loss_a")
+    parser.add_argument('--struct_method', type=str, default="reg_ssim")
+    parser.add_argument('--apply_intensity_loss', type=int, default=1)
+    parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -139,19 +141,22 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
+    if opt.apply_intensity_loss:
+        result_dir_pref = result_dir_pref + "intensity_loss_" + str(opt.apply_intensity_loss) + "_" + str(opt.intensity_epsilon)
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
                  + "_d_model_" + opt.d_model \
-                 + "_" + opt.struct_method + "_" + str(opt.ssim_loss_factor)
+                 + "_struct_factor_" + str(opt.ssim_loss_factor)
     if opt.pyramid_loss:
         output_dir = output_dir + "_pyramid_" + opt.pyramid_weight_list
-    output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)
-    if opt.window_tm_data:
-        output_dir = output_dir + "_window_tm_data"
-    else:
-        output_dir = output_dir + "_use_f_" + str(bool(opt.use_factorise_data)) \
-                 + "_coeff_" + str(opt.factor_coeff) \
-                 + "_gamma_input_" + str(bool(opt.use_factorise_gamma_data))
+    if opt.use_sigma_loss:
+        output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)
+    # if opt.window_tm_data:
+    #     output_dir = output_dir + "_window_tm_data"
+    # else:
+    #     output_dir = output_dir + "_use_f_" + str(bool(opt.use_factorise_data)) \
+    #              + "_coeff_" + str(opt.factor_coeff) \
+    #              + "_gamma_input_" + str(bool(opt.use_factorise_gamma_data))
 
 
 

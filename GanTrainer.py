@@ -44,7 +44,7 @@ class GanTrainer:
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.ssim_loss_name = opt.ssim_loss
-        if opt.ssim_loss == params.ssim_custom:
+        if opt.ssim_loss == params.ssim_custom and not opt.pyramid_loss:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size, use_c3=opt.use_c3_in_ssim,
                                                   apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
                                                   struct_method=opt.struct_method,
@@ -63,16 +63,20 @@ class GanTrainer:
             self.sig_loss_factor = opt.use_sigma_loss
         else:
             self.sigma_loss = None
+        if opt.apply_intensity_loss:
+            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon)
+            self.intensity_loss_factor = opt.apply_intensity_loss
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
-        self.errG_d, self.errG_ssim, self.errG_sigma = None, None, None
+        self.errG_d, self.errG_ssim, self.errG_sigma, self.errG_intensity = None, None, None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
-        self.G_loss_ssim, self.G_loss_d, self.G_loss_sigma = [], [], []
+        self.G_loss_ssim, self.G_loss_d, self.G_loss_sigma, self.G_loss_intensity = [], [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
+        self.apply_intensity_loss = opt.apply_intensity_loss
 
         # ====== DATASET ======
         self.train_data_loader_npy, self.train_data_loader_ldr = \
@@ -189,7 +193,8 @@ class GanTrainer:
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
         self.update_ssim_loss(hdr_original_gray_norm, fake)
-        self.update_sigma_loss(hdr_original_gray, fake)
+        self.update_intensity_loss(fake)
+        # self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
     def update_g_d_loss(self, output_on_fake, label):
@@ -204,7 +209,7 @@ class GanTrainer:
         if self.ssim_loss_g_factor:
             self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
             retain_graph = False
-            if self.sigma_loss:
+            if self.sigma_loss or self.apply_intensity_loss:
                 retain_graph = True
             self.errG_ssim.backward(retain_graph=retain_graph)
             self.G_loss_ssim.append(self.errG_ssim.item())
@@ -214,6 +219,12 @@ class GanTrainer:
             self.errG_sigma = self.sig_loss_factor * self.sigma_loss(fake, hdr_input_original_gray)
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
+
+    def update_intensity_loss(self, fake):
+        if self.apply_intensity_loss:
+            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake)
+            self.errG_intensity.backward()
+            self.G_loss_intensity.append(self.errG_intensity.item())
 
     def update_best_G_acc(self):
         if self.accG > self.best_accG:
@@ -231,7 +242,7 @@ class GanTrainer:
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.G_loss_sigma, self.D_loss_fake,
+        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.G_loss_intensity, self.D_loss_fake,
                                       self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
                                       (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
         plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
@@ -271,11 +282,11 @@ class GanTrainer:
         if self.train_with_D:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_sigma)
+                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity)
         else:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, 0, 0,
                                                0, 0, 0,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_sigma)
+                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity)
         printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG,
                                         self.best_accG)
         printer.print_best_acc_error(self.best_accG, self.epoch)
