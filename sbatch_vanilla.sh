@@ -37,7 +37,9 @@ input_dim=1
 apply_wind_norm=0
 std_norm_factor=0.8
 wind_norm_option="a"
-struct_methods=""
+struct_methods="reg_ssim"
+apply_intensity_loss=0
+intensity_epsilon=0.00001
 
 
 sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh $change_random_seed $batch_size $num_epochs \
@@ -46,4 +48,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh $change_random_seed $bat
   $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization $last_layer \
   $pyramid_pow $d_model $d_down_dim $pyramid_loss $d_norm $use_sigma_loss $use_c3_in_ssim $milestones \
   $loss_g_d_factor $train_with_D $add_frame $input_dim $apply_wind_norm $std_norm_factor $wind_norm_option \
-  $struct_methods
+  $struct_methods $apply_intensity_loss $intensity_epsilon

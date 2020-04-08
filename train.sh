@@ -40,6 +40,8 @@ echo "apply_wind_norm ${35}"
 echo "std_norm_factor ${36}"
 echo "wind_norm_option ${37}"
 echo "struct_methods ${38}"
+echo "apply_intensity_loss ${39}"
+echo "intensity_epsilon ${40}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -80,5 +82,7 @@ python3.6 -W ignore -u main_train.py \
   --apply_wind_norm ${35} \
   --std_norm_factor ${36} \
   --wind_norm_option ${37} \
-  --struct_methods ${38}
+  --struct_methods ${38} \
+  --apply_intensity_loss ${39} \
+  --intensity_epsilon ${40}
 
