@@ -8,9 +8,19 @@ D_lr=0.000005
 model="unet"
 con_operator="square_and_square_root"
 use_xaviar=1
+
+# ====== LOSS ======
+loss_g_d_factor=1
+train_with_D=1
 ssim_loss_factor=2
-pyramid_weight_list="4"
-pyramid_pow=0
+pyramid_weight_list="1"
+apply_intensity_loss=1
+intensity_epsilon=0.001
+std_pyramid_weight_list="1"
+mu_loss_factor=1
+mu_pyramid_weight_list="1"
+
+# ====== DATASET ======
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
 data_root_ldr="/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
 test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
@@ -25,27 +35,16 @@ normalization="bugy_max_normalization"
 last_layer="sigmoid"
 d_model="patchD"
 d_down_dim=64
-pyramid_loss=1
 d_norm="none"
-use_sigma_loss=5
-use_c3_in_ssim=0
 milestones="500"
-loss_g_d_factor=1
-train_with_D=1
 add_frame=1
 input_dim=1
-apply_wind_norm=0
-std_norm_factor=0.8
-wind_norm_option="a"
-struct_methods="reg_ssim"
-apply_intensity_loss=0
-intensity_epsilon=0.00001
 
-
-sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh $change_random_seed $batch_size $num_epochs \
-  $G_lr $D_lr $model $con_operator $use_xaviar $ssim_loss_factor $pyramid_weight_list $data_root_npy \
-  $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr $result_dir_prefix \
-  $use_factorise_data $factor_coeff $add_clipping $use_normalization $normalization $last_layer \
-  $pyramid_pow $d_model $d_down_dim $pyramid_loss $d_norm $use_sigma_loss $use_c3_in_ssim $milestones \
-  $loss_g_d_factor $train_with_D $add_frame $input_dim $apply_wind_norm $std_norm_factor $wind_norm_option \
-  $struct_methods $apply_intensity_loss $intensity_epsilon
+sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
+  $change_random_seed $batch_size $num_epochs \
+  $G_lr $D_lr $model $con_operator $use_xaviar \
+  $loss_g_d_factor $train_with_D $ssim_loss_factor $pyramid_weight_list $apply_intensity_loss \
+  $intensity_epsilon $std_pyramid_weight_list $mu_loss_factor $mu_pyramid_weight_list \
+  $data_root_npy $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr \
+  $result_dir_prefix $use_factorise_data $factor_coeff $add_clipping $use_normalization \
+  $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim

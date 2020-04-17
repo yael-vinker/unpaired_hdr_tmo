@@ -12,7 +12,7 @@ def parse_arguments():
     parser.add_argument("--change_random_seed", type=int, default=0)
 
     # ====== TRAINING ======
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--num_epochs", type=int, default=params.num_epochs)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
@@ -32,21 +32,22 @@ def parse_arguments():
     parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")
 
     # ====== LOSS ======
-    parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument("--ssim_loss_factor", type=float, default=5)
-    parser.add_argument("--ssim_loss", type=str, default=params.ssim_custom)
-    parser.add_argument("--ssim_window_size", type=int, default=5)
-    parser.add_argument("--pyramid_loss", type=int, default=1)
-    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1,1,1")
-    parser.add_argument('--pyramid_pow', type=int, default=0)
-    parser.add_argument('--ssim_compare_to', type=str, default="original")
-    parser.add_argument('--use_sigma_loss', type=int, default=0)
-    parser.add_argument('--use_c3_in_ssim', type=int, default=1)
-    parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--train_with_D', type=int, default=1)
+    parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument('--struct_method', type=str, default="reg_ssim")
-    parser.add_argument('--apply_intensity_loss', type=int, default=1)
+    parser.add_argument("--ssim_loss_factor", type=float, default=1)
+    parser.add_argument("--ssim_window_size", type=int, default=5)
+    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1")
+
+    parser.add_argument('--apply_intensity_loss', type=float, default=1)
     parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
+    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
+
+    parser.add_argument('--mu_loss_factor', type=float, default=1)
+    parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1")
+
+    parser.add_argument('--use_sigma_loss', type=int, default=0)
+    parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -73,7 +74,7 @@ def parse_arguments():
     parser.add_argument("--normalization", type=str, default='bugy_max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
-    parser.add_argument("--epoch_to_save", type=int, default=5)
+    parser.add_argument("--epoch_to_save", type=int, default=50)
     parser.add_argument("--result_dir_prefix", type=str, default="")
 
     args = parser.parse_args()
@@ -92,6 +93,8 @@ def get_opt():
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     opt.device = device
     opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
+    opt.std_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.std_pyramid_weight_list.split(',')]).to(device)
+    opt.mu_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.mu_pyramid_weight_list.split(',')]).to(device)
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
     opt.dataset_properties = get_dataset_properties(opt)
     return opt
@@ -124,7 +127,7 @@ def get_dataset_properties(opt):
                           "add_frame": opt.add_frame,
                           "batch_size": opt.batch_size,
                           "normalization": opt.normalization,
-                          "use_c3": opt.use_c3_in_ssim,
+                          "use_c3": False,
                           "wind_norm_option": opt.wind_norm_option}
     return dataset_properties
 
@@ -142,24 +145,16 @@ def create_dir(opt):
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     if opt.apply_intensity_loss:
-        result_dir_pref = result_dir_pref + "intensity_loss_" + str(opt.apply_intensity_loss) + "_" + str(opt.intensity_epsilon)
+        result_dir_pref = result_dir_pref + "std_loss_" + str(opt.apply_intensity_loss) + "_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
+    if opt.mu_loss_factor:
+        result_dir_pref = result_dir_pref + "mu_loss_" + str(opt.mu_loss_factor)
+    if opt.ssim_loss_factor:
+        result_dir_pref = result_dir_pref + "_struct_factor_" + str(opt.ssim_loss_factor) + "_pyramid_" + opt.pyramid_weight_list
+    if opt.use_sigma_loss:
+        result_dir_pref = result_dir_pref + "_sigloss_" + str(opt.use_sigma_loss)
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
-                 + "_d_model_" + opt.d_model \
-                 + "_struct_factor_" + str(opt.ssim_loss_factor)
-    if opt.pyramid_loss:
-        output_dir = output_dir + "_pyramid_" + opt.pyramid_weight_list
-    if opt.use_sigma_loss:
-        output_dir = output_dir + "_sigloss_" + str(opt.use_sigma_loss)
-    # if opt.window_tm_data:
-    #     output_dir = output_dir + "_window_tm_data"
-    # else:
-    #     output_dir = output_dir + "_use_f_" + str(bool(opt.use_factorise_data)) \
-    #              + "_coeff_" + str(opt.factor_coeff) \
-    #              + "_gamma_input_" + str(bool(opt.use_factorise_gamma_data))
-
-
-
+                 + "_d_model_" + opt.d_model
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path
@@ -178,7 +173,6 @@ def create_dir(opt):
     loss_graph_path = os.path.join(output_dir, loss_graph_path)
     result_path = os.path.join(output_dir, result_path)
     acc_path = os.path.join(output_dir, "accuracy")
-    tmqi_path = os.path.join(output_dir, "tmqi")
     gradient_flow_path = os.path.join(output_dir, params.gradient_flow_path, "g")
 
     if not os.path.exists(models_images):
@@ -215,8 +209,4 @@ def create_dir(opt):
     if not os.path.exists(acc_path):
         os.mkdir(acc_path)
         print("Directory ", acc_path, " created")
-
-    if not os.path.exists(tmqi_path):
-        os.mkdir(tmqi_path)
-        print("Directory ", tmqi_path, " created")
     return output_dir

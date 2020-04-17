@@ -6,9 +6,8 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, use_pyramid_loss, unet_norm, add_clipping, normalization):
+                 network, dilation, to_crop, unet_norm, add_clipping, normalization):
         super(UNet, self).__init__()
-        self.use_pyramid_loss = use_pyramid_loss
         self.to_crop = to_crop
         self.con_operator = con_operator
         self.network = network

@@ -40,36 +40,30 @@ class GanTrainer:
 
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
-        self.pyramid_loss = opt.pyramid_loss
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
-        self.ssim_loss_name = opt.ssim_loss
-        if opt.ssim_loss == params.ssim_custom and not opt.pyramid_loss:
-            self.ssim_loss = ssim.OUR_CUSTOM_SSIM(window_size=opt.ssim_window_size, use_c3=opt.use_c3_in_ssim,
-                                                  apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
-                                                  struct_method=opt.struct_method,
-                                                  std_norm_factor=opt.std_norm_factor)
-        if opt.pyramid_loss:
+        if opt.ssim_loss_factor:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
-                                                          pyramid_pow=opt.pyramid_pow, use_c3=opt.use_c3_in_ssim,
+                                                          pyramid_pow=False, use_c3=False,
                                                           apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
                                                           struct_method=opt.struct_method,
                                                           std_norm_factor=opt.std_norm_factor)
-        self.use_c3 = opt.use_c3_in_ssim
-        self.ssim_compare_to = opt.ssim_compare_to
         if opt.use_sigma_loss:
             self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
             self.sig_loss_factor = opt.use_sigma_loss
         else:
             self.sigma_loss = None
         if opt.apply_intensity_loss:
-            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon)
+            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list)
             self.intensity_loss_factor = opt.apply_intensity_loss
+        if opt.mu_loss_factor:
+            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list)
+            self.mu_loss_factor = opt.mu_loss_factor
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
-        self.errG_d, self.errG_ssim, self.errG_sigma, self.errG_intensity = None, None, None, None
+        self.errG_d, self.errG_ssim, self.errG_sigma, self.errG_intensity, self.errG_mu = None, None, None, None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -111,7 +105,6 @@ class GanTrainer:
             self.lr_scheduler_G.step()
             if self.train_with_D:
                 self.lr_scheduler_D.step()
-            # self.save_gradient_flow(epoch)
             self.print_epoch_summary(epoch, start)
 
     def train_epoch(self):
@@ -127,11 +120,9 @@ class GanTrainer:
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray)
-                # plot_util.plot_grad_flow(self.netG.named_parameters(), self.output_dir, 1)
         self.update_accuracy()
         if self.epoch > 20:
             self.update_best_G_acc()
-
 
     def train_D(self, hdr_input, real_ldr):
         """
@@ -193,7 +184,8 @@ class GanTrainer:
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
         self.update_ssim_loss(hdr_original_gray_norm, fake)
-        self.update_intensity_loss(fake)
+        self.update_intensity_loss(hdr_original_gray_norm, fake, hdr_input)
+        self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input)
         # self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
@@ -209,7 +201,7 @@ class GanTrainer:
         if self.ssim_loss_g_factor:
             self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
             retain_graph = False
-            if self.sigma_loss or self.apply_intensity_loss:
+            if self.apply_intensity_loss:
                 retain_graph = True
             self.errG_ssim.backward(retain_graph=retain_graph)
             self.G_loss_ssim.append(self.errG_ssim.item())
@@ -220,11 +212,19 @@ class GanTrainer:
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 
-    def update_intensity_loss(self, fake):
+    def update_intensity_loss(self, hdr_input_original_gray, fake, hdr_input):
         if self.apply_intensity_loss:
-            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake)
-            self.errG_intensity.backward()
+            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input_original_gray, hdr_input)
+            retain_graph = False
+            if self.mu_loss_factor:
+                retain_graph = True
+            self.errG_intensity.backward(retain_graph=retain_graph)
             self.G_loss_intensity.append(self.errG_intensity.item())
+
+    def update_mu_loss(self, hdr_input_original_gray, fake, hdr_input):
+        if self.mu_loss_factor:
+            self.errG_mu = self.mu_loss_factor * self.mu_loss(fake, hdr_input_original_gray, hdr_input)
+            self.errG_mu.backward()
 
     def update_best_G_acc(self):
         if self.accG > self.best_accG:
@@ -282,7 +282,8 @@ class GanTrainer:
         if self.train_with_D:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity)
+                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity,
+                                               self.errG_mu)
         else:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, 0, 0,
                                                0, 0, 0,

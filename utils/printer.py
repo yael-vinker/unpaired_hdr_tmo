@@ -158,7 +158,7 @@ def print_g_progress_tensor(fake, title=""):
 
 
 def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, loss_g_d_factor, errG_d,
-                               ssim_loss_g_factor, errG_ssim, errG_sigma):
+                               ssim_loss_g_factor, errG_ssim, errG_intensity, errG_mu):
     output_str = '[%d/%d]\tLoss_D: %.4f \tLoss_D_real: %.4f \tLoss_D_fake: %.4f'
     format_str = (epoch, num_epochs, errD, errD_real, errD_fake)
     if loss_g_d_factor != 0:
@@ -168,9 +168,12 @@ def print_epoch_losses_summary(epoch, num_epochs, errD, errD_real, errD_fake, lo
     if ssim_loss_g_factor != 0:
         output_str = output_str + ' \tLoss_G_SSIM: %.4f'
         format_str = format_str + (errG_ssim.item(),)
-    if errG_sigma:
+    if errG_intensity:
         output_str = output_str + ' \tLoss_G_intensity: %.4f'
-        format_str = format_str + (errG_sigma.item(),)
+        format_str = format_str + (errG_intensity.item(),)
+    if errG_mu:
+        output_str = output_str + ' \tLoss_G_mu: %.4f'
+        format_str = format_str + (errG_mu.item(),)
     print(output_str % format_str)
 
 
@@ -210,10 +213,7 @@ def print_opt(opt):
     print("D LR: ", opt.D_lr)
     print("LOSS G D FACTOR:", opt.loss_g_d_factor)
     print("SSIM LOSS FACTOR:", opt.ssim_loss_factor)
-    print("SSIM METRIC:", opt.ssim_loss)
-    print("SSIM PYRAMID:", bool(opt.pyramid_loss))
-    if opt.pyramid_loss:
-        print("SSIM PYRAMID WEIGHTS:", opt.pyramid_weight_list)
+    print("SSIM PYRAMID WEIGHTS:", opt.pyramid_weight_list)
     print("LOG FACTOR:", opt.log_factor)
     print("FACTORISED DATA:", opt.use_factorise_data)
     print("=====================\n")

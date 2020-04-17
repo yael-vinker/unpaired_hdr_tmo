@@ -10,7 +10,6 @@ import imageio
 import numpy as np
 import torch
 import torch.nn as nn
-import utils.image_quality_assessment_util as tmqi
 import matplotlib.pyplot as plt
 import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
@@ -70,20 +69,20 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, use_pyramid_loss, unet_norm, add_clipping, normalization, use_xaviar, output_dim):
+                 add_frame, unet_norm, add_clipping, normalization, use_xaviar, output_dim):
     # Create the Generator (UNet architecture)
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
         new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                                  bilinear=False, network=model, dilation=0, to_crop=add_frame,
-                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm, add_clipping=add_clipping,
+                                 unet_norm=unet_norm, add_clipping=add_clipping,
                                  normalization=normalization).to(device_)
     elif model == params.torus_network:
         new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                                  bilinear=False, network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm, add_clipping=add_clipping,
+                                 unet_norm=unet_norm, add_clipping=add_clipping,
                                  normalization=normalization).to(device_)
     else:
         assert 0, "Unsupported g model request: {}".format(model)
@@ -201,7 +200,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     input_images_path = get_hdr_source_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [190]
+    models_epoch = [680]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -234,16 +233,19 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
     for img_name in os.listdir(input_images_path):
         print(img_name)
         im_path = os.path.join(input_images_path, img_name)
-        if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr":
-            run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                      output_images_path, model_params)
+        if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
+            print(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png"))
+            print("working on ",img_name)
+            if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr":
+                run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
+                                          output_images_path, model_params)
 
 
 def load_g_model(model_params, device, net_path):
-    G_net = get_trained_G_net(model_params["model"], device, 25,
+    G_net = get_trained_G_net(model_params["model"], device, 1,
                               model_params["last_layer"], model_params["filters"],
                               model_params["con_operator"], model_params["depth"],
-                              add_frame=False, use_pyramid_loss=True, unet_norm=model_params["unet_norm"],
+                              add_frame=True, use_pyramid_loss=True, unet_norm=model_params["unet_norm"],
                               add_clipping=model_params["clip"])
 
     checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
@@ -270,14 +272,14 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
         new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
-                                 to_crop=add_frame, use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
+                                 to_crop=add_frame, unet_norm=unet_norm,
                                  add_clipping=add_clipping, normalization='max_normalization').to(device_)
     elif model == params.torus_network:
         new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor,
                                  con_operator=con_operator, filters=filters, bilinear=False,
                                  network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 use_pyramid_loss=use_pyramid_loss, unet_norm=unet_norm,
+                                 unet_norm=unet_norm,
                                  add_clipping=add_clipping, normalization='max_normalization').to(device_)
     else:
         assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
@@ -295,7 +297,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                               use_factorise_gamma_data=True, factor_coeff=1.0,
                                                               reshape=False, window_tone_map=False)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-    # gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+    gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
     gray_im_log = gray_im_log.to(device)
     if model_params["apply_wind_norm"]:
@@ -331,7 +333,7 @@ def get_model_params(model_name):
     model_params = {"model_name": model_name, "model": params.unet_network, "filters": 32, "depth": 4,
                     "last_layer": 'sigmoid', "unet_norm": 'none', "con_operator": get_con_operator(model_name),
                     "clip": False,
-                    "factorised_data": is_factorised_data(model_name),
+                    "factorised_data": True,
                     "input_loader": get_input_loader(model_name),
                     "wind_size": 5,
                     "std_norm_factor": get_std_norm_factor(model_name),
@@ -340,7 +342,10 @@ def get_model_params(model_name):
 
 
 def get_hdr_source_path(name):
-    path_dict = {"test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
+    path_dict = {
+    # "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
+    #              "test_source": "/Users/yaelvinker/Documents/university/lab/open_exr_fixed_size/exr_format_fixed_size/",
+                "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/exr_data",
                  "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
                  "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
                  "hdr_test": "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"}
@@ -357,7 +362,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["apply_wind_norm_b_factor_0.8_unet_square_and_square_root_d_model_patchD_ssim_0.5_pyramid_1,1,1,1,4_sigloss_0_use_f_True_coeff_1.0_gamma_input_True"]
+    models_names = ["mu_gamma_intensity_loss_3.0_0.001_1_unet_square_and_square_root_d_model_patchD_struct_factor_1.0_pyramid_1"]
     return models_names
 
 
