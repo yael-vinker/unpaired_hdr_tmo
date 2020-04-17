@@ -55,7 +55,10 @@ class GanTrainer:
         else:
             self.sigma_loss = None
         if opt.apply_intensity_loss:
-            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list)
+            if opt.apply_intensity_loss_laplacian_weights:
+                self.intensity_loss = ssim.IntensityLossLaplacian(opt.intensity_epsilon, opt.std_pyramid_weight_list)
+            else:
+                self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list)
             self.intensity_loss_factor = opt.apply_intensity_loss
         if opt.mu_loss_factor:
             self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list)
@@ -184,7 +187,7 @@ class GanTrainer:
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
         self.update_ssim_loss(hdr_original_gray_norm, fake)
-        self.update_intensity_loss(hdr_original_gray_norm, fake, hdr_input)
+        self.update_intensity_loss(fake, hdr_input)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input)
         # self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
@@ -212,9 +215,9 @@ class GanTrainer:
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 
-    def update_intensity_loss(self, hdr_input_original_gray, fake, hdr_input):
+    def update_intensity_loss(self, fake, hdr_input):
         if self.apply_intensity_loss:
-            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input_original_gray, hdr_input)
+            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input)
             retain_graph = False
             if self.mu_loss_factor:
                 retain_graph = True

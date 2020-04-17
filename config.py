@@ -40,6 +40,7 @@ def parse_arguments():
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1")
 
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
+    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
     parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
     parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
 
@@ -145,7 +146,10 @@ def create_dir(opt):
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     if opt.apply_intensity_loss:
-        result_dir_pref = result_dir_pref + "std_loss_" + str(opt.apply_intensity_loss) + "_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
+        s = "std_loss_"
+        if opt.apply_intensity_loss_laplacian_weights:
+            s = "laplace_" + s
+        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "mu_loss_" + str(opt.mu_loss_factor)
     if opt.ssim_loss_factor:

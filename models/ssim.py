@@ -57,13 +57,33 @@ class IntensityLoss(torch.nn.Module):
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
 
-    def forward(self, img1, img2, hdr_input):
+    def forward(self, img1, hdr_input):
         ssim_loss_list = []
         for i in range(len(self.pyramid_weight_list)):
             ssim_loss_list.append(self.pyramid_weight_list[i] * std_loss(self.window, img1, self.epsilon))
             img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
         return torch.sum(torch.stack(ssim_loss_list))
 
+
+class IntensityLossLaplacian(torch.nn.Module):
+    def __init__(self, epsilon, pyramid_weight_list):
+        super(IntensityLossLaplacian, self).__init__()
+        self.epsilon = epsilon
+        self.gaussian_kernel = get_gaussian_kernel(window_size=5, channel=1)
+        self.laplacian_kernel = get_laplacian_kernel(kernel_size=5)
+        self.pyramid_weight_list = pyramid_weight_list
+        self.mse_loss = torch.nn.MSELoss()
+        self.kernel_size = 5
+
+    def forward(self, fake, gamma_input):
+        gamma_input = data_loader_util.crop_input_hdr_batch(gamma_input)
+        ssim_loss_list = []
+        for i in range(len(self.pyramid_weight_list)):
+            ssim_loss_list.append(self.pyramid_weight_list[i] *
+                                  std_loss_laplac(self.gaussian_kernel, self.laplacian_kernel,
+                                                  fake, self.epsilon, gamma_input))
+            fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
+        return torch.sum(torch.stack(ssim_loss_list))
 
 class MuLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list):
@@ -122,21 +142,22 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
     sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
     sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
 
-    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon ** 2, 0.5)
-    std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon ** 2, 0.5)
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon2, 0.5)
+    std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon2, 0.5)
 
-    mu1_ = mu1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-    mu2_ = mu2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+    mu1 = mu1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+    mu2 = mu2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
 
-    std1_ = std1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-    std2_ = std2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-    img1_ = get_im_as_windows(img1, window_size)
-    img2_ = get_im_as_windows(img2, window_size)
-    img1_ = (img1_ - mu1_)
-    img1_ = img1_ / (std1_ + params.epsilon)
-    img2_ = (img2_ - mu2_)
-    img2_ = img2_ / (std2_ + params.epsilon)
-    return mse_loss(img1_, img2_)
+    std1 = std1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+    std2 = std2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+
+    img1 = get_im_as_windows(img1, window_size)
+    img2 = get_im_as_windows(img2, window_size)
+    img1 = (img1 - mu1)
+    img1 = img1 / (std1 + params.epsilon2)
+    img2 = (img2 - mu2)
+    img2 = (img2) / (std2 + params.epsilon2)
+    return mse_loss(img1, img2)
 
 
 def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
@@ -185,6 +206,34 @@ def std_loss(window, img1, epsilon):
     return res.mean()
 
 
+def std_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
+    b, c, h, w = fake.shape
+    ones = torch.ones(fake.shape)
+    if fake.is_cuda:
+        gaussian_kernel = gaussian_kernel.cuda(fake.get_device())
+        laplacian_kernel = laplacian_kernel.cuda(fake.get_device())
+        ones = ones.cuda(fake.get_device())
+    gaussian_kernel = gaussian_kernel.type_as(fake)
+    laplacian_kernel = laplacian_kernel.type_as(fake)
+    laplacian_kernel = laplacian_kernel.repeat(c, 1, 1, 1)
+    ones = ones.type_as(fake)
+    mu1 = F.conv2d(fake, gaussian_kernel, padding=5 // 2, groups=1)
+    gamma_input_gaussian = F.conv2d(gamma_input, gaussian_kernel, padding=5 // 2, groups=1)
+    laplacian_res = F.conv2d(gamma_input_gaussian, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
+    # laplacian_res_max = laplacian_res.view(laplacian_res.shape[0], -1).max(dim=1)[0].reshape(laplacian_res.shape[0], 1, 1, 1)
+    # laplacian_res = laplacian_res / laplacian_res_max
+    laplacian_res[laplacian_res < 0] = 0
+    laplacian_res = ones / (laplacian_res + params.epsilon2)
+    # laplacian_res = (laplacian_res - laplacian_res.min()) / (laplacian_res.max() - laplacian_res.min())
+    # print("laplacian_res max[%.4f] min[%.4f] mean[%.4f]" % (laplacian_res[1,0].max(), laplacian_res[1,0].min(), laplacian_res[1,0].mean()))
+    # compute std
+    mu1_sq = mu1.pow(2)
+    sigma1_sq = F.conv2d(fake * fake, gaussian_kernel, padding=5 // 2, groups=1) - mu1_sq
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + 1e-10, 0.5)
+    res = laplacian_res * (ones - (std1[0, 0] / (std1[0, 0] + epsilon)))
+    return res.mean()
+
+
 def mu_loss(window, fake, hdr_input, mse_loss):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -220,11 +269,6 @@ def gaussian(window_size, sigma):
 
 
 def create_window(window_size, channel):
-    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
-    # print(window.shape)
-    # print(window)
     window = torch.ones((1, channel, window_size, window_size))
     return window
 
@@ -283,3 +327,18 @@ def get_std(windows, mu1, wind_size):
     std1 = std1.permute(0, 2, 3, 1)
     std1 = std1.unsqueeze(dim=1)
     return std1
+
+
+def get_gaussian_kernel(window_size, channel):
+    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
+    return window
+
+
+def get_laplacian_kernel(kernel_size):
+    """Returns a 2D Laplacian kernel array."""
+    kernel = torch.ones((kernel_size, kernel_size))
+    mid = kernel_size // 2
+    kernel[mid, mid] = 1 - kernel_size ** 2
+    return kernel.double()
