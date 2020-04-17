@@ -41,6 +41,7 @@ echo "d_norm ${32}"
 echo "milestones ${33}"
 echo "add_frame ${34}"
 echo "input_dim ${35}"
+echo "apply_intensity_loss_laplacian_weights ${36}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -78,5 +79,6 @@ python3.6 -W ignore -u main_train.py \
   --d_norm ${32} \
   --milestones ${33} \
   --add_frame ${34} \
-  --input_dim ${35}
+  --input_dim ${35} \
+  --apply_intensity_loss_laplacian_weights ${36}
 

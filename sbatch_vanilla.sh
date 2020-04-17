@@ -19,6 +19,7 @@ intensity_epsilon=0.001
 std_pyramid_weight_list="1"
 mu_loss_factor=1
 mu_pyramid_weight_list="1"
+apply_intensity_loss_laplacian_weights=1
 
 # ====== DATASET ======
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
@@ -47,4 +48,5 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $intensity_epsilon $std_pyramid_weight_list $mu_loss_factor $mu_pyramid_weight_list \
   $data_root_npy $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr \
   $result_dir_prefix $use_factorise_data $factor_coeff $add_clipping $use_normalization \
-  $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim
+  $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim \
+  $apply_intensity_loss_laplacian_weights
