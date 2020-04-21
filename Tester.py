@@ -180,12 +180,13 @@ class Tester:
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = hdr_image_util.to_0_1_range(im)
+        im = np.clip(im, 0, 1)
+        # im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
     def save_best_acc_result_imageio_temo(self, out_dir, im_and_q, im, epoch, color):
-        file_name = im_and_q + "_epoch_" + str(epoch) + "_" + color + ".png"
+        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
         im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
@@ -219,5 +220,4 @@ class Tester:
                 fake_im_gray = torch.squeeze(fake[0], dim=0)
                 fake_im_gray_numpy = fake_im_gray.clone().detach().cpu().numpy()
                 self.save_result_imageio_no_stretch(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray_source')
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
-
+                self.save_best_acc_result_imageio_temo(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')

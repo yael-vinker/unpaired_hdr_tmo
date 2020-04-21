@@ -58,7 +58,8 @@ class GanTrainer:
             if opt.apply_intensity_loss_laplacian_weights:
                 self.intensity_loss = ssim.IntensityLossLaplacian(opt.intensity_epsilon, opt.std_pyramid_weight_list)
             else:
-                self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list)
+                self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
+                                                         opt.std_method)
             self.intensity_loss_factor = opt.apply_intensity_loss
         if opt.mu_loss_factor:
             self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list)

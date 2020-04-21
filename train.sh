@@ -21,6 +21,8 @@ echo "intensity_epsilon ${14}"
 echo "std_pyramid_weight_list ${15}"
 echo "mu_loss_factor ${16}"
 echo "mu_pyramid_weight_list ${17}"
+echo "std_method ${37}"
+echo "alpha ${38}"
 
 echo "====== DATASET ======"
 echo "data_root_npy ${18}"
@@ -80,5 +82,7 @@ python3.6 -W ignore -u main_train.py \
   --milestones ${33} \
   --add_frame ${34} \
   --input_dim ${35} \
-  --apply_intensity_loss_laplacian_weights ${36}
+  --apply_intensity_loss_laplacian_weights ${36} \
+  --std_method ${37} \
+  --alpha ${38}
 

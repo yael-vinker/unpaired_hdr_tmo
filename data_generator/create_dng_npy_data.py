@@ -178,7 +178,6 @@ def hdr_sigma_preprocess(im_path, args, reshape=False):
 
 def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, factor_coeff, reshape=False,
                    window_tone_map=False, calculate_f=True):
-    print(im_path)
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
