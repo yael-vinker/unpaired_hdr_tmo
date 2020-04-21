@@ -200,7 +200,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     input_images_path = get_hdr_source_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     models_names = get_models_names()
-    models_epoch = [680]
+    models_epoch = [650]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -295,7 +295,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     #                                                           factor_coeff=1.0, reshape=False)
     rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
                                                               use_factorise_gamma_data=True, factor_coeff=1.0,
-                                                              reshape=False, window_tone_map=False)
+                                                              reshape=False, window_tone_map=False, calculate_f=True)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
@@ -345,7 +345,7 @@ def get_hdr_source_path(name):
     path_dict = {
     # "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
     #              "test_source": "/Users/yaelvinker/Documents/university/lab/open_exr_fixed_size/exr_format_fixed_size/",
-                "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/exr_data",
+                "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
                  "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
                  "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
                  "hdr_test": "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"}
@@ -362,7 +362,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["mu_gamma_intensity_loss_3.0_0.001_1_unet_square_and_square_root_d_model_patchD_struct_factor_1.0_pyramid_1"]
+    models_names = ["std_loss_5.0_0.001_1mu_loss_1.0_struct_factor_1.0_pyramid_1,1,1_unet_square_and_square_root_d_model_patchD"]
     return models_names
 
 
@@ -566,7 +566,7 @@ def run_discriminator_on_data():
 
 if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
-    save_fake_images_for_fid_hdr_input(1, "exr")
+    save_fake_images_for_fid_hdr_input(1, "reg")
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
