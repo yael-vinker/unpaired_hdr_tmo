@@ -15,9 +15,10 @@ from shutil import copyfile
 
 
 def display_tensor(tensor_im, isgray, im_name=""):
-    save_gray_tensor_as_numpy(tensor_im, "/Users/yaelvinker/PycharmProjects/lab/utils/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0",
-                              im_name + "_input.png")
+    # save_gray_tensor_as_numpy(tensor_im, "/Users/yaelvinker/PycharmProjects/lab/utils/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0/fix2/",
+    #                           os.path.splitext(im_name)[0] + "_input.png")
     np_im = np.array(tensor_im.permute(1, 2, 0))
+    # hdr_image_util.print_image_details(np_im, os.path.splitext(im_name)[0])
     # im = (np_im - np.min(np_im)) / (np.max(np_im) - np.min(np_im))
     im = np_im
     if isgray:
@@ -48,7 +49,8 @@ def print_result(output_dir):
         color_im = data[()]["display_image"]
         hdr_image_util.print_tensor_details(input_im, "input_im " + img_name)
         display_tensor(input_im, True, img_name)
-        hdr_image_util.print_tensor_details(color_im, "display_image " + img_name)
+        hdr_image_util.print_tensor_details(color_im / color_im.max(), "display_image " + img_name)
+        # hdr_image_util.print_tensor_details(color_im, "display_image " + img_name)
         display_tensor(color_im / color_im.max(), False)
 
 
@@ -186,7 +188,7 @@ def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, facto
     gray_im = hdr_image_util.to_gray(rgb_img)
     if use_factorised_data:
         if calculate_f:
-            gray_im_temp = hdr_image_util.reshape_im(gray_im, gray_im.shape[0] // 2, gray_im.shape[1] // 2)
+            gray_im_temp = gray_im
             f_factor = hdr_image_util.get_brightness_factor(gray_im_temp)
             brightness_factor = f_factor * 255 * factor_coeff
         else:
@@ -310,7 +312,8 @@ if __name__ == '__main__':
        pref = "hdrplus"
     output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
                      "_factor_coeff_" + str(args.factor_coeff)
-    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
+    # output_dir_name = fix2
+    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name, "fix2")
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
     # create_data(args)

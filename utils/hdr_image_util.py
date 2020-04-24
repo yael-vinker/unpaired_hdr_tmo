@@ -71,22 +71,32 @@ def get_bump(im):
     return a1 / a0
 
 
+def plot_hist(rgb_img, brightness_factor_b, i):
+    rgb_img = (rgb_img / np.max(rgb_img)) * brightness_factor_b
+    rgb_img[rgb_img > 255] = 255
+    rgb_img = rgb_img.astype('uint8')
+    counts, bins = np.histogram(rgb_img.reshape(np.prod(rgb_img.shape)), range(256))
+    # plot histogram centered on values 0..255
+    plt.bar(bins[:-2], counts[:-1], width=1, edgecolor='none')
+    plt.xlim([-0.5, 300])
+    a0 = np.mean(counts[0:65])
+    a1 = np.mean(counts[65:200])
+    plt.title(str(a1 / a0) + " i " + str(i), fontSize=12)
+
+
 def get_brightness_factor(im_hdr):
     im_hdr = (im_hdr / np.max(im_hdr)) * 255
     big = 1.5
     f = 1.0
 
-    for i in range(5000):
+    for i in range(1000):
         r = get_bump(im_hdr * f)
         if r < big:
             f = f * 1.01
-        else:
-            if r > 1 / big:
-                f = f * 0.9
-                print("i[%d]  r[%f]  f[%f]" % (i, r, f * 255))
-                return f
+        elif r < 1 / big:
+            print("i[%d]  r[%f]  f[%f] 1/big[%f]" % (i, r, f, 1 / big))
+            return f
     print("i[%d]  r[%f]  f[%f]" % (i, r, f))
-    plt.show()
     return f
 
 
@@ -171,6 +181,7 @@ def display_tensor(tensor, cmap):
     im = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     if cmap == "gray":
         im = np.squeeze(im)
-    im = to_0_1_range(im)
-    plt.imshow(im, cmap=cmap)
+    # im = to_0_1_range(im)
+
+    plt.imshow(im, cmap=cmap, vmin=im.min(), vmax=im.max())
     # plt.show()

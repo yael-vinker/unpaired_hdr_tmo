@@ -42,6 +42,7 @@ class GanTrainer:
         self.train_with_D = opt.train_with_D
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
+        self.wind_size = opt.ssim_window_size
         if opt.ssim_loss_factor:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
@@ -54,11 +55,12 @@ class GanTrainer:
             self.sig_loss_factor = opt.use_sigma_loss
         else:
             self.sigma_loss = None
+        self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
         if opt.apply_intensity_loss:
-            if opt.apply_intensity_loss_laplacian_weights:
-                self.intensity_loss = ssim.IntensityLossLaplacian(opt.intensity_epsilon, opt.std_pyramid_weight_list)
-            else:
-                self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
+            # if opt.apply_intensity_loss_laplacian_weights:
+            #     self.intensity_loss = ssim.IntensityLossLaplacian(opt.intensity_epsilon, opt.std_pyramid_weight_list)
+            # else:
+            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
                                                          opt.std_method)
             self.intensity_loss_factor = opt.apply_intensity_loss
         if opt.mu_loss_factor:
@@ -187,9 +189,11 @@ class GanTrainer:
             # fake labels are real for generator cost
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
+        if self.use_bilateral_weight:
+            r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size)
         self.update_ssim_loss(hdr_original_gray_norm, fake)
-        self.update_intensity_loss(fake, hdr_input)
-        self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input)
+        self.update_intensity_loss(fake, hdr_input, r_weights)
+        self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         # self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
@@ -216,18 +220,18 @@ class GanTrainer:
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 
-    def update_intensity_loss(self, fake, hdr_input):
+    def update_intensity_loss(self, fake, hdr_input, r_weights):
         if self.apply_intensity_loss:
-            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input)
+            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input, r_weights)
             retain_graph = False
             if self.mu_loss_factor:
                 retain_graph = True
             self.errG_intensity.backward(retain_graph=retain_graph)
             self.G_loss_intensity.append(self.errG_intensity.item())
 
-    def update_mu_loss(self, hdr_input_original_gray, fake, hdr_input):
+    def update_mu_loss(self, hdr_input_original_gray, fake, hdr_input, r_weights):
         if self.mu_loss_factor:
-            self.errG_mu = self.mu_loss_factor * self.mu_loss(fake, hdr_input_original_gray, hdr_input)
+            self.errG_mu = self.mu_loss_factor * self.mu_loss(fake, hdr_input_original_gray, hdr_input, r_weights)
             self.errG_mu.backward()
 
     def update_best_G_acc(self):
