@@ -23,9 +23,9 @@ def display_tensor(tensor_im, isgray, im_name=""):
     im = np_im
     if isgray:
         gray = np.squeeze(im)
-        plt.imshow(gray, cmap='gray')
+        plt.imshow(gray, cmap='gray', vmin=0, vmax=1)
     else:
-        plt.imshow(im)
+        plt.imshow(im, vmin=0, vmax=1)
     plt.show()
 
 
@@ -178,28 +178,24 @@ def hdr_sigma_preprocess(im_path, args, reshape=False):
     return rgb_img, gray_im_log
 
 
-def hdr_preprocess(im_path, use_factorised_data, use_factorise_gamma_data, factor_coeff, reshape=False,
-                   window_tone_map=False, calculate_f=True):
+def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshape, gamma_log):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
-    if reshape:
-        rgb_img = hdr_image_util.reshape_image(rgb_img)
     gray_im = hdr_image_util.to_gray(rgb_img)
-    if use_factorised_data:
-        if calculate_f:
-            gray_im_temp = gray_im
-            f_factor = hdr_image_util.get_brightness_factor(gray_im_temp)
-            brightness_factor = f_factor * 255 * factor_coeff
-        else:
-            data = np.load("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy", allow_pickle=True)
-            f_factor = data[()][os.path.splitext(os.path.basename(im_path))[0]]
-            brightness_factor = f_factor * factor_coeff
-        print("brightness_factor", brightness_factor)
-    else:
-        brightness_factor = 1000
+    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
+    gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
+
+    f_factor = hdr_image_util.get_brightness_factor(gray_im)
+    brightness_factor = f_factor * 255 * factor_coeff
+    print("brightness_factor", brightness_factor)
     if use_factorise_gamma_data:
-        gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + 1.5 * np.log10(brightness_factor)))
+        if gamma_log == 2:
+            gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + np.log2(brightness_factor)))
+        elif gamma_log == 10:
+            gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + 1.5 * np.log10(brightness_factor)))
+        else:
+            assert 0, "Unsupported gamma log"
     else:
         gray_im = (gray_im / np.max(gray_im)) * brightness_factor
         gray_im = np.log(gray_im + 1)
@@ -224,8 +220,9 @@ def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
 
 
 def apply_preprocess_for_hdr(im_path, args):
-    rgb_img, gray_im_log = hdr_preprocess(im_path, args.use_factorise_data,
-                                          use_factorise_gamma_data=True, factor_coeff=args.factor_coeff, reshape=False)
+    rgb_img, gray_im_log = hdr_preprocess(im_path,
+                                          use_factorise_gamma_data=True, factor_coeff=args.factor_coeff,
+                                          train_reshape=True, gamma_log=args.gamma_log)
     rgb_img = transforms_.image_transform_no_norm(rgb_img)
     gray_im_log = transforms_.image_transform_no_norm(gray_im_log)
     return rgb_img, gray_im_log
@@ -304,19 +301,20 @@ if __name__ == '__main__':
     parser.add_argument("--number_of_images", type=int, default=7)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
     parser.add_argument("--factor_coeff", type=float, default=1.0)
+    parser.add_argument('--gamma_log', type=int, default=2)
 
     args = parser.parse_args()
     if args.isLdr:
        pref = "flicker"
     else:
        pref = "hdrplus"
-    output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
-                     "_factor_coeff_" + str(args.factor_coeff)
-    # output_dir_name = fix2
-    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name, "fix2")
+    # output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
+    #                  "_factor_coeff_" + str(args.factor_coeff)
+    output_dir_name = pref + "_gamma_log_" + str(args.gamma_log)
+    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
-    # create_data(args)
+    create_data(args)
     print_result(args.output_dir)
 
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",

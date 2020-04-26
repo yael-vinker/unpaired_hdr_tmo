@@ -68,6 +68,7 @@ def parse_arguments():
     parser.add_argument('--apply_wind_norm', type=int, default=0)
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
+    parser.add_argument('--gamma_log', type=int, default=10)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -139,6 +140,7 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    result_dir_pref = result_dir_pref + "_data_log_" + str(opt.gamma_log)
     if not opt.train_with_D:
         result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:

@@ -53,10 +53,10 @@ class Tester:
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
             print(img_name)
-            rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, self.args.use_factorise_data,
+            rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path,
                                                                       self.args.use_factorise_gamma_data,
-                                                                      self.args.factor_coeff, reshape=True,
-                                                                      window_tone_map=self.args.window_tm_data)
+                                                                      self.args.factor_coeff, train_reshape=False,
+                                                                      gamma_log=self.args.gamma_log)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
@@ -64,13 +64,6 @@ class Tester:
                                         'im_hdr_original': rgb_img,
                                         'im_log_normalize_tensor': gray_im_log,
                                         'epoch': 0})
-            # if counter == 1 or counter == 2:
-            #     self.get_test_image_special_factor(im_path, original_hdr_images, counter)
-
-            # plt.imshow(gray_im_log.clone().permute(1, 2, 0).detach().cpu().squeeze().numpy(), cmap='gray')
-            # title = "max %.4f min %.4f mean %.4f" % (gray_im_log.max().item(),gray_im_log.min().item(), gray_im_log.mean().item())
-            # plt.title(title, fontSize=8)
-            # plt.show()
             counter += 1
         return original_hdr_images
 
@@ -193,8 +186,8 @@ class Tester:
 
     def save_result_imageio_no_stretch(self, out_dir, im_and_q, im, epoch, color):
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = (im * 255).astype('uint8')
-        im = np.clip(im, 0, 255)
+        im = (im * 255)
+        im = np.clip(im, 0, 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
     def save_images_for_model(self, netG, out_dir, epoch):

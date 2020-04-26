@@ -68,6 +68,7 @@ def get_bump(im):
 
     a0 = np.mean(hist[0:65])
     a1 = np.mean(hist[65:200])
+
     return a1 / a0
 
 
@@ -86,16 +87,21 @@ def plot_hist(rgb_img, brightness_factor_b, i):
 
 def get_brightness_factor(im_hdr):
     im_hdr = (im_hdr / np.max(im_hdr)) * 255
-    big = 1.5
+    big = 1.1
     f = 1.0
 
-    for i in range(1000):
+    for i in range(2000):
         r = get_bump(im_hdr * f)
-        if r < big:
-            f = f * 1.01
-        elif r < 1 / big:
-            print("i[%d]  r[%f]  f[%f] 1/big[%f]" % (i, r, f, 1 / big))
+
+        im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + 1.5 * np.log10(f * 255)))) * 255)
+
+        if r > 1 and i % 5 == 0:
+            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
+        if r > big and np.mean(im_gamma) > 160:
+            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
             return f
+        else:
+            f = f * 1.01
     print("i[%d]  r[%f]  f[%f]" % (i, r, f))
     return f
 
@@ -116,7 +122,7 @@ def to_gray_tensor(rgb_tensor):
 
 def reshape_im(im, new_y, new_x):
     return skimage.transform.resize(im, (new_y, new_x),
-                                             mode='reflect', preserve_range=True).astype("float32")
+                                             mode='reflect', preserve_range=False, anti_aliasing=True).astype("float32")
 
 
 def to_0_1_range(im):
@@ -147,16 +153,20 @@ def back_to_color(im_hdr, fake):
     return output_im
 
 
-def reshape_image(rgb_im):
+def reshape_image(rgb_im, train_reshape):
     h, w = rgb_im.shape[0], rgb_im.shape[1]
-    if min(h, w) > 3000:
-        rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
-                                                   int(rgb_im.shape[1] / 4)),
-                                          mode='reflect', preserve_range=False).astype("float32")
-    elif min(h, w) > 2000:
-        rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
-                                                   int(rgb_im.shape[1] / 3)),
-                                          mode='reflect', preserve_range=False).astype("float32")
+    if train_reshape:
+        rgb_im = skimage.transform.resize(rgb_im, (params.input_size, params.input_size),
+                                          mode='reflect', preserve_range=False, anti_aliasing=True).astype("float32")
+    else:
+        if min(h, w) > 3000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
+                                                       int(rgb_im.shape[1] / 4)),
+                                              mode='reflect', preserve_range=False, anti_aliasing=True).astype("float32")
+        elif min(h, w) > 2000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+                                                       int(rgb_im.shape[1] / 3)),
+                                              mode='reflect', preserve_range=False, anti_aliasing=True).astype("float32")
     return rgb_im
 
 

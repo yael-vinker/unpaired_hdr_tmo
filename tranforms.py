@@ -7,7 +7,7 @@ import torch
 import torchvision.transforms as torch_transforms
 
 from utils import params
-
+import torch.nn.functional as F
 
 # class Normalize(object):
 #     """Normalize a tensor image with mean and standard deviation.
@@ -138,6 +138,60 @@ class CenterCrop(object):
         return pic[i:i + h, j:j + w, :]
 
 
+class CenterCropTensor(object):
+    """Crops the given PIL Image at the center.
+    Args:
+        size (sequence or int): Desired output size of the crop. If size is an
+            int instead of sequence like (h, w), a square crop (size, size) is
+            made.
+    """
+
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    @staticmethod
+    def get_params(pic, output_size):
+        """Get parameters for ``crop`` for center crop.
+        Args:
+            pic (np array): Image to be cropped.
+            output_size (tuple): Expected output size of the crop.
+        Returns:
+            tuple: params (i, j, h, w) to be passed to the crop for center crop.
+        """
+
+        c, w, h = pic.shape
+        th, tw = output_size
+
+        i = int(round((h - th) / 2.))
+        j = int(round((w - tw) / 2.))
+
+        return i, j, th, tw
+
+    def __call__(self, pic):
+        """
+        Args:
+            pic (np array): Image to be cropped.
+        Returns:
+            np array: Cropped image.
+        """
+
+        # check type of [pic]
+        # if not _is_numpy_image(pic):
+        #     raise TypeError('img should be numpy array. Got {}'.format(type(pic)))
+
+        # if image has only 2 channels make them 3
+        # if len(pic.shape) != 3:
+        #     pic = pic.reshape(pic.shape[0], pic.shape[1], -1)
+
+        # get crop params: starting pixels and size of the crop
+        i, j, h, w = self.get_params(pic, self.size)
+        return pic[:, i:i + h, j:j + w]
+
+
+
 class Scale(object):
     """
     Rescale the given numpy image to a specified size.
@@ -154,7 +208,28 @@ class Scale(object):
         #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
         #     return util.img_as_ubyte(scaled_im) / 255
         im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=True)
+        # im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=False, anti_aliasing=True)
         return im
+
+
+class ScaleTensor(object):
+    """
+    Rescale the given numpy image to a specified size.
+    """
+
+    def __init__(self, size, dtype=np.float32, interpolation="bilinear"):
+        self.size = size
+        self.dtype = dtype
+        self.interpolation = interpolation
+
+    def __call__(self, pic):
+        # if self.dtype == np.uint8:
+        #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
+        #     return util.img_as_ubyte(scaled_im) / 255
+        if pic.dim() == 3:
+            pic = pic.unsqueeze(dim=0)
+        im = F.interpolate(pic, size=(self.size, self.size), mode='bicubic', align_corners=False)
+        return im.squeeze(dim=0)
 
 
 class Normalize(object):
@@ -294,7 +369,7 @@ class Clip(object):
         return x
 
 image_transform_no_norm = torch_transforms.Compose([
-    Scale(params.input_size),
+    # Scale(params.input_size),
     CenterCrop(params.input_size),
     ToTensor(),
 ])
@@ -305,12 +380,6 @@ gray_image_transform = torch_transforms.Compose([
     CenterCrop(params.input_size),
     ToTensor(),
     Normalize(0.5, 0.5),
-])
-
-gray_image_transform_original_range = torch_transforms.Compose([
-    Scale(params.input_size),
-    CenterCrop(params.input_size),
-    ToTensor(),
 ])
 
 rgb_non_display_image_transform = torch_transforms.Compose([

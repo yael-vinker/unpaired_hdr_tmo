@@ -166,26 +166,6 @@ def get_layer_factor(con_operator):
         assert 0, "Unsupported con_operator request: {}".format(con_operator)
 
 
-def load_d_model(model, device, filters, con_operator, model_depth,
-                 net_path="/Users/yaelvinker/PycharmProjects/lab/local_log_100_skip_connection_conv_depth_1/best_model/best_model.pth"):
-    D_net = create_net("D", model, device, False, 1, 0, filters,
-                       con_operator, model_depth).to(device)
-    # checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
-    checkpoint = torch.load(net_path)
-    state_dict = checkpoint['modelD_state_dict']
-    # if device.type == 'cpu':
-    from collections import OrderedDict
-    new_state_dict = OrderedDict()
-    for k, v in state_dict.items():
-        name = k[7:]  # remove `module.`
-        new_state_dict[name] = v
-    # else:
-    new_state_dict = state_dict
-    D_net.load_state_dict(new_state_dict)
-    D_net.eval()
-    return D_net
-
-
 def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
     new_batch = hdr_image_util.back_to_color_batch(hdr_origin_batch, fake_batch)
     for i in range(fake_batch.size(0)):
@@ -198,7 +178,8 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     input_images_path = get_hdr_source_path("test_source")
-    arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
+    # arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
+    arch_dir = "/Users/yaelvinker/Documents/university/lab/04_24"
     models_names = get_models_names()
     models_epoch = [650]
     print(models_epoch)
@@ -291,11 +272,9 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
 
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params):
-    # rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
-    #                                                           factor_coeff=1.0, reshape=False)
-    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, use_factorised_data=True,
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path,
                                                               use_factorise_gamma_data=True, factor_coeff=1.0,
-                                                              reshape=False, window_tone_map=False, calculate_f=True)
+                                                              train_reshape=False, gamma_log=model_params["gamma_log"])
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
@@ -337,7 +316,8 @@ def get_model_params(model_name):
                     "input_loader": get_input_loader(model_name),
                     "wind_size": 5,
                     "std_norm_factor": get_std_norm_factor(model_name),
-                    "apply_wind_norm": get_apply_wind_norm(model_name)}
+                    "apply_wind_norm": get_apply_wind_norm(model_name),
+                    "gamma_log": get_gamma_log(model_name)}
     return model_params
 
 
@@ -362,7 +342,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["std_loss_5.0_0.001_1mu_loss_1.0_struct_factor_1.0_pyramid_1,1,1_unet_square_and_square_root_d_model_patchD"]
+    models_names = ["prev_data_laplace_std_5.0_eps_0.001_alpha_1.0_1_mu_loss_1.0_struct_factor_1.0_pyramid_1,1,1_unet_square_and_square_root_d_model_patchD"]
     return models_names
 
 
@@ -371,6 +351,12 @@ def get_apply_wind_norm(model_name):
         return True
     else:
         return False
+
+def get_gamma_log(model_name):
+    if "log_2" in model_name:
+        return 2
+    else:
+        return 10
 
 
 def get_input_loader(model_name):
@@ -447,126 +433,9 @@ def save_color_tensor_as_numpy(tensor, output_path, im_name):
     imageio.imwrite(os.path.join(output_path, im_name + ".jpg"), im, format='JPEG-PIL')
 
 
-# ====== DISCRIMINATOR TRAINED MODEL ======
-def run_model_d_on_path(model, device, filters, con_operator, model_depth, net_path, train_data_loader_hdr,
-                        train_data_loader_ldr, output_images_path):
-    net_D = load_d_model(model, device, filters, con_operator, model_depth, net_path)
-    print("model " + model + " was loaded successfully")
-
-    accDreal_counter = 0
-    num_iter = 0
-    for data_ldr in train_data_loader_ldr:
-        num_iter += 1
-        real_ldr = data_ldr[params.gray_input_image_key].to(device)
-        output_on_real = net_D(real_ldr).view(-1)
-        # Real label = 1, so we count the samples on which D was right
-        accDreal_counter += (output_on_real > 0.5).sum().item()
-    accDlog_counter = 0
-    num_iter = 0
-    for data_hdr in train_data_loader_hdr:
-        num_iter += 1
-        hdr_input = data_hdr[params.gray_input_image_key].to(device)
-        output_on_log = net_D(hdr_input).view(-1)
-        # Real label = 1, so we count the samples on which D was right
-        accDlog_counter += (output_on_log <= 0.5).sum().item()
-    return accDreal_counter / (num_iter * 16), accDlog_counter / (num_iter * 16)
-
-
-def run_model_for_path(device, train_dataroot_npy, train_dataroot_ldr, output_path, model_path, batch_size=4):
-    train_data_loader_npy, train_ldr_loader = data_loader_util.load_data(train_dataroot_npy, train_dataroot_ldr,
-                                                                         batch_size, testMode=False, title="train",
-                                                                         apply_wind_norm=False, device=device,
-                                                                         std_norm_factor=0.8)
-
-    G_net = load_g_model(device, model_path)
-    num_iters = 0
-    for data_hdr_batch in train_data_loader_npy:
-        hdr_input = data_hdr_batch[params.gray_input_image_key].to(device)
-        hdr_input_display = data_hdr_batch[params.color_image_key].to(device)
-        with torch.no_grad():
-            ours_tone_map_gray = G_net(hdr_input.detach())
-            save_batch_images(ours_tone_map_gray, hdr_input_display, output_path, str(num_iters))
-        num_iters += 1
-
-
-def run_discriminator_on_data():
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # device = torch.device("cpu")
-    input_hdr_images_path = "/cs/labs/raananf/yael_vinker/data/train/hdrplus_dict_log1000"
-    input_ldr_images_path = "/cs/labs/raananf/yael_vinker/data/train/ldr_flicker_dict"
-    train_data_loader_hdr, train_data_loader_ldr = \
-        data_loader_util.load_data(input_hdr_images_path, input_ldr_images_path,
-                                   16, testMode=False, title="train")
-    arch_dir = "/cs/snapless/raananf/yael_vinker/02_16/"
-
-    filters = [32, 32, 32, 32,
-               32, 32, 32, 32,
-               32, 32, 64]
-    models = [params.torus_network, params.torus_network, params.torus_network, params.unet_network,
-              params.unet_network, params.unet_network, params.unet_network, params.unet_network,
-              params.unet_network, params.unet_network, params.unet_network]
-    con_operators = [params.original_unet, params.original_unet, params.square, params.original_unet,
-                     params.original_unet, params.square_and_square_root, params.square_and_square_root, params.square,
-                     params.square, params.square_root, params.original_unet]
-    depths = [3, 4, 3, 3,
-              4, 3, 4, 3,
-              4, 3, 3]
-
-    models_epoch = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
-    # models_epoch = [0]
-
-    # filters = [32]
-    # models = [params.unet_network]
-    # con_operators = [params.square]
-    # depths = [3]
-
-    acc_ldr_list = []
-    acc_log_list = []
-    for i in range(len(filters)):
-        model_name = str(filters[i]) + "_filters__log_1000_" + models[i] + "_" + con_operators[i] + "_depth_" + str(
-            depths[i])
-        print("cur model = ", model_name)
-        cur_model_path = os.path.join(arch_dir, model_name)
-        if os.path.exists(cur_model_path):
-            output_path = os.path.join(cur_model_path, "evaluate_d")
-            if not os.path.exists(output_path):
-                os.mkdir(output_path)
-            net_path = os.path.join(cur_model_path, "models")
-            for m in models_epoch:
-                net_name = "net_epoch_" + str(m) + ".pth"
-                cur_net_path = os.path.join(net_path, net_name)
-                if os.path.exists(cur_net_path):
-                    cur_output_path = os.path.join(output_path, str(m))
-                    if not os.path.exists(cur_output_path):
-                        os.mkdir(cur_output_path)
-                    acc_ldr, acc_log = run_model_d_on_path(models[i], device, filters[i], con_operators[i], depths[i],
-                                                           cur_net_path,
-                                                           train_data_loader_hdr,
-                                                           train_data_loader_ldr, cur_output_path)
-                    acc_ldr_list.append(acc_ldr)
-                    acc_log_list.append(acc_log)
-                else:
-                    print("model path does not exists: ", cur_net_path)
-
-            plt.figure()
-            plt.plot(models_epoch, acc_ldr_list, 'o', label='acc D LDR')
-            plt.plot(models_epoch, acc_log_list, 'o', label='acc D LOG')
-            # plt.plot(range(iters_n), acc_G, '-g', label='acc G')
-
-            plt.xlabel(models_epoch)
-            plt.legend(loc='upper left')
-            plt.title(model_name)
-
-            # save image
-            plt.savefig(os.path.join(output_path, "evaluate_d.png"))  # should before show method
-            plt.close()
-        else:
-            print("model path does not exists")
-
-
 if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
-    save_fake_images_for_fid_hdr_input(1, "reg")
+    save_fake_images_for_fid_hdr_input(1, "log10_mean_150_")
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
