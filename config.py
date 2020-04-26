@@ -42,7 +42,7 @@ def parse_arguments():
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
     parser.add_argument('--std_method', type=str, default="std")
     parser.add_argument('--alpha', type=float, default=1)
-    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
+    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
     parser.add_argument('--intensity_epsilon', type=float, default=0.001)
     parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
 
@@ -140,7 +140,7 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
-    result_dir_pref = result_dir_pref + "_data_log_" + str(opt.gamma_log)
+    result_dir_pref = result_dir_pref + "data_log_" + str(opt.gamma_log)
     if not opt.train_with_D:
         result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:
@@ -152,9 +152,10 @@ def create_dir(opt):
     if opt.apply_intensity_loss:
         s = opt.std_method + "_"
         if opt.apply_intensity_loss_laplacian_weights:
-            s = "laplace_" + s
-        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + \
-                          str(opt.intensity_epsilon) + "_alpha_" + str(opt.alpha) + "_" + opt.std_pyramid_weight_list
+            s = "_laplace_" + s
+        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon)
+        if opt.std_method != "std":
+            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha) + "_" + opt.std_pyramid_weight_list
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor)
     if opt.ssim_loss_factor:
@@ -172,37 +173,21 @@ def create_dir(opt):
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
 
-    best_acc_path = os.path.join(output_dir, params.best_acc_images_path)
     models_images = os.path.join(output_dir, params.models_images)
     model_path = os.path.join(output_dir, model_path)
-    models_250_save_path = os.path.join("models_250", "models_250_net.pth")
-    model_path_250 = os.path.join(output_dir, models_250_save_path)
     best_model_save_path = os.path.join("best_model", "best_model.pth")
     best_model_path = os.path.join(output_dir, best_model_save_path)
     loss_graph_path = os.path.join(output_dir, loss_graph_path)
     result_path = os.path.join(output_dir, result_path)
     acc_path = os.path.join(output_dir, "accuracy")
-    gradient_flow_path = os.path.join(output_dir, params.gradient_flow_path, "g")
 
     if not os.path.exists(models_images):
         os.mkdir(models_images)
         print("Directory ", models_images, " created")
 
-    if not os.path.exists(best_acc_path):
-        os.mkdir(best_acc_path)
-        print("Directory ", best_acc_path, " created")
-
-    if not os.path.exists(os.path.dirname(gradient_flow_path)):
-        os.makedirs(os.path.dirname(gradient_flow_path))
-        print("Directory ", gradient_flow_path, " created")
-
     if not os.path.exists(os.path.dirname(model_path)):
         os.makedirs(os.path.dirname(model_path))
         print("Directory ", model_path, " created")
-
-    if not os.path.exists(os.path.dirname(model_path_250)):
-        os.makedirs(os.path.dirname(model_path_250))
-        print("Directory ", model_path_250, " created")
 
     if not os.path.exists(os.path.dirname(best_model_path)):
         os.makedirs(os.path.dirname(best_model_path))
@@ -210,11 +195,12 @@ def create_dir(opt):
 
     if not os.path.exists(loss_graph_path):
         os.mkdir(loss_graph_path)
-
         print("Directory ", loss_graph_path, " created")
+
     if not os.path.exists(result_path):
         os.mkdir(result_path)
         print("Directory ", result_path, " created")
+
     if not os.path.exists(acc_path):
         os.mkdir(acc_path)
         print("Directory ", acc_path, " created")

@@ -134,9 +134,9 @@ def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_
             plt.axis("off")
             plt.title(titles[j])
             if display_im.ndim == 2:
-                plt.imshow(display_im, cmap='gray')
+                plt.imshow(display_im, cmap='gray', vmin=0, vmax=1)
             else:
-                plt.imshow(display_im)
+                plt.imshow(display_im, vmin=0, vmax=1)
         plt.savefig(os.path.join(new_out_dir, "set " + str(i)))
         plt.close()
 

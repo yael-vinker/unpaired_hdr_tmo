@@ -234,12 +234,6 @@ class GanTrainer:
             self.errG_mu = self.mu_loss_factor * self.mu_loss(fake, hdr_input_original_gray, hdr_input, r_weights)
             self.errG_mu.backward()
 
-    def update_best_G_acc(self):
-        if self.accG > self.best_accG:
-            self.best_accG = self.accG
-            printer.print_best_acc_error(self.best_accG, self.epoch)
-            model_save_util.save_best_model(self.netG, self.output_dir, self.optimizerG)
-
     def verify_checkpoint(self):
         if self.isCheckpoint:
             print("Loading model...")
@@ -293,12 +287,10 @@ class GanTrainer:
                                                self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity,
                                                self.errG_mu)
         else:
-            printer.print_epoch_losses_summary(epoch, self.num_epochs, 0, 0,
-                                               0, 0, 0,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity)
-        printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG,
-                                        self.best_accG)
-        printer.print_best_acc_error(self.best_accG, self.epoch)
+            printer.print_epoch_losses_summary(epoch, self.num_epochs, 0, 0, 0, 0, 0,
+                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity,
+                                               self.errG_mu)
+        printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG)
         if epoch % self.epoch_to_save == 0:
             model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
                                        self.netD, self.optimizerD)

@@ -95,10 +95,10 @@ def get_brightness_factor(im_hdr):
 
         im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + 1.5 * np.log10(f * 255)))) * 255)
 
-        if r > 1 and i % 5 == 0:
-            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
-        if r > big and np.mean(im_gamma) > 160:
-            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
+        # if r > 1 and i % 5 == 0:
+        #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
+        if r > big and np.min(im_gamma) > 85:
+            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
             return f
         else:
             f = f * 1.01
@@ -195,3 +195,32 @@ def display_tensor(tensor, cmap):
 
     plt.imshow(im, cmap=cmap, vmin=im.min(), vmax=im.max())
     # plt.show()
+
+# ====== SAVE IMAGES ======
+def save_gray_tensor_as_numpy(tensor, output_path, im_name):
+    tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
+    tensor_0_1 = np.squeeze(tensor)
+    im = (tensor_0_1 * 255).astype('uint8')
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
+
+
+def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
+    tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    tensor_0_1 = np.squeeze(tensor)
+    tensor_0_1 = to_0_1_range(tensor_0_1)
+    im = (tensor_0_1 * 255).astype('uint8')
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
+
+
+def save_color_tensor_as_numpy(tensor, output_path, im_name):
+    tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
+    tensor_0_1 = np.squeeze(tensor)
+    im = (tensor_0_1 * 255).astype('uint8')
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    imageio.imwrite(os.path.join(output_path, im_name + ".jpg"), im, format='JPEG-PIL')
+

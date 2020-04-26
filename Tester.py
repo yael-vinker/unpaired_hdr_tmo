@@ -173,7 +173,8 @@ class Tester:
 
     def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
         file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = np.clip(im, 0, 1)
+        tensor = im.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
+        # im = np.clip(im, 0, 1)
         # im = hdr_image_util.to_0_1_range(im)
         im = (im * 255).astype('uint8')
         imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
@@ -208,9 +209,11 @@ class Tester:
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
-                fake_im_color_numpy = fake_im_color[0].clone().permute(1, 2, 0).detach().cpu().numpy()
-                self.save_best_acc_result_imageio(out_dir, im_and_q, fake_im_color_numpy, epoch, color='rgb')
-                fake_im_gray = torch.squeeze(fake[0], dim=0)
-                fake_im_gray_numpy = fake_im_gray.clone().detach().cpu().numpy()
-                self.save_result_imageio_no_stretch(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray_source')
-                self.save_best_acc_result_imageio_temo(out_dir, im_and_q, fake_im_gray_numpy, epoch, color='gray')
+
+                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_color"
+                hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
+
+                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_gray_source"
+                hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
+                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_gray"
+                hdr_image_util.save_gray_tensor_as_numpy_stretch(fake[0], out_dir, file_name)

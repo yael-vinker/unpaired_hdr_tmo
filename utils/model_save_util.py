@@ -145,15 +145,6 @@ def save_discriminator_model(path, epoch, output_dir, netD, optimizerD):
         }, path_250)
 
 
-def save_best_model(netG, output_dir, optimizerG):
-    best_model_save_path = os.path.join("best_model", "best_model.pth")
-    best_model_path = os.path.join(output_dir, best_model_save_path)
-    torch.save({
-        'modelG_state_dict': netG.state_dict(),
-        'optimizerG_state_dict': optimizerG.state_dict(),
-    }, best_model_path)
-
-
 # ====== TEST RELATED ======
 def get_layer_factor(con_operator):
     if con_operator in params.layer_factor_2_operators:
@@ -277,7 +268,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                               train_reshape=False, gamma_log=model_params["gamma_log"])
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
-    save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
+    hdr_image_util.save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
     gray_im_log = gray_im_log.to(device)
     if model_params["apply_wind_norm"]:
         gray_original_im = hdr_image_util.to_gray_tensor(rgb_img)
@@ -290,21 +281,11 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
-    save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
+    hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
 
     original_im_tensor = rgb_img.unsqueeze(0)
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
-
-
-def save_fake_images_for_fid():
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    train_dataroot_npy = "/cs/labs/raananf/yael_vinker/fid/inception/fake_data_input_hdr_wraper"
-    train_dataroot_ldr = "/cs/labs/raananf/yael_vinker/fid/inception/fake_data_input_hdr_wraper"
-    output_path = "/cs/labs/raananf/yael_vinker/fid/inception/fake_data_results"
-    model_path = "/cs/labs/raananf/yael_vinker/fid/inception/best_model/best_model.pth"
-    run_model_for_path(device, train_dataroot_npy, train_dataroot_ldr, output_path,
-                       model_path, 16)
+    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
 
 
 # ====== GET PARAMS ======
@@ -410,27 +391,6 @@ def is_factorised_data(model_name):
         return True
     else:
         assert 0, "Unsupported factorised def"
-
-
-# ====== SAVE IMAGES ======
-def save_gray_tensor_as_numpy(tensor, output_path, im_name):
-    tensor = tensor.clamp(0, 1)
-    tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
-    # tensor_0_1 = np.squeeze(hdr_image_util.to_0_1_range(tensor))
-    tensor_0_1 = np.squeeze(tensor)
-    im = (tensor_0_1 * 255).astype('uint8')
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
-
-
-def save_color_tensor_as_numpy(tensor, output_path, im_name):
-    # tensor = hdr_image_util.to_0_1_range(tensor.clone().permute(1, 2, 0).detach().cpu().numpy())
-    tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
-    im = (tensor * 255).astype('uint8')
-    if not os.path.exists(output_path):
-        os.mkdir(output_path)
-    imageio.imwrite(os.path.join(output_path, im_name + ".jpg"), im, format='JPEG-PIL')
 
 
 if __name__ == '__main__':

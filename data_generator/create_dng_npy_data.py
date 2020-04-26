@@ -42,16 +42,19 @@ def save_gray_tensor_as_numpy(tensor, output_path, im_name):
 
 
 def print_result(output_dir):
+    total_mean = 0
     for img_name in os.listdir(output_dir):
         im_path = os.path.join(output_dir, img_name)
         data = np.load(im_path, allow_pickle=True)
         input_im = data[()]["input_image"]
         color_im = data[()]["display_image"]
-        hdr_image_util.print_tensor_details(input_im, "input_im " + img_name)
-        display_tensor(input_im, True, img_name)
-        hdr_image_util.print_tensor_details(color_im / color_im.max(), "display_image " + img_name)
+        total_mean += np.mean(input_im)
+    print((total_mean * 255) / len(os.listdir(output_dir)))
+        # hdr_image_util.print_tensor_details(input_im, "input_im " + img_name)
+        # display_tensor(input_im, True, img_name)
+        # hdr_image_util.print_tensor_details(color_im / color_im.max(), "display_image " + img_name)
         # hdr_image_util.print_tensor_details(color_im, "display_image " + img_name)
-        display_tensor(color_im / color_im.max(), False)
+        # display_tensor(color_im / color_im.max(), False)
 
 
 def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
