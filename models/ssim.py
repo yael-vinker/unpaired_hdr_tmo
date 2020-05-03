@@ -54,19 +54,21 @@ class IntensityLoss(torch.nn.Module):
         super(IntensityLoss, self).__init__()
         self.epsilon = epsilon
         self.window = create_window(5, 1)
+        # self.window = get_gaussian_kernel2(5, 1)
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.std_methods = {
             "std": std_loss,
             "std_mu_fake": std_loss_mu_fake,
             "std_mu_gamma": std_loss_mu_gamma,
-            "std_bilateral": std_loss_bilateral
+            "std_bilateral": std_loss_bilateral,
+            "std_mu_gamma_mu_hdr": std_loss_mu_gamma_mu_hdr
         }
         self.std_loss = self.std_methods[std_method]
         self.alpha = alpha
         self.mse_loss = torch.nn.MSELoss()
 
-    def forward(self, fake, hdr_input, r_weights=None):
+    def forward(self, fake, hdr_input, hdr_original_im, r_weights=None):
         hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
         if r_weights is not None:
             self.std_loss = self.std_methods["std_bilateral"]
@@ -76,7 +78,8 @@ class IntensityLoss(torch.nn.Module):
         ssim_loss_list = []
         for i in range(len(self.pyramid_weight_list)):
             ssim_loss_list.append(self.pyramid_weight_list[i] *
-                                  self.std_loss(self.window, fake, hdr_input, self.epsilon, self.mse_loss,
+                                  self.std_loss(self.window, fake, hdr_input, hdr_original_im,
+                                                self.epsilon, self.mse_loss,
                                                 self.alpha, r_weights))
             fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_input = F.interpolate(hdr_input, scale_factor=0.5, mode='bicubic', align_corners=False)
@@ -108,6 +111,7 @@ class MuLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list):
         super(MuLoss, self).__init__()
         self.window = create_window(5, 1)
+        # self.window = get_gaussian_kernel2(5, 1)
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.mu_loss_method = mu_loss
@@ -216,8 +220,9 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
     return torch.sum(torch.stack(ssim_loss_list))
 
 
-def std_loss(window, fake, gamma_hdr, epsilon, mse_loss=None, alpha=1, r_weights=None):
+def std_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None):
     ones = torch.ones(fake.shape)
+    # print("ones", ones.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
         ones = ones.cuda(fake.get_device())
@@ -228,13 +233,16 @@ def std_loss(window, fake, gamma_hdr, epsilon, mse_loss=None, alpha=1, r_weights
     mu1_sq = mu1.pow(2)
     sigma1_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu1_sq
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + 1e-10, 0.5)
+    # print("std1", std1.shape)
+    # print("std1[0,0]", std1[0,0].shape)
     if r_weights is not None:
         std1 = std1 * r_weights
-    res = ones - (std1[0, 0] / (std1[0, 0] + epsilon))
+    res = ones - (std1 / (std1 + epsilon))
+    # print("res", res.shape)
     return res.mean()
 
 
-def std_loss_bilateral(window, fake, gamma_hdr, epsilon, mse_loss=None, alpha=1, r_weights=None, wind_size=5):
+def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None, wind_size=5):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -256,11 +264,11 @@ def std_loss_bilateral(window, fake, gamma_hdr, epsilon, mse_loss=None, alpha=1,
     # sigma1_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu1_sq
     sigma1_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
-    res = ones - (std1[0, 0] / (std1[0, 0] + epsilon))
+    res = ones - (std1 / (std1 + epsilon))
     return res.mean()
 
 
-def std_loss_mu_fake(window, fake, gamma_hdr, epsilon, mse_loss, alpha, r_weights=None):
+def std_loss_mu_fake(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)
@@ -272,7 +280,7 @@ def std_loss_mu_fake(window, fake, gamma_hdr, epsilon, mse_loss, alpha, r_weight
     return mse_loss(std1, alpha * mu1)
 
 
-def std_loss_mu_gamma(window, fake, gamma_hdr, epsilon, mse_loss, alpha, r_weights=None):
+def std_loss_mu_gamma(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)
@@ -283,6 +291,26 @@ def std_loss_mu_gamma(window, fake, gamma_hdr, epsilon, mse_loss, alpha, r_weigh
     sigma1_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu1_sq
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + 1e-10, 0.5)
     return mse_loss(std1, alpha * mu2)
+
+
+def std_loss_mu_gamma_mu_hdr(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
+    if fake.is_cuda:
+        window = window.cuda(fake.get_device())
+    window = window.type_as(fake)
+    window = window / window.sum()
+    mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
+    mu_gamma = F.conv2d(gamma_hdr, window, padding=5 // 2, groups=1)
+    mu_hdr = F.conv2d(hdr_original_im, window, padding=5 // 2, groups=1)
+
+    mu_fake_sq = mu_fake.pow(2)
+    sigma1_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu_fake_sq
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + 1e-10, 0.5)
+
+    mu_hdr_sq = mu_hdr.pow(2)
+    sigma_hdr_sq = F.conv2d(hdr_original_im * hdr_original_im, window, padding=5 // 2, groups=1) - mu_hdr_sq
+    std_hdr = torch.pow(torch.max(sigma_hdr_sq, torch.zeros_like(sigma_hdr_sq)) + 1e-10, 0.5)
+    res = (std_hdr / (mu_hdr + 1e-10)) * mu_gamma
+    return mse_loss(std1, alpha * res)
 
 
 def std_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
@@ -373,8 +401,8 @@ def sig_loss(window, img1, epsilon, img2):
 # =======================================
 def gaussian(window_size, sigma):
     gauss = torch.Tensor([exp(-((x - window_size // 2) ** 2 / float(2 * sigma ** 2))) for x in range(window_size)])
-    return gauss / gauss.sum()
-
+    # return gauss / gauss.sum()
+    return gauss
 
 # def get_bilateral_filter(window_size)
 
@@ -442,6 +470,14 @@ def get_std(windows, mu1, wind_size):
 
 def get_gaussian_kernel(window_size, channel):
     _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
+    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+    window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
+    return window
+
+
+def get_gaussian_kernel2(window_size, channel):
+    sigma = 5
+    _1D_window = gaussian(window_size, sigma).unsqueeze(1)
     _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
     window = _2D_window.expand(channel, 1, window_size, window_size).contiguous()
     return window

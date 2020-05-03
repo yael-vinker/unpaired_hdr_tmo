@@ -1,16 +1,15 @@
 import os
 import pathlib
 
-import cv2
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import torch
-from skimage import exposure
 
 import tranforms
 from utils import params
+
 
 # ====== IMAGE PRINTER ======
 def print_image_details(im, title):
@@ -68,6 +67,8 @@ def get_bump(im):
 
     a0 = np.mean(hist[0:65])
     a1 = np.mean(hist[65:200])
+    # a0 = np.sum(hist[0:65])
+    # a1 = np.sum(hist[65:200])
 
     return a1 / a0
 
@@ -90,15 +91,15 @@ def get_brightness_factor(im_hdr):
     big = 1.1
     f = 1.0
 
-    for i in range(2000):
+    for i in range(1500):
         r = get_bump(im_hdr * f)
 
         im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + 1.5 * np.log10(f * 255)))) * 255)
 
         # if r > 1 and i % 5 == 0:
         #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
-        if r > big and np.min(im_gamma) > 85:
-            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
+        if r > big and np.mean(im_gamma) > 150:
+            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
             return f
         else:
             f = f * 1.01
@@ -138,7 +139,6 @@ def to_minus1_1_range(im):
 
 
 def back_to_color(im_hdr, fake):
-    # fake = to_0_1_range(fake)
     if np.min(im_hdr) < 0:
         im_hdr = im_hdr + np.abs(np.min(im_hdr))
     im_gray_ = to_gray(im_hdr)
@@ -187,6 +187,7 @@ def back_to_color_batch(im_hdr_batch, fake_batch):
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
     return torch.stack(output)
 
+
 def display_tensor(tensor, cmap):
     im = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     if cmap == "gray":
@@ -196,7 +197,21 @@ def display_tensor(tensor, cmap):
     plt.imshow(im, cmap=cmap, vmin=im.min(), vmax=im.max())
     # plt.show()
 
+
 # ====== SAVE IMAGES ======
+def save_color_tensor_batch_as_numpy(batch, output_path, batch_num):
+    b_size = batch.shape[0]
+    for i in range(b_size):
+        im_hdr = batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        tensor_0_1 = np.squeeze(im_hdr)
+        tensor_0_1 = to_0_1_range(tensor_0_1)
+        im = (tensor_0_1 * 255).astype('uint8')
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+        cur_output_path = os.path.join(output_path, str(batch_num) + "_" + str(i) + ".jpg")
+        imageio.imwrite(cur_output_path, im, format='JPEG-PIL')
+
+
 def save_gray_tensor_as_numpy(tensor, output_path, im_name):
     tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)

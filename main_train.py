@@ -4,7 +4,6 @@ import torch.optim as optim
 import GanTrainer
 import config
 import utils.model_save_util as model_save_util
-# from models.Blocks import LambdaLR
 from utils import printer, params
 
 if __name__ == '__main__':
@@ -29,6 +28,5 @@ if __name__ == '__main__':
     lr_scheduler_D = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_D, milestones=opt.milestones)
     lr_scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_G, milestones=opt.milestones)
 
-    # writer = Writer.Writer(g_t_utils.get_loss_path(result_dir_pref, model, params.loss_path))
     gan_trainer = GanTrainer.GanTrainer(opt, net_G, net_D, optimizer_G, optimizer_D, lr_scheduler_G, lr_scheduler_D)
     gan_trainer.train()

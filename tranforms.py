@@ -9,40 +9,6 @@ import torchvision.transforms as torch_transforms
 from utils import params
 import torch.nn.functional as F
 
-# class Normalize(object):
-#     """Normalize a tensor image with mean and standard deviation.
-#     Given mean: ``(M1,...,Mn)`` and std: ``(S1,..,Sn)`` for ``n`` channels, this transform
-#     will normalize each channel of the input ``torch.*Tensor`` i.e.
-#     ``input[channel] = (input[channel] - mean[channel]) / std[channel]``
-#
-#     .. note::
-#         This transform acts out of place, i.e., it does not mutates the input tensor.
-#
-#     Args:
-#         mean (sequence): Sequence of means for each channel.
-#         std (sequence): Sequence of standard deviations for each channel.
-#     """
-#
-#     def __init__(self, mean, std, inplace=False):
-#         self.mean = mean
-#         self.std = std
-#         self.inplace = inplace
-#
-#     def __call__(self, sample):
-#         """
-#         Args:
-#             tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
-#
-#         Returns:
-#             Tensor: Normalized Tensor image.
-#         """
-#         tensor, binary_wind = sample[params.image_key], sample[params.window_image_key]
-#         return {params.image_key: F.normalize(tensor, self.mean, self.std, self.inplace),
-#                 params.window_image_key: binary_wind}
-#
-#     def __repr__(self):
-#         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
-
 
 class NormalizeForDisplay(object):
     def __init__(self, mean, std, device, inplace=False):
@@ -263,7 +229,6 @@ class Normalize(object):
         std = torch.tensor(self.std, dtype=torch.float32)
         tensor.sub_(mean).div_(std)
         return tensor
-        # return F.normalize(tensor, self.mean, self.std, self.inplace)
 
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
@@ -297,41 +262,13 @@ class Exp(object):
             tensor_batch[i] = im_end
         return tensor_batch
 
-        # im_end = torch.exp(tensor)
-        # im_end = im_end / im_end.max()
-        # if self.add_clipping:
-        #     im_end = im_end * 1.1
-        #     im_end = torch.clamp(im_end, min=0.0, max=1.0)
-        # # output.append(im_end)
-        # tensor_batch[i] = im_end
 
-
-
-
-        # if self.normalised_data:
-
-
-
-        # utils.printer.print_g_progress(im_end, "max_div__")
-        # # if self.factorised_data:
-        # #     im_end = (im_end - im_end.min()) / (im_end.max() - im_end.min())
-        # if self.add_clipping:
-        #     im_end = im_end * 1.1
-        #     im_end = torch.clamp(im_end, 0, 1)
-        #     # utils.printer.print_g_progress(im_end, "clip__")
-        # return im_end
-
-
-class MaxNormalization(object):
+class MaxNormalization1(object):
     def __init__(self):
-        super(MaxNormalization, self).__init__()
+        super(MaxNormalization1, self).__init__()
 
     def __call__(self, tensor):
         return tensor / tensor.max()
-
-
-
-
 
 class MaxNormalization(object):
     def __init__(self):
@@ -346,6 +283,7 @@ class MaxNormalization(object):
             output.append(cur_im)
         return torch.stack(output)
 
+
 class MinMaxNormalization(object):
     def __init__(self):
         super(MinMaxNormalization, self).__init__()
@@ -359,6 +297,7 @@ class MinMaxNormalization(object):
             output.append(cur_im)
         return torch.stack(output)
 
+
 class Clip(object):
     def __init__(self):
         super(Clip, self).__init__()
@@ -368,42 +307,10 @@ class Clip(object):
         x = torch.clamp(x, min=0.0, max=1.0)
         return x
 
+
 image_transform_no_norm = torch_transforms.Compose([
-    # Scale(params.input_size),
     CenterCrop(params.input_size),
     ToTensor(),
-])
-
-# image in [-1, 1]
-gray_image_transform = torch_transforms.Compose([
-    Scale(params.input_size),
-    CenterCrop(params.input_size),
-    ToTensor(),
-    Normalize(0.5, 0.5),
-])
-
-rgb_non_display_image_transform = torch_transforms.Compose([
-    Scale(params.input_size),
-    CenterCrop(params.input_size),
-    ToTensor(),
-    Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-])
-
-# image in [0,1..] or rgb image display
-rgb_display_image_transform = torch_transforms.Compose([
-    Scale(params.input_size),
-    CenterCrop(params.input_size),
-    ToTensor(),
-])
-
-rgb_display_image_transform_numpy = torch_transforms.Compose([
-    # Scale(params.input_size),
-    # CenterCrop(params.input_size),
-])
-
-tmqi_input_transforms = torch_transforms.Compose([
-    ToTensor(),
-    Normalize(0.5, 0.5),
 ])
 
 hdr_im_transform = torch_transforms.Compose([

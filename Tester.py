@@ -5,16 +5,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import tranforms as custom_transform
-# from old_files import TMQI
 from utils import printer
 import tranforms
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
-import utils.image_quality_assessment_util as image_quality_assessment_util
 import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
 from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
     hdr_windows_loader_c, hdr_windows_loader_d
+
 
 class Tester:
     def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
@@ -72,9 +71,6 @@ class Tester:
         for f in special_factors:
             rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess_change_f(im_path, self.args, f, reshape=True)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-
-            # im_hdr_original_to_save = gray_im_log.clone().permute(1, 2, 0).detach().cpu().numpy()
-            # self.save_best_acc_result_imageio_temo("out", str(counter) + "_" + str(f), im_hdr_original_to_save, 0, color='original')
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             original_hdr_images.append({'im_name': str(counter) + "_" + str(f),
@@ -170,26 +166,6 @@ class Tester:
                                      input_images_mean)
         # self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
         #                       test_real_first_b, fake, test_hdr_batch_image, epoch)
-
-    def save_best_acc_result_imageio(self, out_dir, im_and_q, im, epoch, color):
-        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        tensor = im.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
-        # im = np.clip(im, 0, 1)
-        # im = hdr_image_util.to_0_1_range(im)
-        im = (im * 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
-
-    def save_best_acc_result_imageio_temo(self, out_dir, im_and_q, im, epoch, color):
-        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = hdr_image_util.to_0_1_range(im)
-        im = (im * 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
-
-    def save_result_imageio_no_stretch(self, out_dir, im_and_q, im, epoch, color):
-        file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_" + color + ".png"
-        im = (im * 255)
-        im = np.clip(im, 0, 255).astype('uint8')
-        imageio.imwrite(os.path.join(out_dir, file_name), im, format='PNG-FI')
 
     def save_images_for_model(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "model_results", str(epoch))
