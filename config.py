@@ -34,20 +34,20 @@ def parse_arguments():
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument('--struct_method', type=str, default="reg_ssim")
+    parser.add_argument('--struct_method', type=str, default="hdr_ssim") # hdr_ssim, gamma_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
-    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1")
+    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
     parser.add_argument('--std_method', type=str, default="std")
     parser.add_argument('--alpha', type=float, default=1)
-    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
+    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
     parser.add_argument('--intensity_epsilon', type=float, default=0.001)
-    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
+    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--mu_loss_factor', type=float, default=1)
-    parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1")
+    parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
@@ -69,6 +69,7 @@ def parse_arguments():
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
+    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -149,17 +150,17 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
+    if opt.ssim_loss_factor:
+        result_dir_pref = result_dir_pref + "_" + opt.struct_method + "_" + str(opt.ssim_loss_factor) + "_pyramid_" + opt.pyramid_weight_list
     if opt.apply_intensity_loss:
         s = opt.std_method + "_"
         if opt.apply_intensity_loss_laplacian_weights:
             s = "_laplace_" + s
-        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon)
+        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
         if opt.std_method != "std":
-            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha) + "_" + opt.std_pyramid_weight_list
+            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
     if opt.mu_loss_factor:
-        result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor)
-    if opt.ssim_loss_factor:
-        result_dir_pref = result_dir_pref + "_struct_factor_" + str(opt.ssim_loss_factor) + "_pyramid_" + opt.pyramid_weight_list
+        result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     if opt.use_sigma_loss:
         result_dir_pref = result_dir_pref + "_sigloss_" + str(opt.use_sigma_loss)
     output_dir = result_dir_pref \

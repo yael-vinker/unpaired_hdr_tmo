@@ -43,6 +43,7 @@ class GanTrainer:
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.wind_size = opt.ssim_window_size
+        self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
             self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
@@ -187,13 +188,12 @@ class GanTrainer:
             # fake labels are real for generator cost
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
-        r_weights = None
+        r_weights = []
         if self.use_bilateral_weight:
             r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size)
-        self.update_ssim_loss(hdr_original_gray_norm, fake)
+        self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
-        # self.update_sigma_loss(hdr_original_gray, fake)
         self.optimizerG.step()
 
     def update_g_d_loss(self, output_on_fake, label):
@@ -204,9 +204,9 @@ class GanTrainer:
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
 
-    def update_ssim_loss(self, hdr_input_original_gray_norm, fake):
+    def update_ssim_loss(self, hdr_input, hdr_input_original_gray_norm, fake):
         if self.ssim_loss_g_factor:
-            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm)
+            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm, hdr_input)
             retain_graph = False
             if self.apply_intensity_loss:
                 retain_graph = True

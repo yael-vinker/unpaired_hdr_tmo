@@ -44,8 +44,7 @@ class UNet(nn.Module):
             self.last_sig = nn.Tanh()
         if last_layer == 'sigmoid':
             self.last_sig = nn.Sigmoid()
-        else:
-            self.last_sig = Blocks.Exp()
+        # self.exp = Blocks.Exp()
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
@@ -72,6 +71,8 @@ class UNet(nn.Module):
             x_out = x_out[:, :, i: i + h, j:j + w]
         if self.last_sig:
             x_out = self.last_sig(x_out)
-        if self.clip:
-            x_out = self.clip(x_out)
+        # if self.exp:
+        #     x_out = self.exp(x_out)
+        # if self.clip:
+        #     x_out = self.clip(x_out)
         return x_out

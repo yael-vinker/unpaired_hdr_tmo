@@ -60,8 +60,6 @@ def load_test_data(dataset_properties, title):
     return train_hdr_dataloader, train_ldr_dataloader
 
 
-
-
 def crop_input_hdr_batch(input_hdr_batch):
     b, c, h, w = input_hdr_batch.shape
     th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
@@ -84,6 +82,7 @@ def add_frame_to_im(input_im):
     im = torch.cat((im, right_col), 1)
     im = torch.unsqueeze(im, dim=0)
     return im
+
 
 def add_frame_to_im_batch(images_batch):
     b_size = images_batch.shape[0]

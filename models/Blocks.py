@@ -70,12 +70,13 @@ class LinearBlock(nn.Module):
             out = self.activation(out)
         return out
 
+
 class Exp(nn.Module):
     def __init__(self):
         super(Exp, self).__init__()
 
     def forward(self, x):
-        return torch.exp(x)
+        return torch.exp(x) - 1
 
 
 class Clip(nn.Module):
@@ -84,6 +85,7 @@ class Clip(nn.Module):
 
     def forward(self, x):
         x = x * 1.1
+        x = x - 0.05
         x = torch.clamp(x, min=0.0, max=1.0)
         return x
 
@@ -95,6 +97,7 @@ class MaxNormalization(nn.Module):
     def forward(self, x):
         x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
         return x / x_max
+
 
 class MaxNormalizationEpsilon(nn.Module):
     def __init__(self):

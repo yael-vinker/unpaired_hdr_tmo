@@ -149,7 +149,8 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 # ====== USE TRAINED MODEL ======
 def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_images_path = get_hdr_source_path("npy_pth")
+    input_images_path = get_hdr_source_path("test_source")
+    f_factor_path = get_f_factor_path("test_source")
     arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
     # arch_dir = "/Users/yaelvinker/Documents/university/lab/04_24"
     models_names = get_models_names()
@@ -173,14 +174,16 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
                     cur_output_path = os.path.join(output_path, str(m))
                     if not os.path.exists(cur_output_path):
                         os.mkdir(cur_output_path)
-                    run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path)
+                    run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
+                                      f_factor_path)
                 else:
                     print("model path does not exists: ", cur_output_path)
         else:
             print("model path does not exists")
 
 
-def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, is_npy=True):
+def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, is_npy=False,
+                      f_factor_path=""):
     net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
     if is_npy:
@@ -193,7 +196,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
                 if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr"\
                         or os.path.splitext(img_name)[1] == ".dng":
                     run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                              output_images_path, model_params)
+                                              output_images_path, model_params, f_factor_path)
             else:
                 print("%s in already exists" % (img_name))
 
@@ -273,11 +276,12 @@ def run_model_on_single_npy(input_images_path, G_net, device, output_path):
         hdr_image_util.save_color_tensor_batch_as_numpy(color_batch, output_path, h)
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params):
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
     from utils import printer
     rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path,
                                                               use_factorise_gamma_data=True, factor_coeff=1.0,
-                                                              train_reshape=False, gamma_log=model_params["gamma_log"])
+                                                              train_reshape=False, gamma_log=model_params["gamma_log"],
+                                                              f_factor_path=f_factor_path)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
@@ -325,6 +329,17 @@ def get_model_params(model_name):
     return model_params
 
 
+def get_f_factor_path(name):
+    path_dict = {
+     "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
+     "new_source" : "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data",
+     "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
+     "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
+     "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+        "npy_pth": "/Users/yaelvinker/PycharmProjects/lab/utils/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0/fix2"}
+    return path_dict[name]
+
+
 def get_hdr_source_path(name):
     path_dict = {
     # "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
@@ -348,7 +363,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["gaus_meandata_log_10std_5.0_eps_0.001_mu_loss_5.0_struct_factor_1.0_pyramid_1,1,1_unet_square_and_square_root_d_model_patchD"]
+    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_2,4,6,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
     return models_names
 
 
