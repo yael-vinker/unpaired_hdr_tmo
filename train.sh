@@ -44,6 +44,7 @@ echo "milestones ${33}"
 echo "add_frame ${34}"
 echo "input_dim ${35}"
 echo "apply_intensity_loss_laplacian_weights ${36}"
+echo "struct_method ${39}"
 
 
 python3.6 -W ignore -u main_train.py \
@@ -84,5 +85,6 @@ python3.6 -W ignore -u main_train.py \
   --input_dim ${35} \
   --apply_intensity_loss_laplacian_weights ${36} \
   --std_method ${37} \
-  --alpha ${38}
+  --alpha ${38} \
+  --struct_method ${39}
 

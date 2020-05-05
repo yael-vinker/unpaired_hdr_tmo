@@ -12,6 +12,7 @@ use_xaviar=1
 # ====== LOSS ======
 loss_g_d_factor=1
 train_with_D=1
+struct_method="hdr_ssim"
 ssim_loss_factor=2
 pyramid_weight_list="1"
 apply_intensity_loss=1
@@ -51,4 +52,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $data_root_npy $data_root_ldr $test_dataroot_npy $test_dataroot_original_hdr $test_dataroot_ldr \
   $result_dir_prefix $use_factorise_data $factor_coeff $add_clipping $use_normalization \
   $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim \
-  $apply_intensity_loss_laplacian_weights $std_method $alpha
+  $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method
