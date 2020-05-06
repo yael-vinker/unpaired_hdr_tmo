@@ -19,6 +19,10 @@ import utils.hdr_image_util as hdr_image_util
 from models import ssim
 from old_files import HdrImageFolder, TMQI
 from utils import params
+from torch import nn
+from data_generator import create_dng_npy_data
+import tranforms
+import utils.data_loader_util as data_loader_util
 
 
 def print_im_details(im, title, disply=False):
@@ -716,14 +720,35 @@ def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
             shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
+
+def gather_all_architectures2(arch_dir, output_path, epoch, date, im_name):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "test_images_format_factorised_1", epoch)
+        old_name_color = os.path.join(im_path, im_name + ".jpg")
+        cur_output_path = os.path.join(output_path, epoch, im_name + "_color")
+        output_name_color = date + "_" + arch_name + ".jpg"
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        if os.path.exists(os.path.join(im_path, old_name_color)):
+            shutil.copy(os.path.join(im_path, old_name_color), os.path.join(cur_output_path, output_name_color))
+        # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
+
+
+
 def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
     from shutil import copyfile
     import shutil
     # copyfile(src, dst)
     for arch_name in os.listdir(arch_dir):
         im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "accuracy")
+        # im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "loss_plot")
         old_name = "accuracy epoch = " + epoch + ".png"
+        # old_name = "summary epoch_=_" + epoch + "all.png"
         cur_output_path = os.path.join(output_path, "accuracy_" + epoch)
+        # cur_output_path = os.path.join(output_path, "loss_" + epoch)
         output_name = date + "_" + arch_name + ".png"
         if not os.path.exists(cur_output_path):
             os.makedirs(cur_output_path)
@@ -765,6 +790,7 @@ def f_gamma_test(im_path):
     plt.imshow(gray_im_gamma, cmap="gray")
     plt.show()
     return rgb_img, gray_im_gamma
+
 
 def struct_loss_res(path):
     import sys
@@ -858,8 +884,8 @@ def sub_test():
     plt.hist(input_im.ravel(), 256, [input_im.min(), input_im.max()])
 
 
-    # res = (hdr_im_numpy) / (input_im + 0.0001)
-    res = (hdr_im_numpy) - (input_im)
+    res = (hdr_im_numpy) / (input_im + 0.0001)
+    # res = (hdr_im_numpy) - (input_im)
     (unique, counts) = np.unique(res, return_counts=True)
     print((unique[counts>1]))
     print((counts[unique>1]))
@@ -870,7 +896,7 @@ def sub_test():
     print(np.sort(frequencies)[0])
     print(np.sort(frequencies)[-1])
     print("div",res.min(), res.mean(), res.max())
-    res = np.clip(res, -0.175,1)
+    res = np.clip(res, -    0.175,1)
     # res = (res - np.min(res)) / (np.max(res) - np.min(res))
     # im = (im * 255).astype('uint8')
     plt.subplot(3,2,5)
@@ -889,10 +915,6 @@ def create_window(window_size=5, channel=1):
     return window
 
 def normalization_test():
-    from torch import nn
-    from data_generator import create_dng_npy_data
-    import tranforms
-    import utils.data_loader_util as data_loader_util
     data = np.load("/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/synagogue.npy", allow_pickle=True)
     # input_im = data[()]["input_image"]
     # color_im = data[()]["display_image"]
@@ -991,24 +1013,610 @@ def normalization_test():
     print(torch.isnan(windows).any())
 
 
+def get_window_and_set_device(wind_size, a, b):
+    from torch import nn
+    # m = nn.ZeroPad2d(wind_size // 2)
+    # a, b = m(a), m(b)
+    if a.dim() < 4:
+        a = torch.unsqueeze(a, dim=0)
+    if b.dim() < 4:
+        b = torch.unsqueeze(b, dim=0)
+    window = torch.ones((1, 1, wind_size, wind_size))
+    window = window / window.sum()
+    if a.is_cuda:
+        window = window.cuda(a.get_device())
+        if not b.is_cuda:
+            b = b.cuda(a.get_device())
+    b = b.type_as(a)
+    window = window.type_as(a)
+    return a, b, window
+
+
+def get_mu_and_std(x, window):
+    mu = F.conv2d(x, window, padding=0, groups=1)
+    mu_sq = mu.pow(2)
+    sigma_sq = F.conv2d(x * x, window, padding=0, groups=1) - mu_sq
+    std = torch.pow(torch.max(sigma_sq, torch.zeros_like(sigma_sq)) + params.epsilon, 0.5)
+    return mu, std
+
+
+def get_mu(x, window, wind_size):
+    mu = F.conv2d(x, window, padding=wind_size // 2, groups=1)
+    mu = mu.unsqueeze(dim=4)
+    mu = mu.expand(-1, -1, -1, -1, wind_size * wind_size)
+    return mu
+
+
+def get_im_as_windows(a, wind_size):
+    m = nn.ZeroPad2d(wind_size // 2)
+    a = m(a)
+    windows = a.unfold(dimension=2, size=5, step=1)
+    windows = windows.unfold(dimension=3, size=5, step=1)
+    windows = windows.reshape(windows.shape[0], windows.shape[1],
+                              windows.shape[2], windows.shape[3],
+                              wind_size * wind_size)
+    return windows
+
+
+def get_std(windows, mu1, wind_size):
+    x_minus_mu = windows - mu1
+    x_minus_mu = x_minus_mu.squeeze(dim=1)
+    x_minus_mu = x_minus_mu.permute(0, 3, 1, 2)
+    wind_a = torch.ones((1, wind_size * wind_size, 1, 1))
+    if windows.is_cuda:
+        wind_a = wind_a.cuda(windows.get_device())
+    wind_a = wind_a / wind_a.sum()
+    mu_x_minus_mu_sq = F.conv2d(x_minus_mu * x_minus_mu, wind_a, padding=0, groups=1)
+    std1 = torch.pow(torch.max(mu_x_minus_mu_sq, torch.zeros_like(mu_x_minus_mu_sq)) + params.epsilon, 0.5)
+    std1 = std1.expand(-1, wind_size * wind_size, -1, -1)
+    std1 = std1.permute(0, 2, 3, 1)
+    std1 = std1.unsqueeze(dim=1)
+    return std1
+
+
+def get_std2(x, mu1, wind_size, window):
+    window = window / window.sum()
+    mu1_sq = mu1.pow(2)
+    sigma1_sq = F.conv2d(x * x, window, padding=wind_size // 2, groups=1) - mu1_sq
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
+    return std1
+
+
+def get_mu2(x, window, wind_size):
+    window = window / window.sum()
+    mu1 = F.conv2d(x, window, padding=wind_size // 2, groups=1)
+    return mu1
+
+
+def fix_shape(windows):
+    windows = windows.permute(0, 4, 2, 3, 1)
+    windows = windows.squeeze(dim=4)
+    return windows
+
+
+def custom_ssim_a(wind_size, a, b, std_norm_factor):
+    """
+    compute L2[(a - mu_a) / std_a, (b - mu_b) / std_b)] where a is G(gamma(hdr)
+
+    :param wind_size:
+    :param a: original_im
+    :param b: target_im
+    :param std_norm_factor
+    :return:
+    """
+    img1_c, img2_c = a.clone(), b.clone()
+    a, b, window = get_window_and_set_device(wind_size, a, b)
+    img1 = get_im_as_windows(a, wind_size)
+    img2 = get_im_as_windows(b, wind_size)
+    # print("\na_original : mu", torch.mean(windows[0, 0, 5, 5]), " res std", torch.std(windows[0, 0, 5, 5]))
+
+    # mu1 = get_mu(a, window, wind_size)
+    # mu2 = get_mu(b, window, wind_size)
+    #
+    # std1 = get_std(img1, mu1, wind_size)
+    # std2 = get_std(img2, mu2, wind_size)
+
+    mu1 = torch.mean(img1, dim=4).unsqueeze(dim=4).expand(-1, -1, -1, -1, wind_size * wind_size)
+    mu2 = torch.mean(img2, dim=4).unsqueeze(dim=4).expand(-1, -1, -1, -1, wind_size * wind_size)
+
+    std1 = torch.std(img1, dim=4).unsqueeze(dim=4).expand(-1, -1, -1, -1, wind_size * wind_size)
+    std2 = torch.std(img2, dim=4).unsqueeze(dim=4).expand(-1, -1, -1, -1, wind_size * wind_size)
+
+    # print_mu(mu1, "my_mu", img1_c)
+    # print_mu(std1, "my_std", img1_c)
+    # print_mu(mu2, "my_mu", img2_c)
+    # print_mu(std2, "my_std", img2_c)
+
+    # eps = (std1).min() * 0.00001
+    # print(std1 + eps)
+    # print(img1.shape)
+    # print(mu1.shape)
+    img1 = (img1 - mu1)
+    print("std1 min[%.4f] mean[%.4f] max[%.4f]" % (std1.min(), std1.mean(), std1.max()))
+    print("img1 min[%.4f] mean[%.4f] max[%.4f]" % (img1.min(), img1.mean(), img1.max()))
+    std1 = torch.max(std1, torch.zeros_like(std1)) + params.epsilon
+    img1 = img1 / (std1)
+    # print_mu(std1, "my_std1_std", img1_c)
+    # print_mu(img1, "my_img1_std", img1_c)
+
+    # eps = (std2).min() * 0.0001
+    # print((std2).max())
+    std2 = torch.max(std2, torch.zeros_like(std2)) + params.epsilon
+    # print(torch.isnan(std2).any())
+    # print(img2[0, 0, 1009, 1730])
+    # print(mu2[0, 0, 1009, 1730])
+    img2 = (img2 - mu2)
+    print("std2 min[%.4f] mean[%.4f] max[%.4f]" % (std2.min(), std2.mean(), std2.max()))
+    print("img2 min[%.4f] mean[%.4f] max[%.4f]" % (img2.min(), img2.mean(), img2.max()))
+
+    # print_mu(img2, "my_img2_std", img2_c)
+    # print(std2[0, 0, 1009, 1730])
+    img2 = img2 / (std2)
+    # print("my",0/0.0001)
+    # print_mu(img2, "my_img2_std", img2_c)
+    # print(img2[0,0,1009,1730])
+    # print((torch.isnan(img2[0,0,:,:,0])).nonzero())
+    mse_loss = torch.nn.MSELoss()
+    # img1, img2 = fix_shape(img1), fix_shape(img2)
+    # print((torch.isnan(img2[0, 0, :, :, 0])).nonzero())
+    # print((torch.isnan(img1[0, 0, :, :, 0])).nonzero())
+    res = mse_loss(img1, img2)
+    # print(res)
+    # print((torch.isnan(res[0, 0, :, :, 0])).nonzero())
+    return mse_loss(img1, img2), (std1), mu1
+
+
+def custom_ssim_b(wind_size, a, b, std_norm_factor):
+    """
+    compute L2[(a-mu_a),(b-mu_b)*s)] where a is G(gamma(hdr)
+    :param wind_size:
+    :param a: original_im
+    :param b: target_im
+    :param std_norm_factor
+    :return:
+    """
+    mse_loss = torch.nn.MSELoss()
+    a, b, window = get_window_and_set_device(wind_size, a, b)
+    windows = get_im_as_windows(a, wind_size)
+    windows_b = get_im_as_windows(b, wind_size)
+    print("\na_original : mu", torch.mean(windows[0, 0, 100, 100]), " res std", torch.std(windows[0, 0, 100, 100]))
+
+    mu1 = get_mu(a, window, wind_size)
+    mu2 = get_mu(b, window, wind_size)
+
+    std2 = get_std(windows_b, mu2, wind_size)
+
+    windows = windows - mu1
+    print("\na : res mu", torch.mean(windows[0, 0, 100, 100]), " res std", torch.std(windows[0, 0, 100, 100]))
+
+    windows_b = windows_b - mu2
+    print(windows.shape, windows_b.shape)
+    windows_b = std_norm_factor * windows_b * (mu1 / (std2 + params.epsilon))
+    print(windows.shape, windows_b.shape)
+    print("\nb : res mu", torch.mean(windows_b[0, 0, 100, 100])," res std", torch.std(windows_b[0, 0, 100, 100]))
+    print(windows.shape, windows_b.shape)
+    windows, windows_b = fix_shape(windows), fix_shape(windows_b)
+    print(windows.shape, windows_b.shape)
+    return mse_loss(windows, windows_b)
+
+
+def custom_ssim_c(wind_size, a, b, std_norm_factor):
+    """
+    compute L2[(a-mu_a),(b-mu_b)*s)] where a is G(gamma(hdr)
+    :param wind_size:
+    :param a: original_im
+    :param b: target_im
+    :param std_norm_factor
+    :return:
+    """
+    mse_loss = torch.nn.MSELoss()
+    a, b, window = get_window_and_set_device(wind_size, a, b)
+    windows = get_im_as_windows(a, wind_size)
+    windows_b = get_im_as_windows(b, wind_size)
+    print("\na_original : mu", torch.mean(windows[0, 0, 100, 100]), " res std", torch.std(windows[0, 0, 100, 100]))
+
+    mu1 = get_mu(a, window, wind_size)
+    mu2 = get_mu(b, window, wind_size)
+
+    windows = windows - mu1
+    print("\na : res mu", torch.mean(windows[0, 0, 100, 100]), " res std", torch.std(windows[0, 0, 100, 100]))
+
+    windows_b = windows_b - mu2
+    windows_b = std_norm_factor * windows_b * (mu1 / (mu2 + params.epsilon))
+    print("\nb : res mu", torch.mean(windows_b[0, 0, 100, 100])," res std", torch.std(windows_b[0, 0, 100, 100]))
+    windows, windows_b = fix_shape(windows), fix_shape(windows_b)
+    print(windows.shape, windows_b.shape)
+    return mse_loss(windows, windows_b)
+
+
+
+def get_real_std(im, wind_size=5):
+    im = im.unsqueeze(dim=0)
+    res = np.zeros(im.shape)
+    res_mu = np.zeros(im.shape)
+    m = nn.ZeroPad2d(wind_size // 2)
+    im = m(im)
+    im = im.unfold(dimension=2, size=5, step=1)
+    im = im.unfold(dimension=3, size=5, step=1)
+    im = im.reshape(im.shape[0], im.shape[1],
+                              im.shape[2], im.shape[3],
+                              wind_size * wind_size)
+    res_s = torch.std(im, dim=4)
+    print(res_s.shape)
+    print(res_s[0,0,0,1086])
+    print(im.shape)
+    print(im[0,0,0,1086])
+    print("mean",im[0, 0, 0, 1086].mean(), "std",im[0, 0, 0, 1086].std())
+    # for i in range(im.shape[2]):
+    #     for j in range(im.shape[3]):
+    #         res[0, 0, i, j] = (im[0, 0, i, j].std())
+    #         res_mu[0, 0, i, j] = (im[0, 0, i, j].mean())
+    # print("mean", res_mu[0, 0, 0, 1086], "std", res[0, 0, 0, 1086])
+    # print(res.shape)
+    return torch.std(im, dim=4).numpy(), torch.mean(im, dim=4).numpy()
+    # print(im.shape)
+
+
+
+def new_ssim_test():
+    # im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
+    im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, 1,
+                                                              1,
+                                                              1, reshape=True,
+                                                              window_tone_map=0)
+    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    input_im = gray_im_log
+    gray_original_im = hdr_image_util.to_gray_tensor(rgb_img)
+    gray_original_im_norm = gray_original_im / gray_original_im.max()
+    wind_size = 5
+    # resl_std, real_mu = get_real_std(input_im)
+    input_im = input_im.unsqueeze(dim=0)
+    input_im = torch.cat([input_im], dim=0)
+    our_ssim_loss = ssim.OUR_CUSTOM_SSIM(wind_size, struct_method="reg_ssim")
+
+    # print(input_im.shape)
+    gray_original_im_norm = gray_original_im_norm.unsqueeze(dim=0)
+    gray_original_im_norm = torch.cat([gray_original_im_norm], dim=0)
+    window = torch.ones((1, 1, wind_size, wind_size))
+    # res, std_my, mu_my = custom_ssim_a(wind_size, input_im, gray_original_im_norm, 1)
+    # print("my", res)
+    print("======================================")
+
+    # res, res_a = ssim.our_custom_ssim_3(input_im, input_im, window, wind_size, channel=1, mse_loss=torch.nn.MSELoss())
+    # print("my_from_ssim", res)
+    #
+    # res, res_b = our_ssim_loss(input_im, input_im)
+    # print(res_b.shape)
+    # print("other_original", res)
+    # sub = res_a - res_b
+    # plt.imshow(sub[0,0].detach().numpy(), cmap='gray')
+    # plt.show()
+
+
+
+    print("======================================")
+
+    res, res_a, res2, res_b = ssim.our_custom_ssim_3(input_im, gray_original_im_norm, window, wind_size, channel=1, mse_loss=torch.nn.MSELoss())
+    print(res_a[0,0,566, 701])
+    print("my_from_ssim", res)
+    res1 = our_ssim_loss(input_im, gray_original_im_norm)
+    print(res_b[0,0,566,701])
+    print("other_original", res2)
+    print("other_original", res1)
+    plt.show()
+    sub = res_a - res_b
+    plt.imshow(sub[0, 0].detach().numpy(), cmap='gray')
+    plt.show()
+
+
+
+    # std_my, mu_my = std_my.numpy()[:,:,:,:,0], mu_my.numpy()[:,:,:,:,0]
+    # std_other, mu_other = std_other.numpy()[:,:,:,:,0], mu_other.numpy()[:,:,:,:,0]
+    # # std_my = my_floor(std_my, precision=4)
+    # # std_other = my_floor(std_other, precision=4)
+    # # print(resl_std.shape)
+    # # print(std_my.shape)
+    # # print(np.sort(std_my[(resl_std != std_my)])[::-1].shape)
+    # print("================= my =====================")
+    # # print(np.transpose((resl_std[0,0] != std_my[0,0]).nonzero()))
+    # print(np.sum((resl_std != std_my))/(4*1*1024*2048*25),"\n")
+    # # print(np.sort(std_my[(resl_std != std_my)])[::-1][0])
+    # print()
+    # sub_my = np.abs(resl_std[0,0] - std_my[0,0])
+    # sub_other = np.abs(resl_std[0,0] - std_other[0,0])
+    # a = np.unravel_index(sub_my.argmax(), sub_my.shape)
+    # # print(a)
+    # print("======= std ========")
+    # print("real  std", resl_std[0,0][a], "mu", real_mu[0,0][a])
+    # print("my", a, "std", std_my[0,0][a], sub_my[a], "mu", mu_my[0,0][a])
+    #
+    # a = np.unravel_index(sub_other.argmax(), sub_other.shape)
+    # print("other", a, "std",std_other[0,0][a], sub_other[a],"mu", mu_other[0,0][a])
+    # print()
+    # sub_my = np.abs(real_mu[0, 0] - mu_my[0, 0])
+    # sub_other = np.abs(real_mu[0, 0] - mu_other[0, 0])
+    # a = np.unravel_index(sub_my.argmax(), sub_my.shape)
+    # # print(a)
+    # print("======= mu ========")
+    # print("real", real_mu[0, 0][a])
+    # print("my", a,  mu_my[0,0][a], sub_my[a])
+    #
+    # a = np.unravel_index(sub_other.argmax(), sub_other.shape)
+    # print("other", a, mu_other[0,0][a], sub_other[a])
+    # # print("real", resl_std[0, 0, 0, 2])
+    # # print("std_my", std_my[0, 0, 0, 2])
+    # # print("std_other", std_other[0, 0, 0, 2])
+    #
+    #
+    # # print("real",np.sort(resl_std[(resl_std != std_my)])[::-1][0])
+    # # print()
+    # # print(np.sort(std_my[(resl_std != std_my)])[::-1][-1])
+    # # print("real",np.sort(resl_std[(resl_std != std_my)])[::-1][-1])
+    #
+    # print("================= other =====================")
+    # print(np.transpose((resl_std[0, 0] != std_other[0, 0]).nonzero()))
+    # print(np.sum((resl_std != std_other)) / (4 * 1 * 1024 * 2048 * 25))
+    # print()
+    # print(np.sort(std_other[(resl_std != std_other)])[::-1][0])
+    # print(np.sort(std_other[(resl_std != std_other)])[::-1][-1])
+    # # print(np.sort(resl_std[(resl_std != std_other)])[::-1][0,0,0,0,0])
+
+    print()
+
+
+def my_floor(a, precision=0):
+    return np.round(a + 0.5 * 10**(-precision), precision)
+
+
+def our_custom_ssim2(img1, img2, window, window_size, channel, mse_loss):
+    window = window / window.sum()
+    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+    mu1_sq = mu1.pow(2)
+    mu2_sq = mu2.pow(2)
+
+    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
+
+    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)), 0.5)
+    std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)), 0.5)
+
+    # print("std1 min[%f] mean[%f] max[%f]" % (std1.min(), std1.mean(), std1.max()))
+    # print("img1 min[%f] mean[%f] max[%f]" % (img1.min(), img1.mean(), img1.max()))
+    # print("std2 min[%f] mean[%f] max[%f]" % (std2.min(), std2.mean(), std2.max()))
+    # print("img2 min[%f] mean[%f] max[%f]" % (img2.min(), img2.mean(), img2.max()))
+
+    mu1 = mu1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+    mu2 = mu2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+
+    std1 = std1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+    std2 = std2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
+
+    img1 = get_im_as_windows(img1, window_size)
+    img2 = get_im_as_windows(img2, window_size)
+    img1 = (img1 - mu1)
+    img1 = img1 / (std1 + params.epsilon2)
+    img2 = (img2 - mu2)
+    img2 = (img2) / (std2 + params.epsilon2)
+    return mse_loss(img1, img2)
 
 
 
 
+
+
+def print_mu(mu, title, x):
+    print("\n-------- %s --------" % title)
+    print(mu.shape)
+    print("min[%.4f] max[%.4f] mean[%.4f]" % (mu.min(), mu.max(), mu.mean()))
+    real_wind = x[0, 0, 100-2: 100+3, 100-2: 100+3]
+
+    a = mu[0, 0, 100, 100]
+    if mu.dim() > 4:
+        a = a[0]
+    if "std" in title:
+        print("wind[100, 100] -- real[%.4f] custom[%.4f]" % (torch.std(real_wind), a))
+    else:
+        print("wind[100, 100] -- real[%.4f] custom[%.4f]" % (torch.mean(real_wind), a))
+
+    a = mu[0, 0, 2, 2]
+    if mu.dim() > 4:
+        a = a[0]
+    real_wind = x[0, 0, 0: 5, 0: 5]
+    if "std" in title:
+        print("wind[2, 2] -- real[%.4f] custom[%.4f]" % (torch.std(real_wind), a))
+    else:
+        print("wind[2, 2] -- real[%.4f] custom[%.4f]" % (torch.mean(real_wind), a))
+
+    a = mu[0, 0, 0, 0]
+    if mu.dim() > 4:
+        a = a[0]
+    print("wind [0, 0]  [%.4f]" % a)
+
+
+def mu_std_test():
+    im_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/WillyDesk.exr")
+    rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, 1,
+                                                              1,
+                                                              1, reshape=True,
+                                                              window_tone_map=0)
+    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    input_im = gray_im_log
+    gray_original_im = hdr_image_util.to_gray_tensor(rgb_img)
+    gray_original_im_norm = gray_original_im / gray_original_im.max()
+    wind_size = 5
+    window = torch.ones((1, 1, wind_size, wind_size))
+    input_im2, gray_original_im_norm, window2 = get_window_and_set_device(wind_size, input_im, gray_original_im_norm)
+    windows = get_im_as_windows(input_im2, wind_size)
+
+    input_im = input_im.unsqueeze(dim=1)
+    print("input_im2",input_im2.shape)
+    print(input_im.shape)
+    my_mu = get_mu(input_im2, window2, wind_size)
+    print_mu(my_mu, "my_mu", input_im)
+    other_mu = get_mu2(input_im, window, wind_size)
+    print_mu(other_mu, "other_mu", input_im)
+
+    my_std = get_std(windows, my_mu, wind_size)
+    print_mu(my_std, "my_std", input_im)
+    other_std = get_std2(input_im, other_mu, wind_size, window)
+    print_mu(other_std, "other_std", input_im)
+
+
+def struct_loss_formula_test():
+    mse_loss = torch.nn.MSELoss()
+    x = torch.rand((5))
+    # y = torch.log(x)
+    y = torch.rand((5))
+
+    mu1, mu2 = torch.mean(x), torch.mean(y)
+    std1, std2 = torch.std(x), torch.std(y)
+
+    print("x\n", x)
+    print("mu[%f] std[%f]" % (mu1, std1))
+    print("y\n", y)
+    print("mu[%f] std[%f]" % (mu2, std2))
+
+    x_a = (x - mu1) / std1
+    y_b = (y - mu2) / std2
+    res_a = mse_loss(x_a, y_b)
+    sigma12 = np.cov((x - mu1).numpy(), (y - mu2).numpy(), bias=True)[0][1]
+    res_b_bias_true = 2 - 2*(sigma12 / (std1 * std2))
+    sigma12 = np.cov(x.numpy(), y.numpy(), bias=False)[0][1]
+    res_b_bias_false = 2 - 2 * (sigma12 / (std1 * std2))
+    print("\noption a ", res_a)
+    print("option b bias=True", res_b_bias_true)
+    print("option b bias=False", res_b_bias_false)
+
+
+def struct_loss_formula_test2():
+    # mse_loss = torch.nn.MSELoss()
+    x = np.random.rand(25)
+    x_1 = torch.from_numpy(x)
+    y = np.log(x)
+    # y = x
+    # y = np.random.rand(5)
+    y_1 = torch.from_numpy(y)
+
+    mu1, mu2 = np.mean(x), np.mean(y)
+    mu1_torch, mu2_torch = torch.mean(x_1), torch.mean(y_1)
+    std1, std2 = np.std(x), np.std(y)
+    std1_torch, std2_torch = torch.std(x_1), torch.std(y_1)
+
+    mu1_sq = mu1_torch.pow(2)
+    mu2_sq = mu2_torch.pow(2)
+    sigma1_sq = torch.mean(x_1 * x_1) - mu1_sq
+    sigma2_sq = torch.mean(y_1 * y_1) - mu2_sq
+    std1_torch2, std2_torch2 = torch.pow(sigma1_sq, 0.5), torch.pow(sigma2_sq, 0.5)
+
+    print("x \n", x)
+    print("numpy mu[%f] std[%f]" % (mu1, std1))
+    print("torch mu[%f] std[%f]" % (mu1_torch, std1_torch))
+    print("torch2 mu[%f] std[%f]" % (mu1_torch, std1_torch2))
+    print("y numpy\n", y)
+    print("mu[%f] std[%f]" % (mu2, std2))
+    print("torch mu[%f] std[%f]" % (mu2_torch, std2_torch))
+    print("torch2 mu[%f] std[%f]" % (mu2_torch, std2_torch2))
+
+    x_a = (x - mu1) / std1
+    y_b = (y - mu2) / std2
+    res_a = np.mean((x_a-y_b) ** 2)
+    sigma12 = np.cov(x, y, bias=True)[0][1]
+    res_b_bias_true = 2 - 2 * (sigma12 / (std1 * std2))
+    # sigma12 = np.cov(x.numpy(), y.numpy(), bias=False)[0][1]
+    res_b_bias_false = 2 - 2 * (sigma12 / (std1 * std2))
+    print("\noption a ", res_a)
+    print("option b bias=True", res_b_bias_true)
+    # print("option b bias=False", res_b_bias_false)
+
+
+def f_test():
+    root = "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data"
+    original_hdr_images = []
+    counter = 1
+    for img_name in os.listdir(root):
+        im_path = os.path.join(root, img_name)
+        print(img_name)
+        rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path, True,
+                                                                  True,
+                                                                  1, reshape=False,
+                                                                  window_tone_map=False,
+                                                                  calculate_f=True)
+        rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+        # gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+        # original_hdr_images.append({'im_name': str(counter),
+        #                             'im_hdr_original': rgb_img,
+        #                             'im_log_normalize_tensor': gray_im_log,
+        #                             'epoch': 0})
+        # if counter == 1 or counter == 2:
+        #     self.get_test_image_special_factor(im_path, original_hdr_images, counter)
+
+        # plt.imshow(gray_im_log.clone().permute(1, 2, 0).detach().cpu().squeeze().numpy(), cmap='gray')
+        # title = "max %.4f min %.4f mean %.4f" % (gray_im_log.max().item(),gray_im_log.min().item(), gray_im_log.mean().item())
+        # plt.title(title, fontSize=8)
+        # plt.show()
+        counter += 1
+    return original_hdr_images
+
+def gather_all_architectures3(arch_dir, output_path, epoch):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "hdr_test_format_factorised_1", epoch)
+        cur_output_path = os.path.join(output_path, arch_name)
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        for im_name_ext in os.listdir(im_path):
+            if os.path.splitext(im_name_ext)[1] == ".jpg":
+                shutil.copy(os.path.join(im_path, im_name_ext), os.path.join(cur_output_path, im_name_ext))
 
 if __name__ == '__main__':
-    normalization_test()
+    # f_test()
+    # gather_all_architectures3(arch_dir, output_path, epoch)
+    f_factors = {
+        "synagogue.hdr":20.186214,
+        "2.dng":302.321164,
+        "WillyDesk.exr": 3034315.069532,
+        "cathedral.hdr": 25070.241109,
+        "OtterPoint.exr": 631.320964,
+        "bigFogMap.hdr": 3034315.069532,
+        "BigfootPass.exr": 1.126825,
+        "belgium.hdr": 204629.563980,
+        "1.dng": 1.798710,
+        "OCanadaNoLights.exr": 187.517848,
+        "507.exr": 10036.727260
+    }
+    output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy")
+    np.save(output_path, f_factors)
+    # f_factors = {"belgium": 955688.364876,
+    #                 "bigFogMap": 259547.191089,
+    #                 "cathedral": 70488.191421,
+    #                 "synagogue": 4478.121059,
+    #                 "507": 98865.115084,
+    #                 "BigfootPass": 361.233703,
+    #                 "OCanadaNoLights": 48295.221683,
+    #                 "WillyDesk": 2584959.105935}
+    #
+    # output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/exr_factors.npy")
+    # np.save(output_path, f_factors)
+    # struct_loss_formula_test2()
+    # mu_std_test()
+    # new_ssim_test()
+    # normalization_test()
     # sub_test()
     # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
     # epochs = ["600", "430"]
     # im_numbers = ["8", "1", "2"]
     # for epoch in epochs:
     #     for im_number in im_numbers:
-    #         gather_all_architectures("/cs/snapless/raananf/yael_vinker/03_17/results",
-    #                 "/cs/snapless/raananf/yael_vinker/03_17/arch_summary", epoch, "03_17", im_number)
-    # gather_all_architectures_accuracy("/cs/snapless/raananf/yael_vinker/03_17/results",
-    #                                   "/cs/snapless/raananf/yael_vinker/03_17/arch_summary",
-    #                                   "600", "03_17")
+    #         gather_all_architectures("/cs/labs/raananf/yael_vinker/03_29/results/pyramid",
+    #                 "/cs/labs/raananf/yael_vinker/03_29/summary/pyramid", epoch, "03_17", im_number)
+    # gather_all_architectures_accuracy("/cs/labs/raananf/yael_vinker/03_29/results/pyramid",
+    #                                   "/cs/labs/raananf/yael_vinker/03_29/summary/pyramid",
+    #                                   "590", "03_29")
     # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/2a.hdr")
     # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/belgium.hdr")
     # # f_gamma_test("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/cathedral.hdr")
