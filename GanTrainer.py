@@ -124,9 +124,10 @@ class GanTrainer:
                 hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
+                gamma_factor = data_hdr[params.gamma_factor]
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
-                self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray)
+                self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor)
         self.update_accuracy()
 
     def train_D(self, hdr_input, real_ldr):
@@ -169,7 +170,7 @@ class GanTrainer:
         self.D_loss_fake.append(self.errD_fake.item())
         self.D_loss_real.append(self.errD_real.item())
 
-    def train_G(self, hdr_input, hdr_original_gray_norm, hdr_original_gray):
+    def train_G(self, hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor):
         """
         Update G network: maximize log(D(G(z))) and minimize loss_wind
         :param label: Tensor contains real labels for first loss
@@ -192,7 +193,7 @@ class GanTrainer:
         if self.use_bilateral_weight:
             r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size)
         self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake)
-        self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights)
+        self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         self.optimizerG.step()
 
@@ -219,10 +220,11 @@ class GanTrainer:
             self.errG_sigma.backward()
             self.G_loss_sigma.append(self.errG_sigma.item())
 
-    def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights):
+    def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor):
         if self.apply_intensity_loss:
             self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input,
-                                                                                   hdr_original_gray_norm, r_weights)
+                                                                                   hdr_original_gray_norm,
+                                                                                   r_weights, gamma_factor)
             retain_graph = False
             if self.mu_loss_factor:
                 retain_graph = True

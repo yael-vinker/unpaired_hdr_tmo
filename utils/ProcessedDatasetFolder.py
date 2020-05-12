@@ -16,7 +16,6 @@ def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm
     :param path: image path
     :return:
     """
-
     data = np.load(path, allow_pickle=True)
     input_im = data[()]["input_image"]
     color_im = data[()]["display_image"]
@@ -34,8 +33,10 @@ def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm
             input_im = get_window_input(5, gray_original_im_norm, input_im, std_norm_factor)
         if addFrame:
             input_im = data_loader_util.add_frame_to_im(input_im)
-        return input_im, color_im, gray_original_im_norm, gray_original_im
-    return input_im, color_im, input_im, input_im
+        if "gamma_factor" in data[()].keys():
+            return input_im, color_im, gray_original_im_norm, gray_original_im, data[()]["gamma_factor"]
+        return input_im, color_im, gray_original_im_norm, gray_original_im, 0
+    return input_im, color_im, input_im, input_im, 0
 
 
 class ProcessedDatasetFolder(DatasetFolder):
@@ -71,11 +72,12 @@ class ProcessedDatasetFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        input_im, color_im, gray_original_norm, gray_original = self.loader(path, self.addFrame, self.hdrMode,
+        input_im, color_im, gray_original_norm, gray_original, gamma_factor = self.loader(path, self.addFrame, self.hdrMode,
                                                                             self.normalization, self.apply_wind_norm,
                                                                             self.std_norm_factor,
                                                                             self.loader_map[self.wind_norm_option])
-        return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm, "original_gray": gray_original}
+        return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm,
+                "original_gray": gray_original, "gamma_factor": gamma_factor}
 
 
 def hdr_windows_loader_a(wind_size, a, b, std_norm_factor):

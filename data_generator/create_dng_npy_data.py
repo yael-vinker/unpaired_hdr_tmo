@@ -188,9 +188,12 @@ def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshap
     gray_im = hdr_image_util.to_gray(rgb_img)
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
     gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
-    data = np.load(f_factor_path, allow_pickle=True)
-    if os.path.basename(im_path) in data[()]:
-        f_factor = data[()][os.path.basename(im_path)]
+    if f_factor_path != "":
+        data = np.load(f_factor_path, allow_pickle=True)
+        if os.path.basename(im_path) in data[()]:
+            f_factor = data[()][os.path.basename(im_path)]
+        else:
+            f_factor = hdr_image_util.get_brightness_factor(gray_im)
     else:
         f_factor = hdr_image_util.get_brightness_factor(gray_im)
     brightness_factor = f_factor * 255 * factor_coeff
@@ -267,6 +270,39 @@ def create_data(args):
         print(output_path)
         print(i)
 
+def save_f_factor(args):
+    input_dir = args.input_dir
+    output_path = os.path.join(args.output_dir, "f_factors_train.npy")
+    print(output_path)
+    f_factor_dict = {}
+    for img_name, i in zip(os.listdir(input_dir), range(args.number_of_images)):
+        args.img_name = img_name
+        im_path = os.path.join(input_dir, img_name)
+        rgb_img = hdr_image_util.read_hdr_image(im_path)
+        if np.min(rgb_img) < 0:
+            rgb_img = rgb_img + np.abs(np.min(rgb_img))
+        gray_im = hdr_image_util.to_gray(rgb_img)
+        gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=True)
+        f_factor = hdr_image_util.get_brightness_factor(gray_im)
+        brightness_factor = f_factor * 255
+        print("brightness_factor", brightness_factor)
+        gamma_factor = (1 / (1 + 1.5 * np.log10(brightness_factor)))
+        f_factor_dict[os.path.splitext(img_name)[0]] = gamma_factor
+        np.save(output_path, f_factor_dict)
+        print()
+        print(i)
+
+def add_f_factor_to_data(input_dir, f_factor_path, output_dir, number_of_images):
+    gamma_factors = np.load(f_factor_path, allow_pickle=True)
+    print(output_dir)
+    for img_name, i in zip(os.listdir(input_dir), range(number_of_images)):
+        im_path = os.path.join(input_dir, img_name)
+        data = np.load(im_path, allow_pickle=True)
+        data[()]["gamma_factor"] = gamma_factors[os.path.splitext(img_name)[0]]
+        output_path = os.path.join(output_dir, img_name)
+        np.save(output_path, data)
+        test_a = np.load(output_path, allow_pickle=True)[()]
+        print(test_a)
 
 def apply_different_gamma(im_path, reshape=True, use_factorised_data=True):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
@@ -320,6 +356,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/exr_data")
     parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/")
+    parser.add_argument("--output_dir", type=str,
+                        default="/Users/yaelvinker/PycharmProjects/lab/utils/")
     parser.add_argument("--isLdr", type=int, default=0)
     parser.add_argument("--number_of_images", type=int, default=7)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
@@ -335,12 +373,15 @@ if __name__ == '__main__':
     # output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
     #                  "_factor_coeff_" + str(args.factor_coeff)
     output_dir_name = pref + "_gamma_log_" + str(args.gamma_log)
-    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
+    # args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
-    create_data(args)
-    print_result(args.output_dir)
-
+    save_f_factor(args)
+    data = np.load("/Users/yaelvinker/PycharmProjects/lab/utils/f_factors_train.npy", allow_pickle=True)
+    print(data[()])
+    # create_data(args)
+    # print_result(args.output_dir)
+    # save_f_factor(args)
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/test/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1")

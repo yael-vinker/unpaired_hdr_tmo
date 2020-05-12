@@ -60,7 +60,7 @@ class Tester:
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
-            original_hdr_images.append({'im_name': str(counter),
+            original_hdr_images.append({'im_name': os.path.splitext(img_name)[0],
                                         'im_hdr_original': rgb_img,
                                         'im_log_normalize_tensor': gray_im_log,
                                         'epoch': 0})
@@ -185,12 +185,19 @@ class Tester:
                                                                  im_log_normalize_tensor, self.std_norm_factor)
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
-                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
 
-                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_color"
+                file_name = im_and_q["im_name"]
+                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
                 hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
 
-                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_gray_source"
+                file_name = im_and_q["im_name"]
                 hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
-                file_name = im_and_q["im_name"] + "_epoch_" + str(epoch) + "_gray"
-                hdr_image_util.save_gray_tensor_as_numpy_stretch(fake[0], out_dir, file_name)
+
+                file_name = im_and_q["im_name"] + "_stretch"
+                fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
+                hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name)
+
+                file_name = im_and_q["im_name"] + "_stretch"
+                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
+                                                                   fake_im_gray_stretch.unsqueeze(dim=0))
+                hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)

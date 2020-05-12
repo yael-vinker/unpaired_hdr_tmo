@@ -34,17 +34,17 @@ def parse_arguments():
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument('--struct_method', type=str, default="hdr_ssim") # hdr_ssim, gamma_ssim
+    parser.add_argument('--struct_method', type=str, default="laplace_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
-    parser.add_argument('--std_method', type=str, default="std")
+    parser.add_argument('--std_method', type=str, default="gamma_factor_loss")
     parser.add_argument('--alpha', type=float, default=1)
     parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
-    parser.add_argument('--intensity_epsilon', type=float, default=0.001)
-    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
+    parser.add_argument('--intensity_epsilon', type=float, default=1)
+    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
 
     parser.add_argument('--mu_loss_factor', type=float, default=1)
     parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
@@ -157,8 +157,8 @@ def create_dir(opt):
         if opt.apply_intensity_loss_laplacian_weights:
             s = "_laplace_" + s
         result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
-        if opt.std_method != "std":
-            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
+        # if opt.std_method != "std":
+        #     result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     if opt.use_sigma_loss:

@@ -1,20 +1,25 @@
 import os
 
 # train_dataroot_hdr = "data/check_data/triangle_train_fake"
-train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
+# train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
+train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data_with_f"
+
 train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
 
-test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
+# test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
+test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data_with_f"
 test_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
-test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data"
+test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data"
 apply_windows_loss = False
 
+f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"
 image_key = "hdr_image"
 window_image_key = "binary_windows"
 gray_input_image_key = "input_im"
 color_image_key = "color_im"
 original_gray_key = "original_gray"
 original_gray_norm_key = "original_gray_norm"
+gamma_factor = "gamma_factor"
 
 
 models_save_path = os.path.join("models")

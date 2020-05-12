@@ -270,44 +270,54 @@ def _compute_statistics_of_path(path, model, batch_size, dims, device, im_from, 
     return m, s
 
 
-def calculate_fid_given_paths(paths, batch_size, device, dims, number_of_images):
+def calculate_fid_given_paths(path_real, path_fake, batch_size, device, dims, number_of_images):
     """Calculates the FID of two paths"""
-    for p in paths:
-        if not os.path.exists(p):
-            raise RuntimeError('Invalid path: %s' % p)
+
+    if not os.path.exists(path_real):
+        raise RuntimeError('Invalid path: %s' % path_real)
+    if not os.path.exists(path_fake):
+        raise RuntimeError('Invalid path: %s' % path_fake)
 
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 
     model = InceptionV3([block_idx]).to(device)
+    print(model)
 
-    m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
+    m1, s1 = _compute_statistics_of_path(path_real, model, batch_size,
                                          dims, device, im_from=0, im_to=number_of_images)
-    m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
+    m2, s2 = _compute_statistics_of_path(path_fake, model, batch_size,
                                          dims, device, im_from=0, im_to=number_of_images)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
     # calc FID
     return fid_value
 
 
-def apply_preprocess_folder(path_):
-    path = pathlib.Path(path_[0])
-    output_path = os.path.join(path, "npy")
+def apply_preprocess_folder(path_fake):
+    from utils import hdr_image_util
+    import tranforms as transforms_
+    path = pathlib.Path(path_fake)
+    output_path = os.path.join(path, "npy_version")
     if not os.path.exists(output_path):
-        os.mkdir(output_path)
+        os.makedirs(output_path)
     files = list(path.glob('*.jpg'))
     for f in files:
         color_im = imread(str(f)).astype('uint8')
-        tensor_0_1 = color_im.squeeze()
-        tensor_0_1 = (tensor_0_1 - tensor_0_1.min()) / (tensor_0_1.max() - tensor_0_1.min())
-        im = (tensor_0_1 * 255).astype('uint8')
+        color_im = (color_im / color_im.max())
+        color_im = hdr_image_util.reshape_image(color_im, train_reshape=True)
+        im = (color_im * 255).astype('uint8')
+        im = transforms_.image_transform_no_norm(im)
         cur_output_path = os.path.join(output_path, os.path.os.path.splitext(os.path.basename(f))[0] + ".npy")
         data = {'display_image': im}
         np.save(cur_output_path, data)
+    return output_path
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-    parser.add_argument('path', type=str, nargs=2,
+    parser.add_argument('--path_real', type=str,
+                        help=('Path to the generated images or '
+                              'to .npz statistic files'))
+    parser.add_argument('--path_fake', type=str,
                         help=('Path to the generated images or '
                               'to .npz statistic files'))
     parser.add_argument('--batch-size', type=int, default=50,
@@ -324,16 +334,20 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
 
+    print(args.path_fake)
     if args.format == "jpg":
-        apply_preprocess_folder(args.path[0])
+        npy_path_fake = apply_preprocess_folder(args.path_fake)
+    else:
+        npy_path_fake = args.path_fake
 
 
 
-    # fid_value = calculate_fid_given_paths(args.path,
-    #                                           args.batch_size,
-    #                                           device,
-    #                                           args.dims,
-    #                                           args.number_of_images)
+    fid_value = calculate_fid_given_paths(args.path_real,
+                                          npy_path_fake,
+                                              args.batch_size,
+                                              device,
+                                              args.dims,
+                                              args.number_of_images)
     print()
     print('FID: ', fid_value)
 

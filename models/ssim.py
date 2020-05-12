@@ -19,6 +19,8 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
         self.window_size = window_size
         self.channel = 1
         self.window = create_window(window_size, self.channel)
+        self.gaussian_kernel = get_gaussian_kernel(window_size=5, channel=1)
+        self.laplacian_kernel = get_laplacian_kernel(kernel_size=5)
         self.mse_loss = torch.nn.MSELoss()
         self.pyramid_weight_list = pyramid_weight_list
         self.pyramid_pow = pyramid_pow
@@ -26,10 +28,12 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
         self.apply_sig_mu_ssim = apply_sig_mu_ssim
         self.struct_methods = {
             "hdr_ssim": our_custom_ssim,
-            "gamma_ssim": our_custom_ssim
+            "gamma_ssim": our_custom_ssim,
+            "div_ssim": our_custom_ssim2,
+            "laplace_ssim": struct_loss_laplac
         }
         self.struct_method = struct_method
-        if struct_method not in ["hdr_ssim", "gamma_ssim", "div_ssim"]:
+        if struct_method not in ["hdr_ssim", "gamma_ssim", "div_ssim", "laplace_ssim"]:
             assert 0, "Unsupported struct_method"
         self.struct_loss = self.struct_methods[struct_method]
         self.std_norm_factor = std_norm_factor
@@ -60,6 +64,10 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
             return our_custom_ssim_pyramid_div(fake, hdr_input_original_gray_norm, window, self.window_size,
                                            channel, self.pyramid_weight_list,
                                            self.mse_loss, self.use_c3, self.apply_sig_mu_ssim)
+        elif self.struct_method == "laplace_ssim":
+            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+            return our_custom_ssim_pyramid_laplace(fake, hdr_input, self.gaussian_kernel, self.laplacian_kernel,
+                                           self.pyramid_weight_list, self.mse_loss)
 
 
 class IntensityLoss(torch.nn.Module):
@@ -75,13 +83,16 @@ class IntensityLoss(torch.nn.Module):
             "std_mu_fake": std_loss_mu_fake,
             "std_mu_gamma": std_loss_mu_gamma,
             "std_bilateral": std_loss_bilateral,
-            "std_mu_gamma_mu_hdr": std_loss_mu_gamma_mu_hdr
+            "std_mu_gamma_mu_hdr": std_loss_mu_gamma_mu_hdr,
+            "gamma_factor_loss": gamma_factor_loss
         }
         self.std_loss = self.std_methods[std_method]
         self.alpha = alpha
         self.mse_loss = torch.nn.MSELoss()
 
-    def forward(self, fake, hdr_input, hdr_original_im, r_weights=None):
+    def forward(self, fake, hdr_input, hdr_original_im, r_weights=None, f_factors=None):
+        if f_factors is not None and f_factors.sum() == 0:
+            f_factors = None
         hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
         if r_weights:
             self.std_loss = self.std_methods["std_bilateral"]
@@ -93,9 +104,10 @@ class IntensityLoss(torch.nn.Module):
             ssim_loss_list.append(self.pyramid_weight_list[i] *
                                   self.std_loss(self.window, fake, hdr_input, hdr_original_im,
                                                 self.epsilon, self.mse_loss,
-                                                self.alpha, cur_weights))
+                                                self.alpha, cur_weights, f_factors))
             fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_input = F.interpolate(hdr_input, scale_factor=0.5, mode='bicubic', align_corners=False)
+            hdr_original_im = F.interpolate(hdr_original_im, scale_factor=0.5, mode='bicubic', align_corners=False)
         return torch.sum(torch.stack(ssim_loss_list))
 
 
@@ -237,33 +249,26 @@ def our_custom_ssim2(img1, img2, window, window_size, channel, mse_loss, use_c3,
     return mse_loss(ones / (img1 + params.epsilon2), ones / (img2 + params.epsilon2))
 
 
-def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
+# def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
+def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, gamma_input, mse_loss):
     b, c, h, w = fake.shape
-    ones = torch.ones(fake.shape)
+
     if fake.is_cuda:
         gaussian_kernel = gaussian_kernel.cuda(fake.get_device())
         laplacian_kernel = laplacian_kernel.cuda(fake.get_device())
-        ones = ones.cuda(fake.get_device())
+
     gaussian_kernel = gaussian_kernel.type_as(fake)
     laplacian_kernel = laplacian_kernel.type_as(fake)
     laplacian_kernel = laplacian_kernel.repeat(c, 1, 1, 1)
-    ones = ones.type_as(fake)
-    mu1 = F.conv2d(fake, gaussian_kernel, padding=5 // 2, groups=1)
-    gamma_input_gaussian = F.conv2d(gamma_input, gaussian_kernel, padding=5 // 2, groups=1)
-    laplacian_res = F.conv2d(gamma_input_gaussian, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
-    laplacian_res[laplacian_res < 0] = 0
-    laplacian_res = laplacian_res.max() - (laplacian_res)
-    laplacian_res = laplacian_res ** 2
 
-    import matplotlib.pyplot as plt
-    plt.imshow(laplacian_res[1,0].numpy(), cmap='gray')
-    plt.show()
-    # compute std
-    mu1_sq = mu1.pow(2)
-    sigma1_sq = F.conv2d(fake * fake, gaussian_kernel, padding=5 // 2, groups=1) - mu1_sq
-    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + 1e-10, 0.5)
-    res = laplacian_res * (ones - (std1[0, 0] / (std1[0, 0] + epsilon)))
-    return res.mean()
+    gamma_input_gaussian = F.conv2d(gamma_input, gaussian_kernel, padding=5 // 2, groups=1)
+    laplacian_res_gamma = F.conv2d(gamma_input_gaussian, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
+    laplacian_res_gamma[laplacian_res_gamma < 0] = 0
+
+    laplacian_res_fake = F.conv2d(fake, gaussian_kernel, padding=5 // 2, groups=1)
+    laplacian_res_fake = F.conv2d(laplacian_res_fake, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
+    laplacian_res_fake[laplacian_res_fake < 0] = 0
+    return mse_loss(laplacian_res_fake, laplacian_res_gamma)
 
 
 def our_custom_sigma_loss(img1, img2, window, window_size, channel, mse_loss):
@@ -309,6 +314,17 @@ def our_custom_ssim_pyramid_div(img1, img2, window, window_size, channel, pyrami
     return torch.sum(torch.stack(ssim_loss_list))
 
 
+def our_custom_ssim_pyramid_laplace(fake, gamma_input, gaussian_kernel, laplacian_kernel, pyramid_weight_list, mse_loss):
+    ssim_loss_list = []
+    for i in range(len(pyramid_weight_list)):
+        ssim_loss_list.append(pyramid_weight_list[i] * struct_loss_laplac(gaussian_kernel, laplacian_kernel,
+                                                                          fake, gamma_input, mse_loss))
+
+        fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
+        gamma_input = F.interpolate(gamma_input, scale_factor=0.5, mode='bicubic', align_corners=False)
+    return torch.sum(torch.stack(ssim_loss_list))
+
+
 def std_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None):
     ones = torch.ones(fake.shape)
     # print("ones", ones.shape)
@@ -329,7 +345,32 @@ def std_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, a
     return res.mean()
 
 
-def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None, wind_size=5):
+def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
+                      f_factors=None):
+    if fake.is_cuda:
+        window = window.cuda(fake.get_device())
+    window = window.type_as(fake)
+    window = window / window.sum()
+    mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
+    mu_fake_sq = mu_fake.pow(2)
+    sigma_fake_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu_fake_sq
+    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + 1e-10, 0.5)
+
+    mu_gamma = F.conv2d(gamma_hdr, window, padding=5 // 2, groups=1)
+    mu_gamma_sq = mu_gamma.pow(2)
+    sigma_gamma_sq = F.conv2d(gamma_hdr * gamma_hdr, window, padding=5 // 2, groups=1) - mu_gamma_sq
+    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + 1e-10, 0.5)
+
+    f_factors = f_factors.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
+    hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
+    mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=5 // 2, groups=1)
+    std_objective = (epsilon / f_factors) * std_gamma * mu_hdr_im_pow_gamma
+    return mse_loss(std_fake, std_objective)
+
+
+def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                       r_weights=None, f_factors=None):
+    wind_size = 5
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -351,11 +392,24 @@ def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_lo
     # sigma1_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu1_sq
     sigma1_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon, 0.5)
+
+    # gamma_windows = get_im_as_windows(gamma_hdr, wind_size)
+    # gamma_windows = gamma_windows.squeeze(dim=1)
+    # gamma_windows = gamma_windows.permute(0, 3, 1, 2)
+    # gamma_bf = torch.sum(gamma_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
+    # gamma_bf = gamma_bf.expand(-1, wind_size * wind_size, -1, -1)
+
+    # hdr_windows = get_im_as_windows(hdr_original_im, wind_size)
+    # hdr_windows = hdr_windows.squeeze(dim=1)
+    # hdr_windows = hdr_windows.permute(0, 3, 1, 2)
+    # hdr_bf = torch.sum(hdr_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
+    # hdr_bf = hdr_bf.expand(-1, wind_size * wind_size, -1, -1)
+
     res = ones - (std1 / (std1 + epsilon))
     return res.mean()
 
 
-def std_loss_mu_fake(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
+def std_loss_mu_fake(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None, f_factors=None):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)
@@ -367,7 +421,7 @@ def std_loss_mu_fake(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss
     return mse_loss(std1, alpha * mu1)
 
 
-def std_loss_mu_gamma(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
+def std_loss_mu_gamma(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None, f_factors=None):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)
@@ -380,7 +434,7 @@ def std_loss_mu_gamma(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_los
     return mse_loss(std1, alpha * mu2)
 
 
-def std_loss_mu_gamma_mu_hdr(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None):
+def std_loss_mu_gamma_mu_hdr(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss, alpha, r_weights=None,f_factors=None):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)

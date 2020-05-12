@@ -98,7 +98,7 @@ def get_brightness_factor(im_hdr):
 
         # if r > 1 and i % 5 == 0:
         #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
-        if r > big and np.mean(im_gamma) > 150:
+        if r > big:# and np.mean(im_gamma) > 100:
             print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
             return f
         else:
