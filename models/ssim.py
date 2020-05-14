@@ -8,6 +8,7 @@ from torch.autograd import Variable
 from utils import params, data_loader_util
 import torch
 from torch import nn
+from utils import printer
 
 # =======================================
 # ============= Classes ===============
@@ -458,6 +459,7 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
     hdr_pow_mu = torch.sum(hdr_pow_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
 
     std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + epsilon)
+    printer.print_g_progress(std_objective, "std_objective")
     return mse_loss(std_fake, std_objective.detach())
 
 
