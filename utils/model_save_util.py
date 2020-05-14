@@ -69,7 +69,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, unet_norm, add_clipping, normalization, use_xaviar, output_dim):
+                 add_frame, unet_norm, add_clipping, normalization, use_xaviar, output_dim, apply_exp):
     # Create the Generator (UNet architecture)
     layer_factor = get_layer_factor(con_operator)
     if model == params.unet_network:
@@ -77,7 +77,7 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                                  layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                                  bilinear=False, network=model, dilation=0, to_crop=add_frame,
                                  unet_norm=unet_norm, add_clipping=add_clipping,
-                                 normalization=normalization).to(device_)
+                                 normalization=normalization, apply_exp=apply_exp).to(device_)
     elif model == params.torus_network:
         new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                                  layer_factor=layer_factor, con_operator=con_operator, filters=filters,
@@ -149,12 +149,15 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 # ====== USE TRAINED MODEL ======
 def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    input_images_path = get_hdr_source_path("test_source")
-    f_factor_path = get_f_factor_path("test_source")
-    arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
-    # arch_dir = "/Users/yaelvinker/Documents/university/lab/04_24"
+    input_images_path = get_hdr_source_path("new_source")
+    # input_images_path = get_hdr_source_path("hdr_test")
+    # input_images_path = get_f_factor_path("hdr_test")
+    # f_factor_path = get_f_factor_path("test_source")
+    f_factor_path = ""
+    # arch_dir = "/Users/yaelvinker/PycharmProjects/lab"
+    arch_dir = "/Users/yaelvinker/Documents/university/lab/05_05"
     models_names = get_models_names()
-    models_epoch = [680]
+    models_epoch = [280]
     print(models_epoch)
 
     for i in range(len(models_names)):
@@ -175,7 +178,7 @@ def save_fake_images_for_fid_hdr_input(factor_coeff, input_format):
                     if not os.path.exists(cur_output_path):
                         os.mkdir(cur_output_path)
                     run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
-                                      f_factor_path)
+                                      is_npy=False, f_factor_path=f_factor_path)
                 else:
                     print("model path does not exists: ", cur_output_path)
         else:
@@ -363,7 +366,7 @@ def get_con_operator(model_name):
 
 
 def get_models_names():
-    models_names = ["_unet_square_and_square_root_ssim_1.0_pyramid_2,4,6,8_sigloss_2_use_f_True_coeff_1.0_gamma_input_True_d_model_patchD"]
+    models_names = ["add_alpha003_hdr_data_log_10_gamma_ssim_1.0_pyramid_1,2,4std_1.0_eps_0.001_6,8,1_mu_loss_2.0_1,1,1_unet_square_and_square_root_d_model_patchD"]
     return models_names
 
 
@@ -435,7 +438,7 @@ def is_factorised_data(model_name):
 
 if __name__ == '__main__':
     # save_fake_images_for_fid_hdr_input()
-    save_fake_images_for_fid_hdr_input(1, "try2")
+    save_fake_images_for_fid_hdr_input(1, "mean100")
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)

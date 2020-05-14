@@ -30,6 +30,7 @@ def parse_arguments():
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--use_xaviar', type=int, default=1)
     parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")
+    parser.add_argument('--apply_exp', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -40,17 +41,18 @@ def parse_arguments():
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
-    parser.add_argument('--std_method', type=str, default="gamma_factor_loss")
+    parser.add_argument('--std_method', type=str, default="gamma_factor_loss_bilateral")
     parser.add_argument('--alpha', type=float, default=1)
-    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
+    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
     parser.add_argument('--intensity_epsilon', type=float, default=1)
-    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1")
+    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="1,1")
 
     parser.add_argument('--mu_loss_factor', type=float, default=1)
     parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
+    parser.add_argument('--bilateral_sigma_r', type=float, default=0.1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -141,7 +143,9 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
-    result_dir_pref = result_dir_pref + "data_log_" + str(opt.gamma_log)
+    if opt.apply_exp:
+        result_dir_pref = result_dir_pref + "exp_"
+    result_dir_pref = result_dir_pref + "data_" + str(opt.gamma_log)
     if not opt.train_with_D:
         result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:
@@ -155,10 +159,10 @@ def create_dir(opt):
     if opt.apply_intensity_loss:
         s = opt.std_method + "_"
         if opt.apply_intensity_loss_laplacian_weights:
-            s = "_laplace_" + s
+            s = s + "_b_sigma_r_" + str(opt.bilateral_sigma_r)
         result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
-        # if opt.std_method != "std":
-        #     result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
+        if opt.std_method not in ["std", "std_bilateral"]:
+            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     if opt.use_sigma_loss:

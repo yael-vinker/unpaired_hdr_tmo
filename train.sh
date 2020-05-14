@@ -45,7 +45,10 @@ echo "add_frame ${34}"
 echo "input_dim ${35}"
 echo "apply_intensity_loss_laplacian_weights ${36}"
 echo "struct_method ${39}"
-
+echo "bilateral_sigma_r ${40}"
+echo "apply_exp ${41}"
+echo "f_factor_path ${42}"
+echo "gamma_log ${43}"
 
 python3.6 -W ignore -u main_train.py \
   --change_random_seed $1 \
@@ -86,5 +89,9 @@ python3.6 -W ignore -u main_train.py \
   --apply_intensity_loss_laplacian_weights ${36} \
   --std_method ${37} \
   --alpha ${38} \
-  --struct_method ${39}
+  --struct_method ${39} \
+  --bilateral_sigma_r ${40} \
+  --apply_exp ${41} \
+  --f_factor_path ${42} \
+  --gamma_log ${43}
 

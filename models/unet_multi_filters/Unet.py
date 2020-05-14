@@ -6,7 +6,7 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, unet_norm, add_clipping, normalization):
+                 network, dilation, to_crop, unet_norm, add_clipping, normalization, apply_exp):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
@@ -39,12 +39,14 @@ class UNet(nn.Module):
             if network == params.torus_network:
                 dilation = dilation // 2
         self.outc = outconv(down_ch, output_dim)
-        # self.exp = Blocks.Exp()
+        if apply_exp:
+            self.exp = Blocks.Exp()
+        else:
+            self.exp = None
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
         if last_layer == 'sigmoid':
             self.last_sig = nn.Sigmoid()
-        # self.exp = Blocks.Exp()
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
@@ -71,8 +73,8 @@ class UNet(nn.Module):
             x_out = x_out[:, :, i: i + h, j:j + w]
         if self.last_sig:
             x_out = self.last_sig(x_out)
-        # if self.exp:
-        #     x_out = self.exp(x_out)
-        # if self.clip:
-        #     x_out = self.clip(x_out)
+        if self.exp:
+            x_out = self.exp(x_out)
+        if self.clip:
+            x_out = self.clip(x_out)
         return x_out

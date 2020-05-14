@@ -86,7 +86,7 @@ def plot_hist(rgb_img, brightness_factor_b, i):
     plt.title(str(a1 / a0) + " i " + str(i), fontSize=12)
 
 
-def get_brightness_factor(im_hdr):
+def get_brightness_factor(im_hdr, mean_target, factor):
     im_hdr = (im_hdr / np.max(im_hdr)) * 255
     big = 1.1
     f = 1.0
@@ -94,11 +94,11 @@ def get_brightness_factor(im_hdr):
     for i in range(1500):
         r = get_bump(im_hdr * f)
 
-        im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + 1.5 * np.log10(f * 255)))) * 255)
+        im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + factor * np.log10(f * 255)))) * 255)
 
         # if r > 1 and i % 5 == 0:
         #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
-        if r > big:# and np.mean(im_gamma) > 100:
+        if r > big and np.mean(im_gamma) > mean_target:
             print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
             return f
         else:

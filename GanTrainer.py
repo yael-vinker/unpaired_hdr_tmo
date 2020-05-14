@@ -57,10 +57,8 @@ class GanTrainer:
         else:
             self.sigma_loss = None
         self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
+        self.bilateral_sigma_r = opt.bilateral_sigma_r
         if opt.apply_intensity_loss:
-            # if opt.apply_intensity_loss_laplacian_weights:
-            #     self.intensity_loss = ssim.IntensityLossLaplacian(opt.intensity_epsilon, opt.std_pyramid_weight_list)
-            # else:
             self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
                                                          opt.std_method)
             self.intensity_loss_factor = opt.apply_intensity_loss
@@ -191,7 +189,7 @@ class GanTrainer:
             self.update_g_d_loss(output_on_fake, label)
         r_weights = []
         if self.use_bilateral_weight:
-            r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size)
+            r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size, self.self.bilateral_sigma_r)
         self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)

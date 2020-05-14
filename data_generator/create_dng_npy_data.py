@@ -182,6 +182,14 @@ def hdr_sigma_preprocess(im_path, args, reshape=False):
 
 
 def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshape, gamma_log, f_factor_path):
+    if gamma_log == 2:
+        mean_target = 80
+        factor = (2/3)
+    elif gamma_log == 10:
+        mean_target = 160
+        factor = 1.5
+    else:
+        assert 0, "Unsupported gamma log"
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
@@ -193,18 +201,14 @@ def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshap
         if os.path.basename(im_path) in data[()]:
             f_factor = data[()][os.path.basename(im_path)]
         else:
-            f_factor = hdr_image_util.get_brightness_factor(gray_im)
+            f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
     else:
-        f_factor = hdr_image_util.get_brightness_factor(gray_im)
+        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
     brightness_factor = f_factor * 255 * factor_coeff
     print("brightness_factor", brightness_factor)
     if use_factorise_gamma_data:
-        if gamma_log == 2:
-            gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + np.log2(brightness_factor)))
-        elif gamma_log == 10:
-            gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + 1.5 * np.log10(brightness_factor)))
-        else:
-            assert 0, "Unsupported gamma log"
+        gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + factor * np.log10(brightness_factor)))
+
     else:
         gray_im = (gray_im / np.max(gray_im)) * brightness_factor
         gray_im = np.log(gray_im + 1)
