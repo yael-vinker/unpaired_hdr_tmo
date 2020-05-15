@@ -2,7 +2,7 @@
 
 change_random_seed=0
 batch_size=16
-num_epochs=400
+num_epochs=325
 G_lr=0.00001
 D_lr=0.000005
 model="unet"
@@ -48,10 +48,13 @@ factor_coeff=1
 use_normalization=0
 normalization="bugy_max_normalization"
 last_layer="sigmoid"
+custom_sig_factor=3
 d_model="patchD"
 d_down_dim=64
 d_norm="none"
 milestones="200"
+epoch_to_save=40
+final_epoch=320
 
 
 sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
@@ -63,5 +66,6 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $result_dir_prefix $use_factorise_data $factor_coeff $add_clipping $use_normalization \
   $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim \
   $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method \
-  $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log
+  $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
+  $epoch_to_save $final_epoch
 

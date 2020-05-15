@@ -85,6 +85,7 @@ class GanTrainer:
         self.log_factor = opt.log_factor
         self.normalize = custom_transform.Normalize(0.5, 0.5)
         self.use_factorise_gamma_data = opt.use_factorise_gamma_data
+        self.gamma_log = opt.gamma_log
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
@@ -97,6 +98,7 @@ class GanTrainer:
         self.best_accG = 0
         self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.ssim_loss_g_factor,
                                     self.log_factor, opt)
+        self.final_epoch = opt.final_epoch
 
     def train(self):
         printer.print_cuda_details(self.device.type)
@@ -298,8 +300,25 @@ class GanTrainer:
                                          self.mse_loss, self.ssim_loss, self.num_epochs)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
+        if epoch == self.final_epoch:
+            self.save_data_for_assessment()
 
     def save_gradient_flow(self, epoch):
         new_out_dir = os.path.join(self.output_dir, "gradient_flow")
         plt.savefig(os.path.join(new_out_dir, "gradient_flow_epoch=" + str(epoch)))
         plt.close()
+
+    def save_data_for_assessment(self):
+        model_params = model_save_util.get_model_params(self.output_dir)
+        net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
+        self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
+        self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+
+    def run_model_on_path(self, data_source, data_format, model_params, net_path):
+        input_images_path = model_save_util.get_hdr_source_path(data_source)
+        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log)
+        output_images_path = os.path.join(self.output_dir, data_format + "_" + str(self.final_epoch))
+        if not os.path.exists(output_images_path):
+            os.mkdir(output_images_path)
+        model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
+                                          output_images_path, data_format, f_factor_path)

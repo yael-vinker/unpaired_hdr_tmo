@@ -467,7 +467,6 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
     hdr_pow_mu = torch.sum(hdr_pow_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
 
     std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + epsilon)
-    printer.print_g_progress(std_objective, "std_objective")
     res = ones - (std_fake / (std_fake + std_objective.detach()))
     return res.mean()
 

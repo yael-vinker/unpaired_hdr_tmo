@@ -49,6 +49,9 @@ echo "bilateral_sigma_r ${40}"
 echo "apply_exp ${41}"
 echo "f_factor_path ${42}"
 echo "gamma_log ${43}"
+echo "custom_sig_factor ${44}"
+echo "epoch_to_save ${45}"
+echo "final_epoch ${46}"
 
 python3.6 -W ignore -u main_train.py \
   --change_random_seed $1 \
@@ -93,5 +96,8 @@ python3.6 -W ignore -u main_train.py \
   --bilateral_sigma_r ${40} \
   --apply_exp ${41} \
   --f_factor_path ${42} \
-  --gamma_log ${43}
+  --gamma_log ${43} \
+  --custom_sig_factor ${44} \
+  --epoch_to_save ${45} \
+  --final_epoch ${46}
 

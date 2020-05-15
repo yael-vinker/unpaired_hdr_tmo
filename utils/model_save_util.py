@@ -138,7 +138,7 @@ def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
 
 
 # ====== USE TRAINED MODEL ======
-def save_fake_images_for_fid_hdr_input(input_format, device, images_source, arch_dir,
+def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
                                        models_names, model_epoch, output_dir_name):
     input_images_path = get_hdr_source_path(images_source)
     for i in range(len(models_names)):
@@ -155,7 +155,7 @@ def save_fake_images_for_fid_hdr_input(input_format, device, images_source, arch
             net_name = "net_epoch_" + str(model_epoch) + ".pth"
             cur_net_path = os.path.join(net_path, net_name)
             if os.path.exists(cur_net_path):
-                cur_output_path = os.path.join(output_path, str(model_epoch))
+                cur_output_path = output_path
                 if not os.path.exists(cur_output_path):
                     os.mkdir(cur_output_path)
                 run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
@@ -167,7 +167,7 @@ def save_fake_images_for_fid_hdr_input(input_format, device, images_source, arch
 
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, input_format,
-                      f_factor_path=""):
+                      f_factor_path):
     net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
     if input_format == "npy":
@@ -265,7 +265,7 @@ def run_model_on_single_npy(input_images_path, G_net, device, output_path):
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         use_factorise_gamma_data=True, factor_coeff=1.0,
-                                                                        train_reshape=False,
+                                                                        train_reshape=True,
                                                                         gamma_log=model_params["gamma_log"],
                                                                         f_factor_path=f_factor_path)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
@@ -335,7 +335,7 @@ def get_con_operator(model_name):
     if params.square_and_square_root in model_name:
         return params.square_and_square_root
     else:
-        assert 0, "Unsupported con_operator"
+        return params.original_unet
 
 
 def get_last_layer(model_name):
@@ -432,7 +432,7 @@ if __name__ == '__main__':
     models_names = get_models_names()
     models_epoch = 280
     output_dir_name = ""
-    save_fake_images_for_fid_hdr_input(input_format, device, images_source, arch_dir,
+    apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
                                        models_names, models_epoch, output_dir_name)
 
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
