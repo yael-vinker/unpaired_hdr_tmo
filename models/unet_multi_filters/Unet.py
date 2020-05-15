@@ -47,6 +47,8 @@ class UNet(nn.Module):
             self.last_sig = nn.Tanh()
         if last_layer == 'sigmoid':
             self.last_sig = nn.Sigmoid()
+        if last_layer == 'msig':
+            self.last_sig = Blocks.MySig(3)
         if add_clipping:
             self.clip = Blocks.Clip()
         else:

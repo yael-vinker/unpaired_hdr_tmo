@@ -181,22 +181,30 @@ def hdr_sigma_preprocess(im_path, args, reshape=False):
     return rgb_img, gray_im_log
 
 
-def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshape, gamma_log, f_factor_path):
+def get_mean_and_factor(gamma_log):
     if gamma_log == 2:
         mean_target = 80
         factor = (2/3)
     elif gamma_log == 10:
         mean_target = 160
         factor = 1.5
+    elif gamma_log == 1:
+        mean_target = 110
+        factor = 1
     else:
         assert 0, "Unsupported gamma log"
+    return mean_target, factor
+
+
+def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshape, gamma_log, f_factor_path):
+    mean_target, factor = get_mean_and_factor(gamma_log)
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
     gray_im = hdr_image_util.to_gray(rgb_img)
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
     gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
-    if f_factor_path != "":
+    if f_factor_path != "none":
         data = np.load(f_factor_path, allow_pickle=True)
         if os.path.basename(im_path) in data[()]:
             f_factor = data[()][os.path.basename(im_path)]
@@ -206,13 +214,8 @@ def hdr_preprocess(im_path, use_factorise_gamma_data, factor_coeff, train_reshap
         f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
     brightness_factor = f_factor * 255 * factor_coeff
     print("brightness_factor", brightness_factor)
-    if use_factorise_gamma_data:
-        gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + factor * np.log10(brightness_factor)))
-
-    else:
-        gray_im = (gray_im / np.max(gray_im)) * brightness_factor
-        gray_im = np.log(gray_im + 1)
-    return rgb_img, gray_im
+    gray_im = (gray_im / np.max(gray_im)) ** (1 / (1 + factor * np.log10(brightness_factor)))
+    return rgb_img, gray_im, (1 / (1 + factor * np.log10(brightness_factor)))
 
 
 def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
@@ -233,12 +236,12 @@ def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
 
 
 def apply_preprocess_for_hdr(im_path, args):
-    rgb_img, gray_im_log = hdr_preprocess(im_path,
+    rgb_img, gray_im_log, gamma_factor = hdr_preprocess(im_path,
                                           use_factorise_gamma_data=True, factor_coeff=args.factor_coeff,
                                           train_reshape=True, gamma_log=args.gamma_log, f_factor_path=args.f_factor_path)
     rgb_img = transforms_.image_transform_no_norm(rgb_img)
     gray_im_log = transforms_.image_transform_no_norm(gray_im_log)
-    return rgb_img, gray_im_log
+    return rgb_img, gray_im_log, gamma_factor
 
 
 def apply_window_tone_map_for_hdr(im_path, args=None):
@@ -261,18 +264,20 @@ def apply_window_tone_map_for_hdr(im_path, args=None):
 def create_data(args):
     input_dir = args.input_dir
     output_dir = args.output_dir
+    gamma_factor = 0
     for img_name, i in zip(os.listdir(input_dir), range(args.number_of_images)):
         args.img_name = img_name
         im_path = os.path.join(input_dir, img_name)
         if args.isLdr:
             rgb_img, gray_im = apply_preprocess_for_ldr(im_path)
         else:
-            rgb_img, gray_im = apply_preprocess_for_hdr(im_path, args)
-        data = {'input_image': gray_im, 'display_image': rgb_img}
+            rgb_img, gray_im, gamma_factor = apply_preprocess_for_hdr(im_path, args)
+        data = {'input_image': gray_im, 'display_image': rgb_img, 'gamma_factor': gamma_factor}
         output_path = os.path.join(output_dir, os.path.splitext(img_name)[0] + '.npy')
         np.save(output_path, data)
         print(output_path)
         print(i)
+
 
 def save_f_factor(args):
     input_dir = args.input_dir
@@ -296,6 +301,7 @@ def save_f_factor(args):
         print()
         print(i)
 
+
 def add_f_factor_to_data(input_dir, f_factor_path, output_dir, number_of_images):
     gamma_factors = np.load(f_factor_path, allow_pickle=True)
     print(output_dir)
@@ -307,6 +313,7 @@ def add_f_factor_to_data(input_dir, f_factor_path, output_dir, number_of_images)
         np.save(output_path, data)
         test_a = np.load(output_path, allow_pickle=True)[()]
         print(test_a)
+
 
 def apply_different_gamma(im_path, reshape=True, use_factorised_data=True):
     rgb_img = hdr_image_util.read_hdr_image(im_path)
@@ -339,7 +346,7 @@ def apply_different_gamma(im_path, reshape=True, use_factorised_data=True):
     return rgb_img, gray_im_gamma
 
 
-def save_exr_f_factors(input_images_path, output_path):
+def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
     f_factors = {}
     dirs = os.listdir(input_images_path)
     for i in range(len(dirs)):
@@ -350,13 +357,16 @@ def save_exr_f_factors(input_images_path, output_path):
             rgb_img = rgb_img + np.abs(np.min(rgb_img))
         gray_im = hdr_image_util.to_gray(rgb_img)
         gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=False)
-        f_factor = hdr_image_util.get_brightness_factor(gray_im)
+        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
         f_factors[img_name] = f_factor
         print("[%d] [%f] %s" % (i, f_factor, img_name))
         np.save(output_path, f_factors)
 
 
 if __name__ == '__main__':
+    save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
+                       "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
+                       150, 1.5)
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/exr_data")
     parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/")

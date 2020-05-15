@@ -122,7 +122,7 @@ class GanTrainer:
                 hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
-                gamma_factor = data_hdr[params.gamma_factor]
+                gamma_factor = data_hdr[params.gamma_factor].to(self.device)
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor)

@@ -143,6 +143,8 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if opt.add_clipping:
+        result_dir_pref = result_dir_pref + "clip_"
     if opt.apply_exp:
         result_dir_pref = result_dir_pref + "exp_"
     result_dir_pref = result_dir_pref + "data_" + str(opt.gamma_log)
@@ -165,8 +167,8 @@ def create_dir(opt):
             result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
-    if opt.use_sigma_loss:
-        result_dir_pref = result_dir_pref + "_sigloss_" + str(opt.use_sigma_loss)
+    if opt.last_layer == "msig":
+        result_dir_pref = result_dir_pref + "_msig_"
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
                  + "_d_model_" + opt.d_model

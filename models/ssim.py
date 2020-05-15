@@ -355,8 +355,10 @@ def std_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, a
 
 def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
                       f_factors=None):
+    ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
+        ones = ones.cuda(fake.get_device())
     window = window.type_as(fake)
     window = window / window.sum()
     mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
@@ -373,13 +375,16 @@ def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_los
     hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
     mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=5 // 2, groups=1)
     std_objective = (alpha / f_factors) * std_gamma * (mu_hdr_im_pow_gamma + epsilon)
-    return mse_loss(std_fake, std_objective.detach())
+    res = ones - (std_fake / (std_fake + std_objective.detach()))
+    return res.mean()
 
 
 def gamma_factor_loss_no_div(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
                       f_factors=None):
+    ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
+        ones = ones.cuda(fake.get_device())
     window = window.type_as(fake)
     window = window / window.sum()
     mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
@@ -396,7 +401,8 @@ def gamma_factor_loss_no_div(window, fake, gamma_hdr, hdr_original_im, epsilon, 
     hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
     mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=5 // 2, groups=1)
     std_objective = (alpha) * std_gamma * (mu_hdr_im_pow_gamma + epsilon)
-    return mse_loss(std_fake, std_objective.detach())
+    res = ones - (std_fake / (std_fake + std_objective.detach()))
+    return res.mean()
 
 
 def std_gamma_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
@@ -425,8 +431,10 @@ def std_gamma_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=N
 def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
                       f_factors=None):
     wind_size = 5
+    ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
+        ones = ones.cuda(fake.get_device())
     window = window.type_as(fake)
     window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
     distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
@@ -460,7 +468,8 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
 
     std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + epsilon)
     printer.print_g_progress(std_objective, "std_objective")
-    return mse_loss(std_fake, std_objective.detach())
+    res = ones - (std_fake / (std_fake + std_objective.detach()))
+    return res.mean()
 
 
 def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,

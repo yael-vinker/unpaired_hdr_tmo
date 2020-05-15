@@ -75,8 +75,17 @@ class Exp(nn.Module):
     def __init__(self):
         super(Exp, self).__init__()
 
+
     def forward(self, x):
         return torch.exp(x) - 1
+
+class MySig(nn.Module):
+    def __init__(self, factor):
+        super(MySig, self).__init__()
+        self.factor = factor
+
+    def forward(self, x):
+        return 1 / (1 + torch.exp(-self.factor * x))
 
 
 class Clip(nn.Module):

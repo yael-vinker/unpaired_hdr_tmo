@@ -52,7 +52,7 @@ class Tester:
         for img_name in os.listdir(root):
             im_path = os.path.join(root, img_name)
             print(img_name)
-            rgb_img, gray_im_log = create_dng_npy_data.hdr_preprocess(im_path,
+            rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                       self.args.use_factorise_gamma_data,
                                                                       self.args.factor_coeff, train_reshape=False,
                                                                       gamma_log=self.args.gamma_log,
