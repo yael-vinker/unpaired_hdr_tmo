@@ -10,11 +10,11 @@ import torch.nn.functional as F
 IMG_EXTENSIONS_local = ('.npy')
 
 
-def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm_factor, get_window_input):
+def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm_factor, get_window_input, min_stretch,
+               max_stretch):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
-    :param path: image path
-    :return:
+
     """
     data = np.load(path, allow_pickle=True)
     input_im = data[()]["input_image"]
@@ -24,8 +24,9 @@ def npy_loader(path, addFrame, hdrMode, normalization, apply_wind_norm, std_norm
             input_im = input_im / input_im.max()
         elif normalization == "bugy_max_normalization":
             input_im = input_im / 255
-        elif normalization == "min_max_normalization":
-            input_im = (input_im - input_im.min()) / (input_im.max() - input_im.min())
+        elif normalization == "stretch":
+            input_im = ((input_im - input_im.min()) / input_im.max()) * max_stretch - min_stretch
+            input_im = np.clip(input_im, 0, 1)
     if hdrMode:
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
@@ -62,6 +63,9 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.apply_wind_norm = dataset_properties["apply_wind_norm"]
         self.std_norm_factor = dataset_properties["std_norm_factor"]
         self.wind_norm_option = dataset_properties["wind_norm_option"]
+        self.max_stretch = dataset_properties["max_stretch"]
+        self.min_stretch = dataset_properties["min_stretch"]
+
 
     def __getitem__(self, index):
         """
@@ -75,7 +79,9 @@ class ProcessedDatasetFolder(DatasetFolder):
         input_im, color_im, gray_original_norm, gray_original, gamma_factor = self.loader(path, self.addFrame, self.hdrMode,
                                                                             self.normalization, self.apply_wind_norm,
                                                                             self.std_norm_factor,
-                                                                            self.loader_map[self.wind_norm_option])
+                                                                            self.loader_map[self.wind_norm_option],
+                                                                                          self.min_stretch,
+                                                                                          self.max_stretch)
         return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm,
                 "original_gray": gray_original, "gamma_factor": gamma_factor}
 
