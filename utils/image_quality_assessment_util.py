@@ -380,9 +380,10 @@ def rename_files(input_path):
         im_name = os.path.splitext(img_name)[0]
         file_extension = os.path.splitext(img_name)[1]
         if file_extension == '.jpg':
-            new_im_name = im_name[:-81] + file_extension
+            new_im_name = im_name[:-10] + '.jpg'
             print(new_im_name)
             os.rename(os.path.join(input_path, img_name), os.path.join(input_path, new_im_name))
+
 
 def sort_files():
     import shutil
@@ -461,7 +462,25 @@ def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
             shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
+
+def save_dng_data_for_fid(input_path, output_path, other_path):
+    from shutil import copyfile
+    data = os.listdir(other_path)
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    for img_name in data:
+        img_base_name = os.path.splitext(img_name)[0]
+        origin_im_path = os.path.join(input_path, img_base_name + ".dng")
+        new_im_path = os.path.join(output_path, img_base_name + ".dng")
+        if os.path.exists(origin_im_path):
+            copyfile(origin_im_path, new_im_path)
+
+
 if __name__ == '__main__':
+    rename_files("/Users/yaelvinker/Downloads/image-quality-assessment-master/src/tests/test_images/fattal/")
+    # save_dng_data_for_fid("/cs/labs/raananf/yael_vinker/dng_collection",
+    #                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
+    #                       "/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_other_images_wrap/hdrplus_gamma_log_10_other_images/")
     # sort_files()
     #    normalization_test()
     # sub_test()
@@ -472,7 +491,7 @@ if __name__ == '__main__':
     #   for im_number in im_numbers:
     #      gather_all_architectures("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
     #             "/cs/labs/raananf/yael_vinker/05_12/summary_05_12", epoch, "", im_number)
-    gather_all_architectures_accuracy("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
-                                      "/cs/labs/raananf/yael_vinker/05_12/summary_05_12",
-                                      "120", "")
+    # gather_all_architectures_accuracy("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
+    #                                   "/cs/labs/raananf/yael_vinker/05_12/summary_05_12",
+    #                                   "120", "")
 
