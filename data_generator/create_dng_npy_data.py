@@ -364,9 +364,9 @@ def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
 
 
 if __name__ == '__main__':
-    save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
-                       "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
-                       150, 1.5)
+    save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
+                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+                       0, 1.5)
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/exr_data")
     parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/")
@@ -388,11 +388,11 @@ if __name__ == '__main__':
     #                  "_factor_coeff_" + str(args.factor_coeff)
     output_dir_name = pref + "_gamma_log_" + str(args.gamma_log)
     # args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
-    if not os.path.exists(args.output_dir):
-        os.mkdir(args.output_dir)
-    save_f_factor(args)
-    data = np.load("/Users/yaelvinker/PycharmProjects/lab/utils/f_factors_train.npy", allow_pickle=True)
-    print(data[()])
+    #if not os.path.exists(args.output_dir):
+    #    os.mkdir(args.output_dir)
+    #save_f_factor(args)
+    #data = np.load("/Users/yaelvinker/PycharmProjects/lab/utils/f_factors_train.npy", allow_pickle=True)
+    #print(data[()])
     # create_data(args)
     # print_result(args.output_dir)
     # save_f_factor(args)
