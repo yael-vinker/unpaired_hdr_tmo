@@ -19,7 +19,7 @@ import data_generator.create_dng_npy_data as create_dng_npy_data
 from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
     hdr_windows_loader_c, hdr_windows_loader_d
 from utils import printer
-
+import argparse
 
 # ====== TRAIN RELATED ======
 def weights_init(m):
@@ -167,22 +167,20 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
 
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, input_format,
-                      f_factor_path):
-    net_G = load_g_model(model_params, device, cur_net_path)
+                      f_factor_path, net_G=None):
+    if not net_G:
+        net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
-    if input_format == "npy":
-        run_model_on_single_npy(input_images_path, net_G, device, output_images_path)
-    else:
-        for img_name in os.listdir(input_images_path):
-            im_path = os.path.join(input_images_path, img_name)
-            if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
-                print("working on ", img_name)
-                if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
-                        or os.path.splitext(img_name)[1] == ".dng":
-                    run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                              output_images_path, model_params, f_factor_path)
-            else:
-                print("%s in already exists" % (img_name))
+    for img_name in os.listdir(input_images_path):
+        im_path = os.path.join(input_images_path, img_name)
+        if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
+            print("working on ", img_name)
+            if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
+                    or os.path.splitext(img_name)[1] == ".dng":
+                run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
+                                          output_images_path, model_params, f_factor_path)
+        else:
+            print("%s in already exists" % (img_name))
 
 
 def load_g_model(model_params, device, net_path):
@@ -201,8 +199,8 @@ def load_g_model(model_params, device, net_path):
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
-    else:
-        new_state_dict = state_dict
+    #else:
+    #new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
@@ -265,28 +263,28 @@ def run_model_on_single_npy(input_images_path, G_net, device, output_path):
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         use_factorise_gamma_data=True, factor_coeff=1.0,
-                                                                        train_reshape=True,
+                                                                        train_reshape=False,
                                                                         gamma_log=model_params["gamma_log"],
                                                                         f_factor_path=f_factor_path)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
-    hdr_image_util.save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
+    #hdr_image_util.save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
-    printer.print_g_progress(preprocessed_im_batch, "tester")
+    #printer.print_g_progress(preprocessed_im_batch, "tester")
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
-    hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
+    #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
 
     original_im_tensor = rgb_img.unsqueeze(0)
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
+    #hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
 
     file_name = im_name + "_stretch"
     fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
-    hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
+    #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
 
     file_name = im_name + "_stretch"
     color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
@@ -311,10 +309,15 @@ def get_model_params(model_name):
 def get_f_factor_path(name, data_gamma_log):
     path_dict = {
         "test_source": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
-        "open_exr_exr_format": {1: "/cs/labs/raananf/yael_vinker/data/test/test_factors1.npy",
-                                2: "/cs/labs/raananf/yael_vinker/data/test/test_factors2.npy",
-                                10: "/cs/labs/raananf/yael_vinker/data/test/test_factors.npy"},
-        "hdr_test": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"}}
+        "open_exr_exr_format": {1: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
+                                2: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean90.npy",
+                                10: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean160.npy"},
+        "hdr_test": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
+        "npy_pth" : {1: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+                     2: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+                     10: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}}
+    if not data_gamma_log and name == "npy_pth":
+        return path_dict[name][1]
     return path_dict[name][data_gamma_log]
 
 
@@ -325,7 +328,7 @@ def get_hdr_source_path(name):
         "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
         "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
         "hdr_test": "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr",
-        "npy_pth": "/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_other_images_wrap"}
+        "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_data_fid"}
     return path_dict[name]
 
 
@@ -363,12 +366,13 @@ def get_apply_wind_norm(model_name):
 
 
 def get_gamma_log(model_name):
-    if "data_1" in model_name:
-        return 1
+    if "data_10" in model_name:
+        return 10
     if "data_2" in model_name:
         return 2
-    else:
-        return 10
+    if "data_1" in model_name:
+        return 1
+    return 10
 
 
 def get_input_loader(model_name):
@@ -424,17 +428,19 @@ def is_factorised_data(model_name):
 
 
 if __name__ == '__main__':
-    factor_coeff = 1
-    input_format = "exr"
+    parser = argparse.ArgumentParser(description="Parser for gan network")
+    parser.add_argument("--input_format", type=str, default="npy")
+    parser.add_argument("--images_source", type=str, default="npy_pth")
+    parser.add_argument("--arch_dir", type=str, default="/cs/labs/raananf/yael_vinker/04_26/results_09_24")
+    parser.add_argument("--models_epoch", type=int, default=320)
+    parser.add_argument("--output_dir_name", type=str, default="exr_320")
+    args = parser.parse_args()
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    images_source = "test_source"
-    arch_dir = "/Users/yaelvinker/Documents/university/lab/05_05"
-    models_names = get_models_names()
-    models_epoch = 280
-    output_dir_name = ""
-    apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
-                                       models_names, models_epoch, output_dir_name)
+    models_names = ["data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
+#    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
 
+    apply_models_from_arch_dir(args.input_format, device, args.images_source, args.arch_dir,
+                               models_names, args.models_epoch, args.output_dir_name)
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
     # load_model(im_hdr_original)
