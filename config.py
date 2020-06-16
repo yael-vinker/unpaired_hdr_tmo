@@ -54,6 +54,7 @@ def parse_arguments():
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--bilateral_sigma_r', type=float, default=0.1)
+    parser.add_argument('--bilateral_mu', type=float, default=1)
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -73,6 +74,8 @@ def parse_arguments():
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
     parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path)
+    parser.add_argument('--max_stretch', type=float, default=1)
+    parser.add_argument('--min_stretch', type=float, default=0)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
@@ -138,7 +141,9 @@ def get_dataset_properties(opt):
                           "batch_size": opt.batch_size,
                           "normalization": opt.normalization,
                           "use_c3": False,
-                          "wind_norm_option": opt.wind_norm_option}
+                          "wind_norm_option": opt.wind_norm_option,
+                          "max_stretch": opt.max_stretch,
+                          "min_stretch": opt.min_stretch}
     return dataset_properties
 
 
@@ -146,6 +151,8 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if opt.normalization == "stretch":
+        result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
     if opt.add_clipping:
         result_dir_pref = result_dir_pref + "clip_"
     if opt.apply_exp:
@@ -159,12 +166,13 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
+    result_dir_pref = result_dir_pref + "d_" + str(opt.loss_g_d_factor)
     if opt.ssim_loss_factor:
         result_dir_pref = result_dir_pref + "_" + opt.struct_method + "_" + str(opt.ssim_loss_factor) + "_pyramid_" + opt.pyramid_weight_list
     if opt.apply_intensity_loss:
         s = opt.std_method + "_"
         if opt.apply_intensity_loss_laplacian_weights:
-            s = s + "_b_sigma_r_" + str(opt.bilateral_sigma_r)
+            s = s + "_b_" + str(opt.bilateral_mu) + "_sigma_r_" + str(opt.bilateral_sigma_r)
         result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
         if opt.std_method not in ["std", "std_bilateral"]:
             result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
