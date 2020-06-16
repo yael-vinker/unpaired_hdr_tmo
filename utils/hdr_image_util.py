@@ -204,13 +204,12 @@ def save_color_tensor_batch_as_numpy(batch, output_path, batch_num):
     for i in range(b_size):
         im_hdr = batch[i]
         tensor_0_1 = im_hdr.squeeze()
-        tensor_0_1 = (tensor_0_1 - tensor_0_1.min()) / (tensor_0_1.max() - tensor_0_1.min())
-        im = (tensor_0_1 * 255).astype('uint8')
+        im = tensor_0_1.clamp(0,1).permute(1, 2, 0).detach().cpu().numpy()
+        im = (im * 255).astype('uint8')
         if not os.path.exists(output_path):
             os.mkdir(output_path)
-        cur_output_path = os.path.join(output_path, str(batch_num) + "_" + str(i) + ".npy")
-        data = {'display_image': im}
-        np.save(cur_output_path, data)
+        cur_output_path = os.path.join(output_path, str(batch_num) + "_" + str(i) + ".jpg")
+        imageio.imwrite(cur_output_path, im)
 
 
 def save_gray_tensor_as_numpy(tensor, output_path, im_name):
