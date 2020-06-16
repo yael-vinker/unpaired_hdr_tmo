@@ -188,14 +188,14 @@ class Tester:
 
                 file_name = im_and_q["im_name"]
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
-                hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
+                #hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
 
                 file_name = im_and_q["im_name"]
-                hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
+                #hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
 
                 file_name = im_and_q["im_name"] + "_stretch"
                 fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-                hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name)
+                #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name)
 
                 file_name = im_and_q["im_name"] + "_stretch"
                 fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
