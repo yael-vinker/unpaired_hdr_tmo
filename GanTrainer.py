@@ -51,6 +51,7 @@ class GanTrainer:
                                                           apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
                                                           struct_method=opt.struct_method,
                                                           std_norm_factor=opt.std_norm_factor)
+
         if opt.use_sigma_loss:
             self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
             self.sig_loss_factor = opt.use_sigma_loss
@@ -58,6 +59,7 @@ class GanTrainer:
             self.sigma_loss = None
         self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
         self.bilateral_sigma_r = opt.bilateral_sigma_r
+        self.bilateral_mu = opt.bilateral_mu
         if opt.apply_intensity_loss:
             self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
                                                          opt.std_method)
@@ -191,7 +193,8 @@ class GanTrainer:
             self.update_g_d_loss(output_on_fake, label)
         r_weights = []
         if self.use_bilateral_weight:
-            r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size, self.bilateral_sigma_r)
+            r_weights = ssim.get_radiometric_weights(hdr_input, self.wind_size, self.bilateral_sigma_r,
+                                                     self.bilateral_mu)
         self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
@@ -321,4 +324,4 @@ class GanTrainer:
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, data_format, f_factor_path)
+                                          output_images_path, data_format, f_factor_path, self.netG)
