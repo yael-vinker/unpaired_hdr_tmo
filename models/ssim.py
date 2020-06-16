@@ -766,8 +766,9 @@ def get_laplacian_kernel(kernel_size):
     return kernel.double()
 
 
-def get_radiometric_weights(gamma_input, wind_size, sigma_r):
+def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu):
     gamma_input = data_loader_util.crop_input_hdr_batch(gamma_input)
+    gamma_input = gamma_input ** bilateral_mu
     m = nn.ZeroPad2d(5 // 2)
     radiometric_weights_arr = []
     for i in range(4):
