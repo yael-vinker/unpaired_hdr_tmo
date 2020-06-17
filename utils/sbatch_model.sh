@@ -10,4 +10,3 @@ output_dir_name="_320_dng"
 
 sbatch --mem=8000m -c1 --gres=gpu:1 --time=1-0 run_model.sh \
   $input_format $images_source $arch_dir $models_epoch $output_dir_name
-  

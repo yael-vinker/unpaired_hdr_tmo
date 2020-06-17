@@ -9,7 +9,7 @@ train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data
 # test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/hdrplus_gamma1_use_factorise_data_1_factor_coeff_1.0_use_normalization_0"
 test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data_with_f"
 test_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
-test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data"
+test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
 apply_windows_loss = False
 
 f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"

@@ -30,11 +30,10 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
         self.struct_methods = {
             "hdr_ssim": our_custom_ssim,
             "gamma_ssim": our_custom_ssim,
-            "div_ssim": our_custom_ssim2,
             "laplace_ssim": struct_loss_laplac
         }
         self.struct_method = struct_method
-        if struct_method not in ["hdr_ssim", "gamma_ssim", "div_ssim", "laplace_ssim"]:
+        if struct_method not in ["hdr_ssim", "gamma_ssim", "laplace_ssim"]:
             assert 0, "Unsupported struct_method"
         self.struct_loss = self.struct_methods[struct_method]
         self.std_norm_factor = std_norm_factor
@@ -228,41 +227,6 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
     return mse_loss(img1, img2)
 
 
-def our_custom_ssim2(img1, img2, window, window_size, channel, mse_loss, use_c3, apply_sig_mu_ssim):
-    window = window / window.sum()
-
-    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
-
-    mu1_sq = mu1.pow(2)
-    mu2_sq = mu2.pow(2)
-
-    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
-    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
-
-    std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon2, 0.5)
-    std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon2, 0.5)
-
-    mu1 = mu1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-    mu2 = mu2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-
-    std1 = std1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-    std2 = std2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-
-    img1 = get_im_as_windows(img1, window_size)
-    img2 = get_im_as_windows(img2, window_size)
-    img1 = (img1 - mu1)
-    img1 = img1 / (std1 + params.epsilon2)
-    img2 = (img2 - mu2)
-    img2 = (img2) / (std2 + params.epsilon2)
-    ones = torch.ones(img2.shape)
-    if img2.is_cuda:
-        ones = ones.cuda(img2.get_device())
-    ones = ones.type_as(img2)
-    return mse_loss(ones / (img1 + params.epsilon2), ones / (img2 + params.epsilon2))
-
-
-# def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
 def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, gamma_input, mse_loss, wind_size):
     b, c, h, w = fake.shape
 
@@ -308,18 +272,6 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
         ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim(img1, img2, window, window_size,
-                                                                       channel, mse_loss, use_c3, apply_sig_mu_ssim))
-
-        img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
-        img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
-    return torch.sum(torch.stack(ssim_loss_list))
-
-
-def our_custom_ssim_pyramid_div(img1, img2, window, window_size, channel, pyramid_weight_list,
-                            mse_loss, use_c3, apply_sig_mu_ssim):
-    ssim_loss_list = []
-    for i in range(len(pyramid_weight_list)):
-        ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim2(img1, img2, window, window_size,
                                                                        channel, mse_loss, use_c3, apply_sig_mu_ssim))
 
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
