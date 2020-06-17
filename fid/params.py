@@ -1,1 +1,1 @@
-input_size = 256
+input_size = 299

@@ -48,6 +48,7 @@ from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d
 from PIL import Image
 import params as params
+# from skimage.transform import resize
 
 try:
     from tqdm import tqdm
@@ -62,7 +63,8 @@ def imread(filename):
     """
     Loads an image file into a (height, width, 3) uint8 ndarray.
     """
-    return np.asarray(Image.open(filename), dtype=np.uint8)[..., :3]
+    return np.asarray(Image.open(filename).resize((299, 299), Image.BICUBIC), dtype=np.uint8)[..., :3]
+    # return np.asarray(Image.open(filename), dtype=np.uint8)[..., :3]
 
 
 # def get_batch(files, batch_size, start, end, device, noise_type, a, apply_transforms):
@@ -90,7 +92,7 @@ def imread(filename):
 #     batch = batch.to(device)
 #     return batch
 
-def get_batch(files, batch_size, start, end, files_format):
+def get_batch2(files, batch_size, start, end, files_format):
     images = np.zeros([batch_size, 3, params.input_size, params.input_size])
     for f, i in zip(files[start:end], range(batch_size)):
         data = np.load(f, allow_pickle=True)
@@ -98,6 +100,29 @@ def get_batch(files, batch_size, start, end, files_format):
         images[i] = color_im
     # Reshape to (n_images, 3, height, width)
     # images = images.transpose((0, 3, 1, 2))
+    images /= 255
+
+    batch = torch.from_numpy(images).type(torch.FloatTensor)
+    if torch.cuda.is_available():
+        batch = batch.cuda()
+    return batch
+
+
+def get_batch(files, batch_size, start, end, files_format):
+    import PIL
+    # images = np.array([imread(str(f)).astype(np.float32) for f in files[start:end]])
+    images = np.zeros([batch_size,  params.input_size, params.input_size, 3])
+    for f, i in zip(files[start:end], range(batch_size)):
+        im = imread(str(f)).astype(np.float32)
+        # im = im.resize((299, 299), PIL.Image.BICUBIC)
+        # im = np.array(Image.fromarray(im).resize((299, 299)))
+        # im = resize(im, (299, 299), mode='reflect', preserve_range=False).astype("float32")
+        print("max",im.max())
+        print("min",im.min())
+        images[i] = im
+    # Reshape to (n_images, 3, height, width)
+    # images = images.transpose((0, 3, 1, 2))
+    images = images.transpose((0, 3, 1, 2))
     images /= 255
 
     batch = torch.from_numpy(images).type(torch.FloatTensor)
@@ -155,12 +180,9 @@ def get_activations_for_small_dataset(files, model, batch_size=50, dims=2048,
         # If model output is not scalar, apply global spatial average pooling.
         # This happens if you choose a dimensionality not equal 2048.
         if pred.shape[2] != 8 or pred.shape[3] != 8:
-            print("changed pred shape from ", pred.shape)
             pred = adaptive_avg_pool2d(pred, output_size=(8, 8))
-        print("pred shape before = ", pred.shape)
         permuted_pred = pred.permute((0, 2, 3, 1))
         reshaped_pred = permuted_pred.cpu().data.numpy().reshape(batch_size * 64, dims)
-        print("pred reshaped_pred = ", reshaped_pred.shape)
         pred_arr[start:end] = reshaped_pred
     if verbose:
         print(' done')
@@ -257,13 +279,9 @@ def _compute_statistics_of_path(path, model, batch_size, dims, device, im_from, 
         f.close()
     else:
         path = pathlib.Path(path)
-        files_npy = list(path.glob('*.npy'))[im_from:im_to]
         files_jpg = list(path.glob('*.jpg'))[im_from:im_to]
         files = files_jpg
         files_format = "jpg"
-        if not files_jpg:
-            files = files_npy
-            files_format = "npy"
         m, s = calculate_activation_statistics(files, model, batch_size,
                                                dims, device, False, files_format)
 
@@ -281,7 +299,6 @@ def calculate_fid_given_paths(path_real, path_fake, batch_size, device, dims, nu
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
 
     model = InceptionV3([block_idx]).to(device)
-    print(model)
 
     m1, s1 = _compute_statistics_of_path(path_real, model, batch_size,
                                          dims, device, im_from=0, im_to=number_of_images)
@@ -333,21 +350,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-
-    print(args.path_fake)
-    if args.format == "jpg":
-        npy_path_fake = apply_preprocess_folder(args.path_fake)
-    else:
-        npy_path_fake = args.path_fake
-
-
-
-    fid_value = calculate_fid_given_paths(args.path_real,
+    npy_path_fake, npy_path_real = args.path_fake, args.path_real
+    fid_value = calculate_fid_given_paths(npy_path_real,
                                           npy_path_fake,
                                               args.batch_size,
                                               device,
                                               args.dims,
                                               args.number_of_images)
     print()
+    print(npy_path_real)
+    print(npy_path_fake)
     print('FID: ', fid_value)
 

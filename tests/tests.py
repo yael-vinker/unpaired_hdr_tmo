@@ -1573,24 +1573,3064 @@ def gather_all_architectures3(arch_dir, output_path, epoch):
             if os.path.splitext(im_name_ext)[1] == ".jpg":
                 shutil.copy(os.path.join(im_path, im_name_ext), os.path.join(cur_output_path, im_name_ext))
 
+
+def parse_text_file(file_path):
+    with open(file_path) as fp:
+        line_path = fp.readline()
+        cnt = 0
+        while line_path:
+            file_name = os.path.basename(line_path)
+            print(file_name)
+            line_number = fp.readline()
+            print(line_number)
+            line_factor = float(fp.readline()[18:])
+            print(line_factor)
+            line_path = fp.readline()
+            cnt += 3
+
+def nima_parse():
+    total_our = 0
+    total_paris = 0
+    total_durand = 0
+    total_fattal = 0
+    res_our = [
+      {
+        "image_id": "BigfootPass_stretch",
+        "mean_score_prediction": 4.910272464156151
+      },
+      {
+        "image_id": "BandonSunset(2)_stretch",
+        "mean_score_prediction": 5.087489753961563
+      },
+      {
+        "image_id": "RITTiger_stretch",
+        "mean_score_prediction": 4.6551591493189335
+      },
+      {
+        "image_id": "LabWindow_stretch",
+        "mean_score_prediction": 5.447415832430124
+      },
+      {
+        "image_id": "TunnelView(2)_stretch",
+        "mean_score_prediction": 4.5853050127625465
+      },
+      {
+        "image_id": "TheGrotto_stretch",
+        "mean_score_prediction": 4.843858294188976
+      },
+      {
+        "image_id": "BarHarborPresunrise_stretch",
+        "mean_score_prediction": 4.840325199067593
+      },
+      {
+        "image_id": "LuxoDoubleChecker_stretch",
+        "mean_score_prediction": 5.016093768179417
+      },
+      {
+        "image_id": "OCanadaNoLights_stretch",
+        "mean_score_prediction": 5.615224987268448
+      },
+      {
+        "image_id": "SunsetPoint(1)_stretch",
+        "mean_score_prediction": 4.386003360152245
+      },
+      {
+        "image_id": "LittleRiver_stretch",
+        "mean_score_prediction": 4.826734788715839
+      },
+      {
+        "image_id": "LetchworthTeaTable(2)_stretch",
+        "mean_score_prediction": 4.818279214203358
+      },
+      {
+        "image_id": "JesseBrownsCabin_stretch",
+        "mean_score_prediction": 4.662121616303921
+      },
+      {
+        "image_id": "RedwoodSunset_stretch",
+        "mean_score_prediction": 4.429075911641121
+      },
+      {
+        "image_id": "BarHarborSunrise_stretch",
+        "mean_score_prediction": 5.256455957889557
+      },
+      {
+        "image_id": "BalancedRock_stretch",
+        "mean_score_prediction": 4.549564868211746
+      },
+      {
+        "image_id": "WallDrug_stretch",
+        "mean_score_prediction": 4.708578124642372
+      },
+      {
+        "image_id": "HancockKitchenInside_stretch",
+        "mean_score_prediction": 5.609829604625702
+      },
+      {
+        "image_id": "SmokyTunnel_stretch",
+        "mean_score_prediction": 4.623952902853489
+      },
+      {
+        "image_id": "MtRushmore(1)_stretch",
+        "mean_score_prediction": 4.499650701880455
+      },
+      {
+        "image_id": "WillySentinel_stretch",
+        "mean_score_prediction": 5.211701080203056
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM2_stretch",
+        "mean_score_prediction": 4.56564674526453
+      },
+      {
+        "image_id": "MackinacBridge_stretch",
+        "mean_score_prediction": 5.2605311423540115
+      },
+      {
+        "image_id": "OCanadaLights_stretch",
+        "mean_score_prediction": 5.506892077624798
+      },
+      {
+        "image_id": "DelicateArch_stretch",
+        "mean_score_prediction": 4.793216463178396
+      },
+      {
+        "image_id": "BloomingGorse(1)_stretch",
+        "mean_score_prediction": 5.244456797838211
+      },
+      {
+        "image_id": "RoadsEndFireDamage_stretch",
+        "mean_score_prediction": 5.046627260744572
+      },
+      {
+        "image_id": "Zentrum_stretch",
+        "mean_score_prediction": 4.452933043241501
+      },
+      {
+        "image_id": "Exploratorium(2)_stretch",
+        "mean_score_prediction": 5.505869567394257
+      },
+      {
+        "image_id": "TupperLake(2)_stretch",
+        "mean_score_prediction": 4.118054032325745
+      },
+      {
+        "image_id": "507_stretch",
+        "mean_score_prediction": 4.886837936937809
+      },
+      {
+        "image_id": "KingsCanyon_stretch",
+        "mean_score_prediction": 5.06132534891367
+      },
+      {
+        "image_id": "ElCapitan_stretch",
+        "mean_score_prediction": 4.674701817333698
+      },
+      {
+        "image_id": "MiddlePond_stretch",
+        "mean_score_prediction": 4.830470830202103
+      },
+      {
+        "image_id": "Route66Museum_stretch",
+        "mean_score_prediction": 5.636515229940414
+      },
+      {
+        "image_id": "Peppermill_stretch",
+        "mean_score_prediction": 5.165686219930649
+      },
+      {
+        "image_id": "CemeteryTree(1)_stretch",
+        "mean_score_prediction": 4.741307616233826
+      },
+      {
+        "image_id": "WillyDesk_stretch",
+        "mean_score_prediction": 5.61846908275038
+      },
+      {
+        "image_id": "HooverGarage_stretch",
+        "mean_score_prediction": 5.1094381138682365
+      },
+      {
+        "image_id": "OtterPoint_stretch",
+        "mean_score_prediction": 5.093752548098564
+      },
+      {
+        "image_id": "URChapel(1)_stretch",
+        "mean_score_prediction": 4.972276620566845
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM1_stretch",
+        "mean_score_prediction": 5.025993816554546
+      },
+      {
+        "image_id": "MammothHotSprings_stretch",
+        "mean_score_prediction": 4.271407634019852
+      },
+      {
+        "image_id": "TaughannockFalls_stretch",
+        "mean_score_prediction": 4.686946965754032
+      },
+      {
+        "image_id": "HooverDam_stretch",
+        "mean_score_prediction": 4.77139875292778
+      },
+      {
+        "image_id": "TheNarrows(2)_stretch",
+        "mean_score_prediction": 4.386139698326588
+      },
+      {
+        "image_id": "OldFaithfulInn_stretch",
+        "mean_score_prediction": 5.202473238110542
+      },
+      {
+        "image_id": "LabBooth_stretch",
+        "mean_score_prediction": 5.517950791865587
+      },
+      {
+        "image_id": "FourCornersStorm_stretch",
+        "mean_score_prediction": 4.904638633131981
+      },
+      {
+        "image_id": "DevilsGolfCourse_stretch",
+        "mean_score_prediction": 4.87747473269701
+      },
+      {
+        "image_id": "GoldenGate(1)_stretch",
+        "mean_score_prediction": 5.667317543178797
+      },
+      {
+        "image_id": "DevilsTower_stretch",
+        "mean_score_prediction": 4.640577495098114
+      },
+      {
+        "image_id": "SequoiaRemains_stretch",
+        "mean_score_prediction": 5.089017242193222
+      },
+      {
+        "image_id": "CanadianFalls_stretch",
+        "mean_score_prediction": 5.034867092967033
+      },
+      {
+        "image_id": "HalfDomeSunset_stretch",
+        "mean_score_prediction": 4.738789223134518
+      },
+      {
+        "image_id": "WestBranchAusable(1)_stretch",
+        "mean_score_prediction": 4.915320605039597
+      },
+      {
+        "image_id": "TheNarrows(3)_stretch",
+        "mean_score_prediction": 4.711455427110195
+      },
+      {
+        "image_id": "HallofFame_stretch",
+        "mean_score_prediction": 5.446520194411278
+      },
+      {
+        "image_id": "MasonLake(2)_stretch",
+        "mean_score_prediction": 4.54228600114584
+      },
+      {
+        "image_id": "UpheavalDome_stretch",
+        "mean_score_prediction": 5.128633365035057
+      },
+      {
+        "image_id": "GeneralSherman_stretch",
+        "mean_score_prediction": 4.662207789719105
+      },
+      {
+        "image_id": "CemeteryTree(2)_stretch",
+        "mean_score_prediction": 5.199855953454971
+      },
+      {
+        "image_id": "MtRushmoreFlags_stretch",
+        "mean_score_prediction": 4.430353961884975
+      },
+      {
+        "image_id": "LasVegasStore_stretch",
+        "mean_score_prediction": 4.627242997288704
+      },
+      {
+        "image_id": "Petroglyphs_stretch",
+        "mean_score_prediction": 4.503813907504082
+      },
+      {
+        "image_id": "AhwahneeGreatLounge_stretch",
+        "mean_score_prediction": 5.396134667098522
+      },
+      {
+        "image_id": "YosemiteFalls_stretch",
+        "mean_score_prediction": 3.9489012509584427
+      },
+      {
+        "image_id": "TheNarrows(1)_stretch",
+        "mean_score_prediction": 4.9711132645606995
+      },
+      {
+        "image_id": "McKeesPub_stretch",
+        "mean_score_prediction": 5.620997443795204
+      },
+      {
+        "image_id": "URChapel(2)_stretch",
+        "mean_score_prediction": 5.331093482673168
+      },
+      {
+        "image_id": "PeckLake_stretch",
+        "mean_score_prediction": 5.164077430963516
+      },
+      {
+        "image_id": "LabTypewriter_stretch",
+        "mean_score_prediction": 5.161290384829044
+      },
+      {
+        "image_id": "LadyBirdRedwoods_stretch",
+        "mean_score_prediction": 5.169030211865902
+      },
+      {
+        "image_id": "GoldenGate(2)_stretch",
+        "mean_score_prediction": 5.28877680003643
+      },
+      {
+        "image_id": "Frontier_stretch",
+        "mean_score_prediction": 4.735200472176075
+      },
+      {
+        "image_id": "HancockSeedField_stretch",
+        "mean_score_prediction": 5.052204936742783
+      },
+      {
+        "image_id": "PaulBunyan_stretch",
+        "mean_score_prediction": 5.57262384518981
+      },
+      {
+        "image_id": "MirrorLake_stretch",
+        "mean_score_prediction": 4.7347743064165115
+      },
+      {
+        "image_id": "DelicateFlowers_stretch",
+        "mean_score_prediction": 5.261063940823078
+      },
+      {
+        "image_id": "MasonLake(1)_stretch",
+        "mean_score_prediction": 4.497589819133282
+      },
+      {
+        "image_id": "Flamingo_stretch",
+        "mean_score_prediction": 4.954344131052494
+      },
+      {
+        "image_id": "DevilsBathtub_stretch",
+        "mean_score_prediction": 5.06635469943285
+      },
+      {
+        "image_id": "NorthBubble_stretch",
+        "mean_score_prediction": 5.3454990312457085
+      },
+      {
+        "image_id": "GeneralGrant_stretch",
+        "mean_score_prediction": 4.868488408625126
+      },
+      {
+        "image_id": "WestBranchAusable(2)_stretch",
+        "mean_score_prediction": 5.302547976374626
+      },
+      {
+        "image_id": "HancockKitchenOutside_stretch",
+        "mean_score_prediction": 5.715906269848347
+      },
+      {
+        "image_id": "WaffleHouse_stretch",
+        "mean_score_prediction": 5.011009402573109
+      },
+      {
+        "image_id": "SouthBranchKingsRiver_stretch",
+        "mean_score_prediction": 5.045771427452564
+      },
+      {
+        "image_id": "TunnelView(1)_stretch",
+        "mean_score_prediction": 4.449309788644314
+      },
+      {
+        "image_id": "BandonSunset(1)_stretch",
+        "mean_score_prediction": 5.169345751404762
+      },
+      {
+        "image_id": "NiagaraFalls_stretch",
+        "mean_score_prediction": 4.219521977007389
+      },
+      {
+        "image_id": "HDRMark_stretch",
+        "mean_score_prediction": 5.642747048288584
+      },
+      {
+        "image_id": "M3MiddlePond_stretch",
+        "mean_score_prediction": 5.263796716928482
+      },
+      {
+        "image_id": "AirBellowsGap_stretch",
+        "mean_score_prediction": 5.090854771435261
+      },
+      {
+        "image_id": "SunsetPoint(2)_stretch",
+        "mean_score_prediction": 5.180557869374752
+      },
+      {
+        "image_id": "LetchworthTeaTable(1)_stretch",
+        "mean_score_prediction": 5.367028549313545
+      },
+      {
+        "image_id": "MtRushmore(2)_stretch",
+        "mean_score_prediction": 5.032781712710857
+      },
+      {
+        "image_id": "BenJerrys_stretch",
+        "mean_score_prediction": 5.543326653540134
+      },
+      {
+        "image_id": "Exploratorium(1)_stretch",
+        "mean_score_prediction": 5.087195977568626
+      },
+      {
+        "image_id": "TupperLake(1)_stretch",
+        "mean_score_prediction": 5.088444873690605
+      },
+      {
+        "image_id": "CadesCove_stretch",
+        "mean_score_prediction": 5.239006325602531
+      },
+      {
+        "image_id": "BloomingGorse(2)_stretch",
+        "mean_score_prediction": 5.380359023809433
+      },
+      {
+        "image_id": "ArtistPalette_stretch",
+        "mean_score_prediction": 4.943384945392609
+      },
+      {
+        "image_id": "RoundBarnInside_stretch",
+        "mean_score_prediction": 4.833623290061951
+      },
+      {
+        "image_id": "RoundStoneBarn_stretch",
+        "mean_score_prediction": 4.995761834084988
+      }
+    ]
+    res_paris = [
+      {
+        "image_id": "BloomingGorse(2)_lum_",
+        "mean_score_prediction": 5.407394118607044
+      },
+      {
+        "image_id": "ElCapitan_lum_",
+        "mean_score_prediction": 4.4151280000805855
+      },
+      {
+        "image_id": "MasonLake(2)_lum_",
+        "mean_score_prediction": 4.716822788119316
+      },
+      {
+        "image_id": "Zentrum_lum_",
+        "mean_score_prediction": 4.0245350524783134
+      },
+      {
+        "image_id": "TupperLake(2)_lum_",
+        "mean_score_prediction": 4.715946823358536
+      },
+      {
+        "image_id": "DelicateFlowers_lum_",
+        "mean_score_prediction": 4.593161463737488
+      },
+      {
+        "image_id": "Route66Museum_lum_",
+        "mean_score_prediction": 5.638169039040804
+      },
+      {
+        "image_id": "DevilsGolfCourse_lum_",
+        "mean_score_prediction": 4.802206341177225
+      },
+      {
+        "image_id": "OldFaithfulInn_lum_",
+        "mean_score_prediction": 5.135502681136131
+      },
+      {
+        "image_id": "SmokyTunnel_lum_",
+        "mean_score_prediction": 4.386697977781296
+      },
+      {
+        "image_id": "ArtistPalette_lum_",
+        "mean_score_prediction": 4.970069721341133
+      },
+      {
+        "image_id": "MiddlePond_lum_",
+        "mean_score_prediction": 4.736552909016609
+      },
+      {
+        "image_id": "McKeesPub_lum_",
+        "mean_score_prediction": 5.508610971271992
+      },
+      {
+        "image_id": "CemeteryTree(2)_lum_",
+        "mean_score_prediction": 5.078375704586506
+      },
+      {
+        "image_id": "GoldenGate(2)_lum_",
+        "mean_score_prediction": 5.142636828124523
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM2_lum_",
+        "mean_score_prediction": 4.620217278599739
+      },
+      {
+        "image_id": "HooverDam_lum_",
+        "mean_score_prediction": 4.555589333176613
+      },
+      {
+        "image_id": "CanadianFalls_lum_",
+        "mean_score_prediction": 4.87135373800993
+      },
+      {
+        "image_id": "Flamingo_lum_",
+        "mean_score_prediction": 4.978277914226055
+      },
+      {
+        "image_id": "URChapel(1)_lum_",
+        "mean_score_prediction": 4.726935341954231
+      },
+      {
+        "image_id": "Exploratorium(1)_lum_",
+        "mean_score_prediction": 5.176354251801968
+      },
+      {
+        "image_id": "LabTypewriter_lum_",
+        "mean_score_prediction": 5.2096941620111465
+      },
+      {
+        "image_id": "HallofFame_lum_",
+        "mean_score_prediction": 5.276641935110092
+      },
+      {
+        "image_id": "LetchworthTeaTable(2)_lum_",
+        "mean_score_prediction": 4.9885831996798515
+      },
+      {
+        "image_id": "WestBranchAusable(2)_lum_",
+        "mean_score_prediction": 4.786043785512447
+      },
+      {
+        "image_id": "BandonSunset(1)_lum_",
+        "mean_score_prediction": 5.472332701086998
+      },
+      {
+        "image_id": "MtRushmoreFlags_lum_",
+        "mean_score_prediction": 4.789027914404869
+      },
+      {
+        "image_id": "LadyBirdRedwoods_lum_",
+        "mean_score_prediction": 4.893787123262882
+      },
+      {
+        "image_id": "DelicateArch_lum_",
+        "mean_score_prediction": 4.685097593814135
+      },
+      {
+        "image_id": "MackinacBridge_lum_",
+        "mean_score_prediction": 5.659099861979485
+      },
+      {
+        "image_id": "YosemiteFalls_lum_",
+        "mean_score_prediction": 4.664725691080093
+      },
+      {
+        "image_id": "TaughannockFalls_lum_",
+        "mean_score_prediction": 4.311989150941372
+      },
+      {
+        "image_id": "GeneralGrant_lum_",
+        "mean_score_prediction": 4.83008049428463
+      },
+      {
+        "image_id": "CadesCove_lum_",
+        "mean_score_prediction": 5.121896669268608
+      },
+      {
+        "image_id": "PeckLake_lum_",
+        "mean_score_prediction": 5.146081902086735
+      },
+      {
+        "image_id": "TunnelView(2)_lum_",
+        "mean_score_prediction": 4.536968596279621
+      },
+      {
+        "image_id": "LittleRiver_lum_",
+        "mean_score_prediction": 4.728951618075371
+      },
+      {
+        "image_id": "SunsetPoint(1)_lum_",
+        "mean_score_prediction": 4.458802245557308
+      },
+      {
+        "image_id": "MtRushmore(1)_lum_",
+        "mean_score_prediction": 4.655571460723877
+      },
+      {
+        "image_id": "HancockSeedField_lum_",
+        "mean_score_prediction": 4.890395380556583
+      },
+      {
+        "image_id": "TheNarrows(1)_lum_",
+        "mean_score_prediction": 5.316064462065697
+      },
+      {
+        "image_id": "MammothHotSprings_lum_",
+        "mean_score_prediction": 4.349729433655739
+      },
+      {
+        "image_id": "HancockKitchenOutside_lum_",
+        "mean_score_prediction": 4.847123399376869
+      },
+      {
+        "image_id": "RITTiger_lum_",
+        "mean_score_prediction": 4.203291170299053
+      },
+      {
+        "image_id": "WillySentinel_lum_",
+        "mean_score_prediction": 5.429656453430653
+      },
+      {
+        "image_id": "BandonSunset(2)_lum_",
+        "mean_score_prediction": 5.4590276926755905
+      },
+      {
+        "image_id": "507_lum_log",
+        "mean_score_prediction": 5.198446616530418
+      },
+      {
+        "image_id": "HooverGarage_lum_",
+        "mean_score_prediction": 4.92924040555954
+      },
+      {
+        "image_id": "NorthBubble_lum_",
+        "mean_score_prediction": 4.763640619814396
+      },
+      {
+        "image_id": "LasVegasStore_lum_",
+        "mean_score_prediction": 4.431070066988468
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM1_lum_",
+        "mean_score_prediction": 4.684409864246845
+      },
+      {
+        "image_id": "LuxoDoubleChecker_lum_",
+        "mean_score_prediction": 5.154505662620068
+      },
+      {
+        "image_id": "FourCornersStorm_lum_",
+        "mean_score_prediction": 5.113797158002853
+      },
+      {
+        "image_id": "Petroglyphs_lum_",
+        "mean_score_prediction": 4.763365134596825
+      },
+      {
+        "image_id": "BarHarborPresunrise_lum_",
+        "mean_score_prediction": 5.040670409798622
+      },
+      {
+        "image_id": "RedwoodSunset_lum_",
+        "mean_score_prediction": 4.295915398746729
+      },
+      {
+        "image_id": "BigfootPass_lum_",
+        "mean_score_prediction": 4.538838222622871
+      },
+      {
+        "image_id": "DevilsTower_lum_",
+        "mean_score_prediction": 4.518814384937286
+      },
+      {
+        "image_id": "RoundBarnInside_lum_",
+        "mean_score_prediction": 4.6646294593811035
+      },
+      {
+        "image_id": "SunsetPoint(2)_lum_",
+        "mean_score_prediction": 5.261204622685909
+      },
+      {
+        "image_id": "TunnelView(1)_lum_",
+        "mean_score_prediction": 4.927998147904873
+      },
+      {
+        "image_id": "DevilsBathtub_lum_",
+        "mean_score_prediction": 4.78872287273407
+      },
+      {
+        "image_id": "OCanadaLights_lum_",
+        "mean_score_prediction": 5.240374781191349
+      },
+      {
+        "image_id": "AirBellowsGap_lum_",
+        "mean_score_prediction": 5.273740723729134
+      },
+      {
+        "image_id": "LabBooth_lum_",
+        "mean_score_prediction": 5.636465575546026
+      },
+      {
+        "image_id": "Frontier_lum_",
+        "mean_score_prediction": 5.015954934060574
+      },
+      {
+        "image_id": "WallDrug_lum_",
+        "mean_score_prediction": 4.583051014691591
+      },
+      {
+        "image_id": "TheNarrows(2)_lum_",
+        "mean_score_prediction": 4.272046659141779
+      },
+      {
+        "image_id": "HDRMark_lum_",
+        "mean_score_prediction": 5.663585849106312
+      },
+      {
+        "image_id": "M3MiddlePond_lum_",
+        "mean_score_prediction": 5.379407852888107
+      },
+      {
+        "image_id": "KingsCanyon_lum_",
+        "mean_score_prediction": 5.26406966149807
+      },
+      {
+        "image_id": "TheGrotto_lum_",
+        "mean_score_prediction": 4.867266699671745
+      },
+      {
+        "image_id": "SouthBranchKingsRiver_lum_",
+        "mean_score_prediction": 4.84047120064497
+      },
+      {
+        "image_id": "MtRushmore(2)_lum_",
+        "mean_score_prediction": 5.029243089258671
+      },
+      {
+        "image_id": "WillyDesk_lum_",
+        "mean_score_prediction": 5.54546095430851
+      },
+      {
+        "image_id": "MasonLake(1)_lum_",
+        "mean_score_prediction": 4.896173253655434
+      },
+      {
+        "image_id": "WaffleHouse_lum_",
+        "mean_score_prediction": 5.172905087471008
+      },
+      {
+        "image_id": "BloomingGorse(1)_lum_",
+        "mean_score_prediction": 5.055926121771336
+      },
+      {
+        "image_id": "NiagaraFalls_lum_",
+        "mean_score_prediction": 4.367504935711622
+      },
+      {
+        "image_id": "PaulBunyan_lum_",
+        "mean_score_prediction": 5.169115290045738
+      },
+      {
+        "image_id": "HancockKitchenInside_lum_",
+        "mean_score_prediction": 5.5934728011488914
+      },
+      {
+        "image_id": "BarHarborSunrise_lum_",
+        "mean_score_prediction": 5.084147229790688
+      },
+      {
+        "image_id": "AhwahneeGreatLounge_lum_",
+        "mean_score_prediction": 5.041946694254875
+      },
+      {
+        "image_id": "TupperLake(1)_lum_",
+        "mean_score_prediction": 5.026339337229729
+      },
+      {
+        "image_id": "RoundStoneBarn_lum_",
+        "mean_score_prediction": 4.9899784699082375
+      },
+      {
+        "image_id": "RoadsEndFireDamage_lum_",
+        "mean_score_prediction": 4.8299175426363945
+      },
+      {
+        "image_id": "OtterPoint_lum_",
+        "mean_score_prediction": 5.493659183382988
+      },
+      {
+        "image_id": "SequoiaRemains_lum_",
+        "mean_score_prediction": 4.974684588611126
+      },
+      {
+        "image_id": "JesseBrownsCabin_lum_",
+        "mean_score_prediction": 4.9609265178442
+      },
+      {
+        "image_id": "OCanadaNoLights_lum_",
+        "mean_score_prediction": 5.172299027442932
+      },
+      {
+        "image_id": "Exploratorium(2)_lum_",
+        "mean_score_prediction": 5.247821480035782
+      },
+      {
+        "image_id": "URChapel(2)_lum_",
+        "mean_score_prediction": 5.291870035231113
+      },
+      {
+        "image_id": "MirrorLake_lum_",
+        "mean_score_prediction": 4.440368063747883
+      },
+      {
+        "image_id": "HalfDomeSunset_lum_",
+        "mean_score_prediction": 4.4867307767271996
+      },
+      {
+        "image_id": "GeneralSherman_lum_",
+        "mean_score_prediction": 5.340761609375477
+      },
+      {
+        "image_id": "Peppermill_lum_",
+        "mean_score_prediction": 4.940840296447277
+      },
+      {
+        "image_id": "GoldenGate(1)_lum_",
+        "mean_score_prediction": 5.535938881337643
+      },
+      {
+        "image_id": "CemeteryTree(1)_lum_",
+        "mean_score_prediction": 4.487001173198223
+      },
+      {
+        "image_id": "WestBranchAusable(1)_lum_",
+        "mean_score_prediction": 5.1205666065216064
+      },
+      {
+        "image_id": "LabWindow_lum_",
+        "mean_score_prediction": 5.436596937477589
+      },
+      {
+        "image_id": "TheNarrows(3)_lum_",
+        "mean_score_prediction": 4.79359532892704
+      },
+      {
+        "image_id": "BalancedRock_lum_",
+        "mean_score_prediction": 4.320385277271271
+      },
+      {
+        "image_id": "BenJerrys_lum_",
+        "mean_score_prediction": 5.391407422721386
+      },
+      {
+        "image_id": "LetchworthTeaTable(1)_lum_",
+        "mean_score_prediction": 5.156724721193314
+      },
+      {
+        "image_id": "UpheavalDome_lum_",
+        "mean_score_prediction": 4.666123487055302
+      }
+    ]
+    res_durand = [
+      {
+        "image_id": "HancockSeedField_prega",
+        "mean_score_prediction": 4.857281863689423
+      },
+      {
+        "image_id": "MiddlePond_prega",
+        "mean_score_prediction": 4.671005934476852
+      },
+      {
+        "image_id": "WillySentinel_prega",
+        "mean_score_prediction": 5.487097047269344
+      },
+      {
+        "image_id": "GoldenGate(2)_prega",
+        "mean_score_prediction": 5.023489557206631
+      },
+      {
+        "image_id": "TheNarrows(2)_prega",
+        "mean_score_prediction": 4.1181652173399925
+      },
+      {
+        "image_id": "TaughannockFalls_prega",
+        "mean_score_prediction": 4.557517468929291
+      },
+      {
+        "image_id": "OCanadaNoLights_prega",
+        "mean_score_prediction": 5.5277558490633965
+      },
+      {
+        "image_id": "RedwoodSunset_prega",
+        "mean_score_prediction": 4.804565519094467
+      },
+      {
+        "image_id": "MackinacBridge_prega",
+        "mean_score_prediction": 5.512624517083168
+      },
+      {
+        "image_id": "MasonLake(2)_prega",
+        "mean_score_prediction": 5.051805682480335
+      },
+      {
+        "image_id": "WillyDesk_prega",
+        "mean_score_prediction": 5.869776843115687
+      },
+      {
+        "image_id": "OCanadaLights_prega",
+        "mean_score_prediction": 5.6486014649271965
+      },
+      {
+        "image_id": "FourCornersStorm_prega",
+        "mean_score_prediction": 5.717407152056694
+      },
+      {
+        "image_id": "BigfootPass_prega",
+        "mean_score_prediction": 4.376370541751385
+      },
+      {
+        "image_id": "Petroglyphs_prega",
+        "mean_score_prediction": 5.033145762979984
+      },
+      {
+        "image_id": "GeneralSherman_prega",
+        "mean_score_prediction": 5.338321104645729
+      },
+      {
+        "image_id": "OldFaithfulInn_prega",
+        "mean_score_prediction": 5.122139245271683
+      },
+      {
+        "image_id": "TupperLake(2)_prega",
+        "mean_score_prediction": 5.345233052968979
+      },
+      {
+        "image_id": "URChapel(1)_prega",
+        "mean_score_prediction": 4.664691399782896
+      },
+      {
+        "image_id": "SouthBranchKingsRiver_prega",
+        "mean_score_prediction": 5.223618507385254
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM2_prega",
+        "mean_score_prediction": 4.692936755716801
+      },
+      {
+        "image_id": "HooverDam_prega",
+        "mean_score_prediction": 4.960517473518848
+      },
+      {
+        "image_id": "LetchworthTeaTable(2)_prega",
+        "mean_score_prediction": 5.306493259966373
+      },
+      {
+        "image_id": "Route66Museum_prega",
+        "mean_score_prediction": 5.569097209721804
+      },
+      {
+        "image_id": "WestBranchAusable(1)_prega",
+        "mean_score_prediction": 4.7173444256186485
+      },
+      {
+        "image_id": "HalfDomeSunset_prega",
+        "mean_score_prediction": 5.161509998142719
+      },
+      {
+        "image_id": "HancockKitchenInside_prega",
+        "mean_score_prediction": 5.394907429814339
+      },
+      {
+        "image_id": "LabBooth_prega",
+        "mean_score_prediction": 5.732944473624229
+      },
+      {
+        "image_id": "NiagaraFalls_prega",
+        "mean_score_prediction": 4.901542648673058
+      },
+      {
+        "image_id": "HancockKitchenOutside_prega",
+        "mean_score_prediction": 5.483973488211632
+      },
+      {
+        "image_id": "TunnelView(1)_prega",
+        "mean_score_prediction": 4.810581915080547
+      },
+      {
+        "image_id": "DevilsBathtub_prega",
+        "mean_score_prediction": 5.463548336178064
+      },
+      {
+        "image_id": "DevilsTower_prega",
+        "mean_score_prediction": 4.695876270532608
+      },
+      {
+        "image_id": "AirBellowsGap_prega",
+        "mean_score_prediction": 5.350692205131054
+      },
+      {
+        "image_id": "Exploratorium(1)_prega",
+        "mean_score_prediction": 5.096042223274708
+      },
+      {
+        "image_id": "DevilsGolfCourse_prega",
+        "mean_score_prediction": 3.976993076503277
+      },
+      {
+        "image_id": "SunsetPoint(1)_prega",
+        "mean_score_prediction": 4.83707332611084
+      },
+      {
+        "image_id": "BandonSunset(2)_prega",
+        "mean_score_prediction": 6.019012480974197
+      },
+      {
+        "image_id": "BarHarborSunrise_prega",
+        "mean_score_prediction": 5.313042506575584
+      },
+      {
+        "image_id": "SmokyTunnel_prega",
+        "mean_score_prediction": 4.440691232681274
+      },
+      {
+        "image_id": "MtRushmore(2)_prega",
+        "mean_score_prediction": 5.161970883607864
+      },
+      {
+        "image_id": "BloomingGorse(2)_prega",
+        "mean_score_prediction": 5.281324356794357
+      },
+      {
+        "image_id": "CanadianFalls_prega",
+        "mean_score_prediction": 4.932386860251427
+      },
+      {
+        "image_id": "ElCapitan_prega",
+        "mean_score_prediction": 4.995063953101635
+      },
+      {
+        "image_id": "CemeteryTree(2)_prega",
+        "mean_score_prediction": 4.91847562789917
+      },
+      {
+        "image_id": "ArtistPalette_prega",
+        "mean_score_prediction": 4.959597282111645
+      },
+      {
+        "image_id": "SunsetPoint(2)_prega",
+        "mean_score_prediction": 5.302737317979336
+      },
+      {
+        "image_id": "RoundStoneBarn_prega",
+        "mean_score_prediction": 5.5039903447031975
+      },
+      {
+        "image_id": "BandonSunset(1)_prega",
+        "mean_score_prediction": 6.303754758089781
+      },
+      {
+        "image_id": "MammothHotSprings_prega",
+        "mean_score_prediction": 4.793526902794838
+      },
+      {
+        "image_id": "RoadsEndFireDamage_prega",
+        "mean_score_prediction": 4.917258761823177
+      },
+      {
+        "image_id": "Exploratorium(2)_prega",
+        "mean_score_prediction": 5.643790230154991
+      },
+      {
+        "image_id": "LabWindow_prega",
+        "mean_score_prediction": 5.256700776517391
+      },
+      {
+        "image_id": "WallDrug_prega",
+        "mean_score_prediction": 4.686232298612595
+      },
+      {
+        "image_id": "LuxoDoubleChecker_prega",
+        "mean_score_prediction": 5.049651429057121
+      },
+      {
+        "image_id": "BarHarborPresunrise_prega",
+        "mean_score_prediction": 5.144376926124096
+      },
+      {
+        "image_id": "CemeteryTree(1)_prega",
+        "mean_score_prediction": 4.655736334621906
+      },
+      {
+        "image_id": "AhwahneeGreatLounge_prega",
+        "mean_score_prediction": 5.222804434597492
+      },
+      {
+        "image_id": "GeneralGrant_prega",
+        "mean_score_prediction": 4.963466838002205
+      },
+      {
+        "image_id": "DelicateArch_prega",
+        "mean_score_prediction": 5.0641870200634
+      },
+      {
+        "image_id": "BenJerrys_prega",
+        "mean_score_prediction": 5.529011461883783
+      },
+      {
+        "image_id": "BloomingGorse(1)_prega",
+        "mean_score_prediction": 5.261529587209225
+      },
+      {
+        "image_id": "DelicateFlowers_prega",
+        "mean_score_prediction": 4.590045988559723
+      },
+      {
+        "image_id": "MtRushmore(1)_prega",
+        "mean_score_prediction": 4.783702470362186
+      },
+      {
+        "image_id": "RoundBarnInside_prega",
+        "mean_score_prediction": 5.080167934298515
+      },
+      {
+        "image_id": "McKeesPub_prega",
+        "mean_score_prediction": 5.668652825057507
+      },
+      {
+        "image_id": "CadesCove_prega",
+        "mean_score_prediction": 5.264417976140976
+      },
+      {
+        "image_id": "LabTypewriter_prega",
+        "mean_score_prediction": 5.153118960559368
+      },
+      {
+        "image_id": "WestBranchAusable(2)_prega",
+        "mean_score_prediction": 4.679041802883148
+      },
+      {
+        "image_id": "TheNarrows(3)_prega",
+        "mean_score_prediction": 4.980162866413593
+      },
+      {
+        "image_id": "KingsCanyon_prega",
+        "mean_score_prediction": 4.9680876061320305
+      },
+      {
+        "image_id": "TunnelView(2)_prega",
+        "mean_score_prediction": 5.085823640227318
+      },
+      {
+        "image_id": "LadyBirdRedwoods_prega",
+        "mean_score_prediction": 4.908042564988136
+      },
+      {
+        "image_id": "LasVegasStore_prega",
+        "mean_score_prediction": 4.563727539032698
+      },
+      {
+        "image_id": "OtterPoint_prega",
+        "mean_score_prediction": 5.31946911662817
+      },
+      {
+        "image_id": "UpheavalDome_prega",
+        "mean_score_prediction": 4.736116543412209
+      },
+      {
+        "image_id": "PaulBunyan_prega",
+        "mean_score_prediction": 5.467858202755451
+      },
+      {
+        "image_id": "Zentrum_prega",
+        "mean_score_prediction": 4.456929311156273
+      },
+      {
+        "image_id": "TheGrotto_prega",
+        "mean_score_prediction": 4.825108923017979
+      },
+      {
+        "image_id": "TupperLake(1)_prega",
+        "mean_score_prediction": 5.247153453528881
+      },
+      {
+        "image_id": "URChapel(2)_prega",
+        "mean_score_prediction": 5.316319726407528
+      },
+      {
+        "image_id": "SequoiaRemains_prega",
+        "mean_score_prediction": 4.693625256419182
+      },
+      {
+        "image_id": "BalancedRock_prega",
+        "mean_score_prediction": 4.828374832868576
+      },
+      {
+        "image_id": "HooverGarage_prega",
+        "mean_score_prediction": 4.84820069372654
+      },
+      {
+        "image_id": "LetchworthTeaTable(1)_prega",
+        "mean_score_prediction": 5.047427199780941
+      },
+      {
+        "image_id": "MtRushmoreFlags_prega",
+        "mean_score_prediction": 5.012848488986492
+      },
+      {
+        "image_id": "Frontier_prega",
+        "mean_score_prediction": 4.807708907872438
+      },
+      {
+        "image_id": "RITTiger_prega",
+        "mean_score_prediction": 4.681416116654873
+      },
+      {
+        "image_id": "JesseBrownsCabin_prega",
+        "mean_score_prediction": 4.857893265783787
+      },
+      {
+        "image_id": "HDRMark_prega",
+        "mean_score_prediction": 5.628144923597574
+      },
+      {
+        "image_id": "LittleRiver_prega",
+        "mean_score_prediction": 4.911485120654106
+      },
+      {
+        "image_id": "Peppermill_prega",
+        "mean_score_prediction": 5.055906221270561
+      },
+      {
+        "image_id": "WaffleHouse_prega",
+        "mean_score_prediction": 4.7375897616147995
+      },
+      {
+        "image_id": "GoldenGate(1)_prega",
+        "mean_score_prediction": 5.680515207350254
+      },
+      {
+        "image_id": "TheNarrows(1)_prega",
+        "mean_score_prediction": 5.315245099365711
+      },
+      {
+        "image_id": "HallofFame_prega",
+        "mean_score_prediction": 5.8956397995352745
+      },
+      {
+        "image_id": "Flamingo_prega",
+        "mean_score_prediction": 4.757349535822868
+      },
+      {
+        "image_id": "M3MiddlePond_prega",
+        "mean_score_prediction": 5.454489912837744
+      },
+      {
+        "image_id": "MasonLake(1)_prega",
+        "mean_score_prediction": 4.996395908296108
+      },
+      {
+        "image_id": "PeckLake_prega",
+        "mean_score_prediction": 5.558609090745449
+      },
+      {
+        "image_id": "YosemiteFalls_prega",
+        "mean_score_prediction": 5.0117697566747665
+      },
+      {
+        "image_id": "507_prega",
+        "mean_score_prediction": 5.186304025352001
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM1_prega",
+        "mean_score_prediction": 4.752292796969414
+      },
+      {
+        "image_id": "MirrorLake_prega",
+        "mean_score_prediction": 4.489426843822002
+      },
+      {
+        "image_id": "NorthBubble_prega",
+        "mean_score_prediction": 4.7252189591526985
+      }
+    ]
+    res_fattal = [
+      {
+        "image_id": "TaughannockFalls_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "UpheavalDome_pregamma_1_fattal",
+        "mean_score_prediction": 5.035621993243694
+      },
+      {
+        "image_id": "SunsetPoint(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "BandonSunset(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.849164567887783
+      },
+      {
+        "image_id": "WestBranchAusable(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.105016678571701
+      },
+      {
+        "image_id": "NorthBubble_pregamma_1_fattal",
+        "mean_score_prediction": 4.9362708032131195
+      },
+      {
+        "image_id": "HancockKitchenOutside_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "WestBranchAusable(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.9699321165680885
+      },
+      {
+        "image_id": "OCanadaNoLights_pregamma_1_fattal",
+        "mean_score_prediction": 5.511814013123512
+      },
+      {
+        "image_id": "Flamingo_pregamma_1_fattal",
+        "mean_score_prediction": 5.0423852652311325
+      },
+      {
+        "image_id": "BarHarborSunrise_pregamma_1_fattal",
+        "mean_score_prediction": 5.36103243380785
+      },
+      {
+        "image_id": "TheGrotto_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "LabTypewriter_pregamma_1_fattal",
+        "mean_score_prediction": 5.224584463983774
+      },
+      {
+        "image_id": "RedwoodSunset_pregamma_1_fattal",
+        "mean_score_prediction": 4.693586505949497
+      },
+      {
+        "image_id": "Petroglyphs_pregamma_1_fattal",
+        "mean_score_prediction": 4.7487930208444595
+      },
+      {
+        "image_id": "PaulBunyan_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "BandonSunset(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.756908677518368
+      },
+      {
+        "image_id": "HDRMark_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "SunsetPoint(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.9880534410476685
+      },
+      {
+        "image_id": "RITTiger_pregamma_1_fattal",
+        "mean_score_prediction": 4.759332068264484
+      },
+      {
+        "image_id": "BigfootPass_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "LasVegasStore_pregamma_1_fattal",
+        "mean_score_prediction": 4.869000367820263
+      },
+      {
+        "image_id": "LetchworthTeaTable(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.899363569915295
+      },
+      {
+        "image_id": "DevilsGolfCourse_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "HancockKitchenInside_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "JesseBrownsCabin_pregamma_1_fattal",
+        "mean_score_prediction": 4.867237374186516
+      },
+      {
+        "image_id": "AirBellowsGap_pregamma_1_fattal",
+        "mean_score_prediction": 5.2859117686748505
+      },
+      {
+        "image_id": "DevilsTower_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "Exploratorium(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.319010145962238
+      },
+      {
+        "image_id": "MtRushmoreFlags_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "OCanadaLights_pregamma_1_fattal",
+        "mean_score_prediction": 5.5748913660645485
+      },
+      {
+        "image_id": "McKeesPub_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "ArtistPalette_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "BenJerrys_pregamma_1_fattal",
+        "mean_score_prediction": 5.561049833893776
+      },
+      {
+        "image_id": "HalfDomeSunset_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "BloomingGorse(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.296816103160381
+      },
+      {
+        "image_id": "SequoiaRemains_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "MiddlePond_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "KingsCanyon_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM2_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "DelicateFlowers_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "Exploratorium(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "NiagaraFalls_pregamma_1_fattal",
+        "mean_score_prediction": 4.948031045496464
+      },
+      {
+        "image_id": "DevilsBathtub_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "BloomingGorse(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "HooverDam_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "GeneralSherman_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "RoundStoneBarn_pregamma_1_fattal",
+        "mean_score_prediction": 5.184201188385487
+      },
+      {
+        "image_id": "ElCapitan_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "PeckLake_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "LetchworthTeaTable(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.378513753414154
+      },
+      {
+        "image_id": "MammothHotSprings_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "LabWindow_pregamma_1_fattal",
+        "mean_score_prediction": 5.606766484677792
+      },
+      {
+        "image_id": "AhwahneeGreatLounge_pregamma_1_fattal",
+        "mean_score_prediction": 5.229725703597069
+      },
+      {
+        "image_id": "WallDrug_pregamma_1_fattal",
+        "mean_score_prediction": 4.637685902416706
+      },
+      {
+        "image_id": "CemeteryTree(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "GoldenGate(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "TheNarrows(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "Route66Museum_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "RoadsEndFireDamage_pregamma_1_fattal",
+        "mean_score_prediction": 4.944935970008373
+      },
+      {
+        "image_id": "MasonLake(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "OldFaithfulInn_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "TupperLake(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.85210756957531
+      },
+      {
+        "image_id": "URChapel(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321834385395
+      },
+      {
+        "image_id": "Zentrum_pregamma_1_fattal",
+        "mean_score_prediction": 4.677542708814144
+      },
+      {
+        "image_id": "MtRushmore(1)_pregamma_1_fattal",
+        "mean_score_prediction": 4.925967745482922
+      },
+      {
+        "image_id": "Frontier_pregamma_1_fattal",
+        "mean_score_prediction": 5.090229131281376
+      },
+      {
+        "image_id": "HancockSeedField_pregamma_1_fattal",
+        "mean_score_prediction": 4.949999183416367
+      },
+      {
+        "image_id": "WillyDesk_pregamma_1_fattal",
+        "mean_score_prediction": 5.992689839564264
+      },
+      {
+        "image_id": "YosemiteFalls_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "MackinacBridge_pregamma_1_fattal",
+        "mean_score_prediction": 5.673282042145729
+      },
+      {
+        "image_id": "MtRushmore(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.985613025724888
+      },
+      {
+        "image_id": "SouthBranchKingsRiver_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "URChapel(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "LuxoDoubleChecker_pregamma_1_fattal",
+        "mean_score_prediction": 5.030950032174587
+      },
+      {
+        "image_id": "FourCornersStorm_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "HallofFame_pregamma_1_fattal",
+        "mean_score_prediction": 5.73553791642189
+      },
+      {
+        "image_id": "GeneralGrant_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "BalancedRock_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "LabBooth_pregamma_1_fattal",
+        "mean_score_prediction": 5.662463936954737
+      },
+      {
+        "image_id": "BarHarborPresunrise_pregamma_1_fattal",
+        "mean_score_prediction": 5.09300871193409
+      },
+      {
+        "image_id": "TheNarrows(2)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "CemeteryTree(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "GoldenGate(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.513229735195637
+      },
+      {
+        "image_id": "507_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "TupperLake(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.255471237003803
+      },
+      {
+        "image_id": "MasonLake(1)_pregamma_1_fattal",
+        "mean_score_prediction": 4.9373434111475945
+      },
+      {
+        "image_id": "CadesCove_pregamma_1_fattal",
+        "mean_score_prediction": 5.2101441621780396
+      },
+      {
+        "image_id": "LadyBirdRedwoods_pregamma_1_fattal",
+        "mean_score_prediction": 4.87543486058712
+      },
+      {
+        "image_id": "RoundBarnInside_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "TunnelView(1)_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "TheNarrows(3)_pregamma_1_fattal",
+        "mean_score_prediction": 4.735572729259729
+      },
+      {
+        "image_id": "HooverGarage_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "M3MiddlePond_pregamma_1_fattal",
+        "mean_score_prediction": 5.4419418387115
+      },
+      {
+        "image_id": "MirrorLake_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "WaffleHouse_pregamma_1_fattal",
+        "mean_score_prediction": 5.091461978852749
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM1_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "CanadianFalls_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "WillySentinel_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "SmokyTunnel_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "Peppermill_pregamma_1_fattal",
+        "mean_score_prediction": 5.215767774730921
+      },
+      {
+        "image_id": "DelicateArch_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "LittleRiver_pregamma_1_fattal",
+        "mean_score_prediction": 4.76761344820261
+      },
+      {
+        "image_id": "OtterPoint_pregamma_1_fattal",
+        "mean_score_prediction": 5.790321454405785
+      },
+      {
+        "image_id": "TunnelView(2)_pregamma_1_fattal",
+        "mean_score_prediction": 4.649043120443821
+      }
+    ]
+    res_out_now = [
+      {
+        "image_id": "BigfootPass_stretch",
+        "mean_score_prediction": 4.842783220112324
+      },
+      {
+        "image_id": "BandonSunset(2)_stretch",
+        "mean_score_prediction": 5.063626520335674
+      },
+      {
+        "image_id": "RITTiger_stretch",
+        "mean_score_prediction": 4.656033284962177
+      },
+      {
+        "image_id": "LabWindow_stretch",
+        "mean_score_prediction": 5.516355063766241
+      },
+      {
+        "image_id": "TunnelView(2)_stretch",
+        "mean_score_prediction": 4.627959735691547
+      },
+      {
+        "image_id": "TheGrotto_stretch",
+        "mean_score_prediction": 4.966006621718407
+      },
+      {
+        "image_id": "BarHarborPresunrise_stretch",
+        "mean_score_prediction": 4.91495868563652
+      },
+      {
+        "image_id": "LuxoDoubleChecker_stretch",
+        "mean_score_prediction": 4.847224213182926
+      },
+      {
+        "image_id": "OCanadaNoLights_stretch",
+        "mean_score_prediction": 5.386347621679306
+      },
+      {
+        "image_id": "SunsetPoint(1)_stretch",
+        "mean_score_prediction": 4.369607239961624
+      },
+      {
+        "image_id": "LittleRiver_stretch",
+        "mean_score_prediction": 4.7656629383563995
+      },
+      {
+        "image_id": "LetchworthTeaTable(2)_stretch",
+        "mean_score_prediction": 5.067666359245777
+      },
+      {
+        "image_id": "JesseBrownsCabin_stretch",
+        "mean_score_prediction": 4.589898958802223
+      },
+      {
+        "image_id": "RedwoodSunset_stretch",
+        "mean_score_prediction": 4.402441538870335
+      },
+      {
+        "image_id": "BarHarborSunrise_stretch",
+        "mean_score_prediction": 5.035418026149273
+      },
+      {
+        "image_id": "BalancedRock_stretch",
+        "mean_score_prediction": 4.339556537568569
+      },
+      {
+        "image_id": "WallDrug_stretch",
+        "mean_score_prediction": 4.586448296904564
+      },
+      {
+        "image_id": "HancockKitchenInside_stretch",
+        "mean_score_prediction": 5.577774345874786
+      },
+      {
+        "image_id": "SmokyTunnel_stretch",
+        "mean_score_prediction": 4.502622313797474
+      },
+      {
+        "image_id": "MtRushmore(1)_stretch",
+        "mean_score_prediction": 4.7301649153232574
+      },
+      {
+        "image_id": "WillySentinel_stretch",
+        "mean_score_prediction": 5.215237677097321
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM2_stretch",
+        "mean_score_prediction": 4.6328220665454865
+      },
+      {
+        "image_id": "MackinacBridge_stretch",
+        "mean_score_prediction": 5.58113045245409
+      },
+      {
+        "image_id": "OCanadaLights_stretch",
+        "mean_score_prediction": 5.39261831343174
+      },
+      {
+        "image_id": "DelicateArch_stretch",
+        "mean_score_prediction": 5.0609101466834545
+      },
+      {
+        "image_id": "BloomingGorse(1)_stretch",
+        "mean_score_prediction": 5.416340090334415
+      },
+      {
+        "image_id": "RoadsEndFireDamage_stretch",
+        "mean_score_prediction": 5.013679251074791
+      },
+      {
+        "image_id": "Zentrum_stretch",
+        "mean_score_prediction": 4.698490887880325
+      },
+      {
+        "image_id": "Exploratorium(2)_stretch",
+        "mean_score_prediction": 5.552924778312445
+      },
+      {
+        "image_id": "TupperLake(2)_stretch",
+        "mean_score_prediction": 4.54874649643898
+      },
+      {
+        "image_id": "507_stretch",
+        "mean_score_prediction": 5.130307286977768
+      },
+      {
+        "image_id": "KingsCanyon_stretch",
+        "mean_score_prediction": 5.225757107138634
+      },
+      {
+        "image_id": "ElCapitan_stretch",
+        "mean_score_prediction": 4.838681310415268
+      },
+      {
+        "image_id": "MiddlePond_stretch",
+        "mean_score_prediction": 4.708195373415947
+      },
+      {
+        "image_id": "Route66Museum_stretch",
+        "mean_score_prediction": 5.64142632484436
+      },
+      {
+        "image_id": "Peppermill_stretch",
+        "mean_score_prediction": 5.166706301271915
+      },
+      {
+        "image_id": "CemeteryTree(1)_stretch",
+        "mean_score_prediction": 4.673730336129665
+      },
+      {
+        "image_id": "WillyDesk_stretch",
+        "mean_score_prediction": 5.690113541670144
+      },
+      {
+        "image_id": "HooverGarage_stretch",
+        "mean_score_prediction": 5.274801045656204
+      },
+      {
+        "image_id": "OtterPoint_stretch",
+        "mean_score_prediction": 5.144595317542553
+      },
+      {
+        "image_id": "URChapel(1)_stretch",
+        "mean_score_prediction": 4.669674299657345
+      },
+      {
+        "image_id": "AmikeusBeaverDamPM1_stretch",
+        "mean_score_prediction": 4.96259880810976
+      },
+      {
+        "image_id": "MammothHotSprings_stretch",
+        "mean_score_prediction": 4.6738278940320015
+      },
+      {
+        "image_id": "TaughannockFalls_stretch",
+        "mean_score_prediction": 4.877666667103767
+      },
+      {
+        "image_id": "HooverDam_stretch",
+        "mean_score_prediction": 4.628577567636967
+      },
+      {
+        "image_id": "TheNarrows(2)_stretch",
+        "mean_score_prediction": 4.321621969342232
+      },
+      {
+        "image_id": "OldFaithfulInn_stretch",
+        "mean_score_prediction": 5.28136432915926
+      },
+      {
+        "image_id": "LabBooth_stretch",
+        "mean_score_prediction": 5.359720770269632
+      },
+      {
+        "image_id": "FourCornersStorm_stretch",
+        "mean_score_prediction": 4.773315943777561
+      },
+      {
+        "image_id": "DevilsGolfCourse_stretch",
+        "mean_score_prediction": 4.769339367747307
+      },
+      {
+        "image_id": "GoldenGate(1)_stretch",
+        "mean_score_prediction": 5.8168815821409225
+      },
+      {
+        "image_id": "DevilsTower_stretch",
+        "mean_score_prediction": 4.633798144757748
+      },
+      {
+        "image_id": "SequoiaRemains_stretch",
+        "mean_score_prediction": 5.0894976034760475
+      },
+      {
+        "image_id": "CanadianFalls_stretch",
+        "mean_score_prediction": 5.075924597680569
+      },
+      {
+        "image_id": "HalfDomeSunset_stretch",
+        "mean_score_prediction": 4.759166464209557
+      },
+      {
+        "image_id": "WestBranchAusable(1)_stretch",
+        "mean_score_prediction": 5.196432314813137
+      },
+      {
+        "image_id": "TheNarrows(3)_stretch",
+        "mean_score_prediction": 4.863989092409611
+      },
+      {
+        "image_id": "HallofFame_stretch",
+        "mean_score_prediction": 5.425362206995487
+      },
+      {
+        "image_id": "MasonLake(2)_stretch",
+        "mean_score_prediction": 4.682864680886269
+      },
+      {
+        "image_id": "UpheavalDome_stretch",
+        "mean_score_prediction": 5.158583045005798
+      },
+      {
+        "image_id": "GeneralSherman_stretch",
+        "mean_score_prediction": 4.82992697507143
+      },
+      {
+        "image_id": "CemeteryTree(2)_stretch",
+        "mean_score_prediction": 5.232885032892227
+      },
+      {
+        "image_id": "MtRushmoreFlags_stretch",
+        "mean_score_prediction": 4.673472568392754
+      },
+      {
+        "image_id": "LasVegasStore_stretch",
+        "mean_score_prediction": 4.687221489846706
+      },
+      {
+        "image_id": "Petroglyphs_stretch",
+        "mean_score_prediction": 4.456067271530628
+      },
+      {
+        "image_id": "AhwahneeGreatLounge_stretch",
+        "mean_score_prediction": 5.3506006225943565
+      },
+      {
+        "image_id": "YosemiteFalls_stretch",
+        "mean_score_prediction": 4.201913133263588
+      },
+      {
+        "image_id": "TheNarrows(1)_stretch",
+        "mean_score_prediction": 5.043702267110348
+      },
+      {
+        "image_id": "McKeesPub_stretch",
+        "mean_score_prediction": 5.5744349509477615
+      },
+      {
+        "image_id": "URChapel(2)_stretch",
+        "mean_score_prediction": 5.358393341302872
+      },
+      {
+        "image_id": "PeckLake_stretch",
+        "mean_score_prediction": 5.305830217897892
+      },
+      {
+        "image_id": "LabTypewriter_stretch",
+        "mean_score_prediction": 4.844313368201256
+      },
+      {
+        "image_id": "LadyBirdRedwoods_stretch",
+        "mean_score_prediction": 5.293241731822491
+      },
+      {
+        "image_id": "GoldenGate(2)_stretch",
+        "mean_score_prediction": 5.464354641735554
+      },
+      {
+        "image_id": "Frontier_stretch",
+        "mean_score_prediction": 4.779062107205391
+      },
+      {
+        "image_id": "HancockSeedField_stretch",
+        "mean_score_prediction": 5.037194050848484
+      },
+      {
+        "image_id": "PaulBunyan_stretch",
+        "mean_score_prediction": 5.755334362387657
+      },
+      {
+        "image_id": "MirrorLake_stretch",
+        "mean_score_prediction": 4.680452153086662
+      },
+      {
+        "image_id": "DelicateFlowers_stretch",
+        "mean_score_prediction": 4.9824651554226875
+      },
+      {
+        "image_id": "MasonLake(1)_stretch",
+        "mean_score_prediction": 4.716859966516495
+      },
+      {
+        "image_id": "Flamingo_stretch",
+        "mean_score_prediction": 4.835286878049374
+      },
+      {
+        "image_id": "DevilsBathtub_stretch",
+        "mean_score_prediction": 5.191950805485249
+      },
+      {
+        "image_id": "NorthBubble_stretch",
+        "mean_score_prediction": 5.1212586015462875
+      },
+      {
+        "image_id": "GeneralGrant_stretch",
+        "mean_score_prediction": 5.066743761301041
+      },
+      {
+        "image_id": "WestBranchAusable(2)_stretch",
+        "mean_score_prediction": 5.049321755766869
+      },
+      {
+        "image_id": "HancockKitchenOutside_stretch",
+        "mean_score_prediction": 5.621790491044521
+      },
+      {
+        "image_id": "WaffleHouse_stretch",
+        "mean_score_prediction": 4.768981050699949
+      },
+      {
+        "image_id": "SouthBranchKingsRiver_stretch",
+        "mean_score_prediction": 4.929770745337009
+      },
+      {
+        "image_id": "TunnelView(1)_stretch",
+        "mean_score_prediction": 4.827316850423813
+      },
+      {
+        "image_id": "BandonSunset(1)_stretch",
+        "mean_score_prediction": 5.39508830010891
+      },
+      {
+        "image_id": "NiagaraFalls_stretch",
+        "mean_score_prediction": 4.590092092752457
+      },
+      {
+        "image_id": "HDRMark_stretch",
+        "mean_score_prediction": 5.7113246619701385
+      },
+      {
+        "image_id": "M3MiddlePond_stretch",
+        "mean_score_prediction": 5.279757723212242
+      },
+      {
+        "image_id": "AirBellowsGap_stretch",
+        "mean_score_prediction": 5.03221245855093
+      },
+      {
+        "image_id": "SunsetPoint(2)_stretch",
+        "mean_score_prediction": 5.11978055536747
+      },
+      {
+        "image_id": "LetchworthTeaTable(1)_stretch",
+        "mean_score_prediction": 5.1515200808644295
+      },
+      {
+        "image_id": "MtRushmore(2)_stretch",
+        "mean_score_prediction": 5.118643581867218
+      },
+      {
+        "image_id": "BenJerrys_stretch",
+        "mean_score_prediction": 5.600836105644703
+      },
+      {
+        "image_id": "Exploratorium(1)_stretch",
+        "mean_score_prediction": 5.139277800917625
+      },
+      {
+        "image_id": "TupperLake(1)_stretch",
+        "mean_score_prediction": 5.137056402862072
+      },
+      {
+        "image_id": "CadesCove_stretch",
+        "mean_score_prediction": 5.333934783935547
+      },
+      {
+        "image_id": "BloomingGorse(2)_stretch",
+        "mean_score_prediction": 5.437535189092159
+      },
+      {
+        "image_id": "ArtistPalette_stretch",
+        "mean_score_prediction": 4.991634398698807
+      },
+      {
+        "image_id": "RoundBarnInside_stretch",
+        "mean_score_prediction": 4.921816937625408
+      },
+      {
+        "image_id": "RoundStoneBarn_stretch",
+        "mean_score_prediction": 5.1462137773633
+      }
+    ]
+    for m in res_out_now:
+        total_our += m["mean_score_prediction"]
+    print("total_our",total_our / len(res_our))
+    for m in res_paris:
+        total_paris += m["mean_score_prediction"]
+    print("total_paris",total_paris / len(res_paris))
+    for m in res_durand:
+        total_durand += m["mean_score_prediction"]
+    print("total_durand",total_durand / len(res_durand))
+    for m in res_fattal:
+        total_fattal += m["mean_score_prediction"]
+    print("total_fattal",total_fattal / len(res_fattal))
+    # res_our_07 = [
+    #   {
+    #     "image_id": "BigfootPass_stretch",
+    #     "mean_score_prediction": 4.869696505367756
+    #   },
+    #   {
+    #     "image_id": "BandonSunset(2)_stretch",
+    #     "mean_score_prediction": 4.7798991575837135
+    #   },
+    #   {
+    #     "image_id": "RITTiger_stretch",
+    #     "mean_score_prediction": 4.726388718932867
+    #   },
+    #   {
+    #     "image_id": "LabWindow_stretch",
+    #     "mean_score_prediction": 5.461375527083874
+    #   },
+    #   {
+    #     "image_id": "TunnelView(2)_stretch",
+    #     "mean_score_prediction": 4.7245852798223495
+    #   },
+    #   {
+    #     "image_id": "TheGrotto_stretch",
+    #     "mean_score_prediction": 4.903433211147785
+    #   },
+    #   {
+    #     "image_id": "BarHarborPresunrise_stretch",
+    #     "mean_score_prediction": 4.828572049736977
+    #   },
+    #   {
+    #     "image_id": "LuxoDoubleChecker_stretch",
+    #     "mean_score_prediction": 4.834713488817215
+    #   },
+    #   {
+    #     "image_id": "OCanadaNoLights_stretch",
+    #     "mean_score_prediction": 5.381347671151161
+    #   },
+    #   {
+    #     "image_id": "SunsetPoint(1)_stretch",
+    #     "mean_score_prediction": 4.411631308495998
+    #   },
+    #   {
+    #     "image_id": "LittleRiver_stretch",
+    #     "mean_score_prediction": 4.842702433466911
+    #   },
+    #   {
+    #     "image_id": "LetchworthTeaTable(2)_stretch",
+    #     "mean_score_prediction": 5.023076176643372
+    #   },
+    #   {
+    #     "image_id": "JesseBrownsCabin_stretch",
+    #     "mean_score_prediction": 4.4881055280566216
+    #   },
+    #   {
+    #     "image_id": "RedwoodSunset_stretch",
+    #     "mean_score_prediction": 4.397984221577644
+    #   },
+    #   {
+    #     "image_id": "BarHarborSunrise_stretch",
+    #     "mean_score_prediction": 5.084485150873661
+    #   },
+    #   {
+    #     "image_id": "BalancedRock_stretch",
+    #     "mean_score_prediction": 4.414441175758839
+    #   },
+    #   {
+    #     "image_id": "WallDrug_stretch",
+    #     "mean_score_prediction": 4.63860747218132
+    #   },
+    #   {
+    #     "image_id": "HancockKitchenInside_stretch",
+    #     "mean_score_prediction": 5.463131219148636
+    #   },
+    #   {
+    #     "image_id": "SmokyTunnel_stretch",
+    #     "mean_score_prediction": 4.68088848143816
+    #   },
+    #   {
+    #     "image_id": "MtRushmore(1)_stretch",
+    #     "mean_score_prediction": 4.585983075201511
+    #   },
+    #   {
+    #     "image_id": "WillySentinel_stretch",
+    #     "mean_score_prediction": 5.261893153190613
+    #   },
+    #   {
+    #     "image_id": "AmikeusBeaverDamPM2_stretch",
+    #     "mean_score_prediction": 4.638513803482056
+    #   },
+    #   {
+    #     "image_id": "MackinacBridge_stretch",
+    #     "mean_score_prediction": 5.547711431980133
+    #   },
+    #   {
+    #     "image_id": "OCanadaLights_stretch",
+    #     "mean_score_prediction": 5.417403489351273
+    #   },
+    #   {
+    #     "image_id": "DelicateArch_stretch",
+    #     "mean_score_prediction": 5.077257018536329
+    #   },
+    #   {
+    #     "image_id": "BloomingGorse(1)_stretch",
+    #     "mean_score_prediction": 5.3071786016225815
+    #   },
+    #   {
+    #     "image_id": "RoadsEndFireDamage_stretch",
+    #     "mean_score_prediction": 4.859067790210247
+    #   },
+    #   {
+    #     "image_id": "Zentrum_stretch",
+    #     "mean_score_prediction": 4.500365376472473
+    #   },
+    #   {
+    #     "image_id": "Exploratorium(2)_stretch",
+    #     "mean_score_prediction": 5.611076764762402
+    #   },
+    #   {
+    #     "image_id": "TupperLake(2)_stretch",
+    #     "mean_score_prediction": 4.233887050300837
+    #   },
+    #   {
+    #     "image_id": "507_stretch",
+    #     "mean_score_prediction": 4.965331494808197
+    #   },
+    #   {
+    #     "image_id": "KingsCanyon_stretch",
+    #     "mean_score_prediction": 5.229543782770634
+    #   },
+    #   {
+    #     "image_id": "ElCapitan_stretch",
+    #     "mean_score_prediction": 4.770279325544834
+    #   },
+    #   {
+    #     "image_id": "MiddlePond_stretch",
+    #     "mean_score_prediction": 4.741365455091
+    #   },
+    #   {
+    #     "image_id": "Route66Museum_stretch",
+    #     "mean_score_prediction": 5.650251630693674
+    #   },
+    #   {
+    #     "image_id": "Peppermill_stretch",
+    #     "mean_score_prediction": 5.055528752505779
+    #   },
+    #   {
+    #     "image_id": "CemeteryTree(1)_stretch",
+    #     "mean_score_prediction": 4.700432613492012
+    #   },
+    #   {
+    #     "image_id": "WillyDesk_stretch",
+    #     "mean_score_prediction": 5.640575643628836
+    #   },
+    #   {
+    #     "image_id": "HooverGarage_stretch",
+    #     "mean_score_prediction": 5.085663169622421
+    #   },
+    #   {
+    #     "image_id": "OtterPoint_stretch",
+    #     "mean_score_prediction": 5.1238997131586075
+    #   },
+    #   {
+    #     "image_id": "URChapel(1)_stretch",
+    #     "mean_score_prediction": 4.840491749346256
+    #   },
+    #   {
+    #     "image_id": "AmikeusBeaverDamPM1_stretch",
+    #     "mean_score_prediction": 4.852872379124165
+    #   },
+    #   {
+    #     "image_id": "MammothHotSprings_stretch",
+    #     "mean_score_prediction": 4.6664155796170235
+    #   },
+    #   {
+    #     "image_id": "TaughannockFalls_stretch",
+    #     "mean_score_prediction": 4.6323337852954865
+    #   },
+    #   {
+    #     "image_id": "HooverDam_stretch",
+    #     "mean_score_prediction": 4.880640275776386
+    #   },
+    #   {
+    #     "image_id": "TheNarrows(2)_stretch",
+    #     "mean_score_prediction": 4.351555306464434
+    #   },
+    #   {
+    #     "image_id": "OldFaithfulInn_stretch",
+    #     "mean_score_prediction": 5.189954772591591
+    #   },
+    #   {
+    #     "image_id": "LabBooth_stretch",
+    #     "mean_score_prediction": 5.452932350337505
+    #   },
+    #   {
+    #     "image_id": "FourCornersStorm_stretch",
+    #     "mean_score_prediction": 4.9054944813251495
+    #   },
+    #   {
+    #     "image_id": "DevilsGolfCourse_stretch",
+    #     "mean_score_prediction": 4.834501497447491
+    #   },
+    #   {
+    #     "image_id": "GoldenGate(1)_stretch",
+    #     "mean_score_prediction": 5.688965991139412
+    #   },
+    #   {
+    #     "image_id": "DevilsTower_stretch",
+    #     "mean_score_prediction": 4.559813447296619
+    #   },
+    #   {
+    #     "image_id": "SequoiaRemains_stretch",
+    #     "mean_score_prediction": 5.151796959340572
+    #   },
+    #   {
+    #     "image_id": "CanadianFalls_stretch",
+    #     "mean_score_prediction": 5.00480405241251
+    #   },
+    #   {
+    #     "image_id": "HalfDomeSunset_stretch",
+    #     "mean_score_prediction": 4.514128789305687
+    #   },
+    #   {
+    #     "image_id": "WestBranchAusable(1)_stretch",
+    #     "mean_score_prediction": 5.124950282275677
+    #   },
+    #   {
+    #     "image_id": "TheNarrows(3)_stretch",
+    #     "mean_score_prediction": 4.860723435878754
+    #   },
+    #   {
+    #     "image_id": "HallofFame_stretch",
+    #     "mean_score_prediction": 5.418196476995945
+    #   },
+    #   {
+    #     "image_id": "MasonLake(2)_stretch",
+    #     "mean_score_prediction": 4.7178990095853806
+    #   },
+    #   {
+    #     "image_id": "UpheavalDome_stretch",
+    #     "mean_score_prediction": 5.066671408712864
+    #   },
+    #   {
+    #     "image_id": "GeneralSherman_stretch",
+    #     "mean_score_prediction": 4.789495900273323
+    #   },
+    #   {
+    #     "image_id": "CemeteryTree(2)_stretch",
+    #     "mean_score_prediction": 5.300351180136204
+    #   },
+    #   {
+    #     "image_id": "MtRushmoreFlags_stretch",
+    #     "mean_score_prediction": 4.722156248986721
+    #   },
+    #   {
+    #     "image_id": "LasVegasStore_stretch",
+    #     "mean_score_prediction": 4.5998477302491665
+    #   },
+    #   {
+    #     "image_id": "Petroglyphs_stretch",
+    #     "mean_score_prediction": 4.533873379230499
+    #   },
+    #   {
+    #     "image_id": "AhwahneeGreatLounge_stretch",
+    #     "mean_score_prediction": 5.382563263177872
+    #   },
+    #   {
+    #     "image_id": "YosemiteFalls_stretch",
+    #     "mean_score_prediction": 3.9234379194676876
+    #   },
+    #   {
+    #     "image_id": "TheNarrows(1)_stretch",
+    #     "mean_score_prediction": 4.984784975647926
+    #   },
+    #   {
+    #     "image_id": "McKeesPub_stretch",
+    #     "mean_score_prediction": 5.581548377871513
+    #   },
+    #   {
+    #     "image_id": "URChapel(2)_stretch",
+    #     "mean_score_prediction": 5.421009682118893
+    #   },
+    #   {
+    #     "image_id": "PeckLake_stretch",
+    #     "mean_score_prediction": 5.184118323028088
+    #   },
+    #   {
+    #     "image_id": "LabTypewriter_stretch",
+    #     "mean_score_prediction": 5.051527392119169
+    #   },
+    #   {
+    #     "image_id": "LadyBirdRedwoods_stretch",
+    #     "mean_score_prediction": 5.253595985472202
+    #   },
+    #   {
+    #     "image_id": "GoldenGate(2)_stretch",
+    #     "mean_score_prediction": 5.3688333332538605
+    #   },
+    #   {
+    #     "image_id": "Frontier_stretch",
+    #     "mean_score_prediction": 4.852098792791367
+    #   },
+    #   {
+    #     "image_id": "HancockSeedField_stretch",
+    #     "mean_score_prediction": 5.209536388516426
+    #   },
+    #   {
+    #     "image_id": "PaulBunyan_stretch",
+    #     "mean_score_prediction": 5.760845962911844
+    #   },
+    #   {
+    #     "image_id": "MirrorLake_stretch",
+    #     "mean_score_prediction": 4.630173087120056
+    #   },
+    #   {
+    #     "image_id": "DelicateFlowers_stretch",
+    #     "mean_score_prediction": 4.936475038528442
+    #   },
+    #   {
+    #     "image_id": "MasonLake(1)_stretch",
+    #     "mean_score_prediction": 4.62193188816309
+    #   },
+    #   {
+    #     "image_id": "Flamingo_stretch",
+    #     "mean_score_prediction": 4.870118588209152
+    #   },
+    #   {
+    #     "image_id": "DevilsBathtub_stretch",
+    #     "mean_score_prediction": 5.136362552642822
+    #   },
+    #   {
+    #     "image_id": "NorthBubble_stretch",
+    #     "mean_score_prediction": 5.258288159966469
+    #   },
+    #   {
+    #     "image_id": "GeneralGrant_stretch",
+    #     "mean_score_prediction": 4.978314697742462
+    #   },
+    #   {
+    #     "image_id": "WestBranchAusable(2)_stretch",
+    #     "mean_score_prediction": 5.084199383854866
+    #   },
+    #   {
+    #     "image_id": "HancockKitchenOutside_stretch",
+    #     "mean_score_prediction": 5.616473384201527
+    #   },
+    #   {
+    #     "image_id": "WaffleHouse_stretch",
+    #     "mean_score_prediction": 4.982051771134138
+    #   },
+    #   {
+    #     "image_id": "SouthBranchKingsRiver_stretch",
+    #     "mean_score_prediction": 4.922020323574543
+    #   },
+    #   {
+    #     "image_id": "TunnelView(1)_stretch",
+    #     "mean_score_prediction": 4.715621501207352
+    #   },
+    #   {
+    #     "image_id": "BandonSunset(1)_stretch",
+    #     "mean_score_prediction": 5.128907583653927
+    #   },
+    #   {
+    #     "image_id": "NiagaraFalls_stretch",
+    #     "mean_score_prediction": 4.265179164707661
+    #   },
+    #   {
+    #     "image_id": "HDRMark_stretch",
+    #     "mean_score_prediction": 5.727101027965546
+    #   },
+    #   {
+    #     "image_id": "M3MiddlePond_stretch",
+    #     "mean_score_prediction": 5.40487465262413
+    #   },
+    #   {
+    #     "image_id": "AirBellowsGap_stretch",
+    #     "mean_score_prediction": 5.126161232590675
+    #   },
+    #   {
+    #     "image_id": "SunsetPoint(2)_stretch",
+    #     "mean_score_prediction": 5.374274544417858
+    #   },
+    #   {
+    #     "image_id": "LetchworthTeaTable(1)_stretch",
+    #     "mean_score_prediction": 5.258333273231983
+    #   },
+    #   {
+    #     "image_id": "MtRushmore(2)_stretch",
+    #     "mean_score_prediction": 5.076945073902607
+    #   },
+    #   {
+    #     "image_id": "BenJerrys_stretch",
+    #     "mean_score_prediction": 5.47840379178524
+    #   },
+    #   {
+    #     "image_id": "Exploratorium(1)_stretch",
+    #     "mean_score_prediction": 5.159188702702522
+    #   },
+    #   {
+    #     "image_id": "TupperLake(1)_stretch",
+    #     "mean_score_prediction": 5.027751944959164
+    #   },
+    #   {
+    #     "image_id": "CadesCove_stretch",
+    #     "mean_score_prediction": 5.190940275788307
+    #   },
+    #   {
+    #     "image_id": "BloomingGorse(2)_stretch",
+    #     "mean_score_prediction": 5.459664463996887
+    #   },
+    #   {
+    #     "image_id": "ArtistPalette_stretch",
+    #     "mean_score_prediction": 5.148826267570257
+    #   },
+    #   {
+    #     "image_id": "RoundBarnInside_stretch",
+    #     "mean_score_prediction": 4.935379087924957
+    #   },
+    #   {
+    #     "image_id": "RoundStoneBarn_stretch",
+    #     "mean_score_prediction": 5.285031504929066
+    #   }
+    # ]
+    res_our_07 = [
+  {
+    "image_id": "BigfootPass_stretch",
+    "mean_score_prediction": 4.867377080023289
+  },
+  {
+    "image_id": "BandonSunset(2)_stretch",
+    "mean_score_prediction": 5.097372680902481
+  },
+  {
+    "image_id": "RITTiger_stretch",
+    "mean_score_prediction": 4.560207024216652
+  },
+  {
+    "image_id": "LabWindow_stretch",
+    "mean_score_prediction": 5.457372784614563
+  },
+  {
+    "image_id": "TunnelView(2)_stretch",
+    "mean_score_prediction": 4.5695726945996284
+  },
+  {
+    "image_id": "TheGrotto_stretch",
+    "mean_score_prediction": 4.933337830007076
+  },
+  {
+    "image_id": "BarHarborPresunrise_stretch",
+    "mean_score_prediction": 4.833443179726601
+  },
+  {
+    "image_id": "LuxoDoubleChecker_stretch",
+    "mean_score_prediction": 4.741984091699123
+  },
+  {
+    "image_id": "OCanadaNoLights_stretch",
+    "mean_score_prediction": 5.346851997077465
+  },
+  {
+    "image_id": "SunsetPoint(1)_stretch",
+    "mean_score_prediction": 4.335497424006462
+  },
+  {
+    "image_id": "LittleRiver_stretch",
+    "mean_score_prediction": 4.835381872951984
+  },
+  {
+    "image_id": "LetchworthTeaTable(2)_stretch",
+    "mean_score_prediction": 4.933672599494457
+  },
+  {
+    "image_id": "JesseBrownsCabin_stretch",
+    "mean_score_prediction": 4.598006144165993
+  },
+  {
+    "image_id": "RedwoodSunset_stretch",
+    "mean_score_prediction": 4.490410700440407
+  },
+  {
+    "image_id": "BarHarborSunrise_stretch",
+    "mean_score_prediction": 5.030347414314747
+  },
+  {
+    "image_id": "BalancedRock_stretch",
+    "mean_score_prediction": 4.302130304276943
+  },
+  {
+    "image_id": "WallDrug_stretch",
+    "mean_score_prediction": 4.621121674776077
+  },
+  {
+    "image_id": "HancockKitchenInside_stretch",
+    "mean_score_prediction": 5.5488167107105255
+  },
+  {
+    "image_id": "SmokyTunnel_stretch",
+    "mean_score_prediction": 4.519486345350742
+  },
+  {
+    "image_id": "MtRushmore(1)_stretch",
+    "mean_score_prediction": 4.665761329233646
+  },
+  {
+    "image_id": "WillySentinel_stretch",
+    "mean_score_prediction": 5.1385084465146065
+  },
+  {
+    "image_id": "AmikeusBeaverDamPM2_stretch",
+    "mean_score_prediction": 4.713713183999062
+  },
+  {
+    "image_id": "MackinacBridge_stretch",
+    "mean_score_prediction": 5.520897693932056
+  },
+  {
+    "image_id": "OCanadaLights_stretch",
+    "mean_score_prediction": 5.380183503031731
+  },
+  {
+    "image_id": "DelicateArch_stretch",
+    "mean_score_prediction": 4.9885015189647675
+  },
+  {
+    "image_id": "BloomingGorse(1)_stretch",
+    "mean_score_prediction": 5.488612696528435
+  },
+  {
+    "image_id": "RoadsEndFireDamage_stretch",
+    "mean_score_prediction": 4.918337158858776
+  },
+  {
+    "image_id": "Zentrum_stretch",
+    "mean_score_prediction": 4.6199072152376175
+  },
+  {
+    "image_id": "Exploratorium(2)_stretch",
+    "mean_score_prediction": 5.569386683404446
+  },
+  {
+    "image_id": "TupperLake(2)_stretch",
+    "mean_score_prediction": 4.490179654210806
+  },
+  {
+    "image_id": "507_stretch",
+    "mean_score_prediction": 5.027866296470165
+  },
+  {
+    "image_id": "KingsCanyon_stretch",
+    "mean_score_prediction": 5.154842518270016
+  },
+  {
+    "image_id": "ElCapitan_stretch",
+    "mean_score_prediction": 4.808259002864361
+  },
+  {
+    "image_id": "MiddlePond_stretch",
+    "mean_score_prediction": 4.704550474882126
+  },
+  {
+    "image_id": "Route66Museum_stretch",
+    "mean_score_prediction": 5.58030442148447
+  },
+  {
+    "image_id": "Peppermill_stretch",
+    "mean_score_prediction": 5.135001793503761
+  },
+  {
+    "image_id": "CemeteryTree(1)_stretch",
+    "mean_score_prediction": 4.634232118725777
+  },
+  {
+    "image_id": "WillyDesk_stretch",
+    "mean_score_prediction": 5.670642728917301
+  },
+  {
+    "image_id": "HooverGarage_stretch",
+    "mean_score_prediction": 5.1886866092681885
+  },
+  {
+    "image_id": "OtterPoint_stretch",
+    "mean_score_prediction": 5.175363749265671
+  },
+  {
+    "image_id": "URChapel(1)_stretch",
+    "mean_score_prediction": 4.756485067307949
+  },
+  {
+    "image_id": "AmikeusBeaverDamPM1_stretch",
+    "mean_score_prediction": 4.778787702322006
+  },
+  {
+    "image_id": "MammothHotSprings_stretch",
+    "mean_score_prediction": 4.561395063996315
+  },
+  {
+    "image_id": "TaughannockFalls_stretch",
+    "mean_score_prediction": 4.687634639441967
+  },
+  {
+    "image_id": "HooverDam_stretch",
+    "mean_score_prediction": 4.476631663739681
+  },
+  {
+    "image_id": "TheNarrows(2)_stretch",
+    "mean_score_prediction": 4.215166922658682
+  },
+  {
+    "image_id": "OldFaithfulInn_stretch",
+    "mean_score_prediction": 5.220120653510094
+  },
+  {
+    "image_id": "LabBooth_stretch",
+    "mean_score_prediction": 5.387400388717651
+  },
+  {
+    "image_id": "FourCornersStorm_stretch",
+    "mean_score_prediction": 4.7359780594706535
+  },
+  {
+    "image_id": "DevilsGolfCourse_stretch",
+    "mean_score_prediction": 4.740666478872299
+  },
+  {
+    "image_id": "GoldenGate(1)_stretch",
+    "mean_score_prediction": 5.681077253073454
+  },
+  {
+    "image_id": "DevilsTower_stretch",
+    "mean_score_prediction": 4.641382202506065
+  },
+  {
+    "image_id": "SequoiaRemains_stretch",
+    "mean_score_prediction": 5.142278902232647
+  },
+  {
+    "image_id": "CanadianFalls_stretch",
+    "mean_score_prediction": 5.141233965754509
+  },
+  {
+    "image_id": "HalfDomeSunset_stretch",
+    "mean_score_prediction": 4.7379439398646355
+  },
+  {
+    "image_id": "WestBranchAusable(1)_stretch",
+    "mean_score_prediction": 5.271523855626583
+  },
+  {
+    "image_id": "TheNarrows(3)_stretch",
+    "mean_score_prediction": 4.880181781947613
+  },
+  {
+    "image_id": "HallofFame_stretch",
+    "mean_score_prediction": 5.406075403094292
+  },
+  {
+    "image_id": "MasonLake(2)_stretch",
+    "mean_score_prediction": 4.604138411581516
+  },
+  {
+    "image_id": "UpheavalDome_stretch",
+    "mean_score_prediction": 4.951359905302525
+  },
+  {
+    "image_id": "GeneralSherman_stretch",
+    "mean_score_prediction": 4.876208208501339
+  },
+  {
+    "image_id": "CemeteryTree(2)_stretch",
+    "mean_score_prediction": 5.217479392886162
+  },
+  {
+    "image_id": "MtRushmoreFlags_stretch",
+    "mean_score_prediction": 4.574889153242111
+  },
+  {
+    "image_id": "LasVegasStore_stretch",
+    "mean_score_prediction": 4.615850396454334
+  },
+  {
+    "image_id": "Petroglyphs_stretch",
+    "mean_score_prediction": 4.387754395604134
+  },
+  {
+    "image_id": "AhwahneeGreatLounge_stretch",
+    "mean_score_prediction": 5.301517844200134
+  },
+  {
+    "image_id": "YosemiteFalls_stretch",
+    "mean_score_prediction": 3.9959295094013214
+  },
+  {
+    "image_id": "TheNarrows(1)_stretch",
+    "mean_score_prediction": 5.092390209436417
+  },
+  {
+    "image_id": "McKeesPub_stretch",
+    "mean_score_prediction": 5.607812836766243
+  },
+  {
+    "image_id": "URChapel(2)_stretch",
+    "mean_score_prediction": 5.2905223816633224
+  },
+  {
+    "image_id": "PeckLake_stretch",
+    "mean_score_prediction": 5.274919182062149
+  },
+  {
+    "image_id": "LabTypewriter_stretch",
+    "mean_score_prediction": 4.8563841581344604
+  },
+  {
+    "image_id": "LadyBirdRedwoods_stretch",
+    "mean_score_prediction": 5.070159457623959
+  },
+  {
+    "image_id": "GoldenGate(2)_stretch",
+    "mean_score_prediction": 5.313610628247261
+  },
+  {
+    "image_id": "Frontier_stretch",
+    "mean_score_prediction": 4.614729080349207
+  },
+  {
+    "image_id": "HancockSeedField_stretch",
+    "mean_score_prediction": 5.153928428888321
+  },
+  {
+    "image_id": "PaulBunyan_stretch",
+    "mean_score_prediction": 5.6842902936041355
+  },
+  {
+    "image_id": "MirrorLake_stretch",
+    "mean_score_prediction": 4.641201600432396
+  },
+  {
+    "image_id": "DelicateFlowers_stretch",
+    "mean_score_prediction": 4.866788648068905
+  },
+  {
+    "image_id": "MasonLake(1)_stretch",
+    "mean_score_prediction": 4.719015792012215
+  },
+  {
+    "image_id": "Flamingo_stretch",
+    "mean_score_prediction": 4.875060260295868
+  },
+  {
+    "image_id": "DevilsBathtub_stretch",
+    "mean_score_prediction": 5.2287106439471245
+  },
+  {
+    "image_id": "NorthBubble_stretch",
+    "mean_score_prediction": 5.1060978174209595
+  },
+  {
+    "image_id": "GeneralGrant_stretch",
+    "mean_score_prediction": 4.987100437283516
+  },
+  {
+    "image_id": "WestBranchAusable(2)_stretch",
+    "mean_score_prediction": 5.008791744709015
+  },
+  {
+    "image_id": "HancockKitchenOutside_stretch",
+    "mean_score_prediction": 5.682315617799759
+  },
+  {
+    "image_id": "WaffleHouse_stretch",
+    "mean_score_prediction": 4.762106288224459
+  },
+  {
+    "image_id": "SouthBranchKingsRiver_stretch",
+    "mean_score_prediction": 4.937887400388718
+  },
+  {
+    "image_id": "TunnelView(1)_stretch",
+    "mean_score_prediction": 4.768234632909298
+  },
+  {
+    "image_id": "BandonSunset(1)_stretch",
+    "mean_score_prediction": 5.4902793020009995
+  },
+  {
+    "image_id": "NiagaraFalls_stretch",
+    "mean_score_prediction": 4.442140851169825
+  },
+  {
+    "image_id": "HDRMark_stretch",
+    "mean_score_prediction": 5.84960824996233
+  },
+  {
+    "image_id": "M3MiddlePond_stretch",
+    "mean_score_prediction": 5.305880360305309
+  },
+  {
+    "image_id": "AirBellowsGap_stretch",
+    "mean_score_prediction": 4.909702703356743
+  },
+  {
+    "image_id": "SunsetPoint(2)_stretch",
+    "mean_score_prediction": 5.149501070380211
+  },
+  {
+    "image_id": "LetchworthTeaTable(1)_stretch",
+    "mean_score_prediction": 5.175177402794361
+  },
+  {
+    "image_id": "MtRushmore(2)_stretch",
+    "mean_score_prediction": 5.072313718497753
+  },
+  {
+    "image_id": "BenJerrys_stretch",
+    "mean_score_prediction": 5.4621873795986176
+  },
+  {
+    "image_id": "Exploratorium(1)_stretch",
+    "mean_score_prediction": 5.0280596986413
+  },
+  {
+    "image_id": "TupperLake(1)_stretch",
+    "mean_score_prediction": 5.0898493602871895
+  },
+  {
+    "image_id": "CadesCove_stretch",
+    "mean_score_prediction": 5.258308954536915
+  },
+  {
+    "image_id": "BloomingGorse(2)_stretch",
+    "mean_score_prediction": 5.377756170928478
+  },
+  {
+    "image_id": "ArtistPalette_stretch",
+    "mean_score_prediction": 4.961717389523983
+  },
+  {
+    "image_id": "RoundBarnInside_stretch",
+    "mean_score_prediction": 4.809913873672485
+  },
+  {
+    "image_id": "RoundStoneBarn_stretch",
+    "mean_score_prediction": 5.126234024763107
+  }
+]
+    total_our_07 = 0
+    for m in res_our_07:
+        total_our_07 += m["mean_score_prediction"]
+    print("total_our_07", total_our_07 / len(res_fattal))
+
+
 if __name__ == '__main__':
+    im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/BarHarborSunrise.exr", format="EXR-FI")
+    im = im - im.min()
+    f = 2048
+    im = im / im.max()
+    im = hdr_image_util.reshape_image(im, train_reshape=False)
+    im = im * ((10)) * 255
+    im = im.clip(0, 255).astype('uint8')
+    imageio.imwrite("/Users/yaelvinker/Desktop/BarHarborSunrise_e.png", im)
+    # plt.imshow(im)
+    # plt.show()
+    print(im.min())
+    print(im.max())
+    # im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/data/merged_6G7M_20150328_183029_897.dng", format="RAW-FI").astype('float32')
+    # np.save("/Users/yaelvinker/PycharmProjects/lab/utils/dng_file.npy", im)
+    # im = imageio.imread("/Users/yaelvinker/PycharmProjects/lab/utils/data/bigFogMap.hdr", format="HDR-FI").astype(
+    #     'float32')
+    # np.save("/Users/yaelvinker/PycharmProjects/lab/utils/bigFogMap.npy", im)
+    # nima_parse()
+    # parse_text_file("/Users/yaelvinker/PycharmProjects/lab/tests/f_factors.txt")
+    # f_factors = {"synagogue.hdr":5147.48457 / 255,
+    #     "2.dng": 77091.89682000001/ 255,
+    #     "WillyDesk.exr": 773750342.73066/ 255,
+    #     "cathedral.hdr": 6392911.482795/ 255,
+    #     "OtterPoint.exr": 160986.84582/ 255,
+    #     "bigFogMap.hdr": 773750342.73066/ 255,
+    #     "BigfootPass.exr": 287.340375/ 255,
+    #     "belgium.hdr": 52180538.8149/ 255,
+    #     "1.dng": 458.67105/ 255,
+    #     "OCanadaNoLights.exr": 47817.05123999999/ 255,
+    #     "507.exr": 2559365.4513/ 255}
+    # print(f_factors)
+    # output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors2.npy")
+    # np.save(output_path, f_factors)
+    # f_factors = {"synagogue.hdr": 5147.484680616225/ 255,
+    # "2.dng": 32116.472509918534/ 255,
+    # "WillyDesk.exr": 14312976.807574302/ 255,
+    # "cathedral.hdr": 105996.78497167058/ 255,
+    # "OtterPoint.exr": 81024.35837634196/ 255,
+    # "bigFogMap.hdr": 8280458.96901711/ 255,
+    # "BigfootPass.exr": 287.3403826836523/ 255,
+    #              "belgium.hdr": 745215.6282670127/ 255,
+    #
+    #              "1.dng": 458.6709486473698/ 255,
+    # "OCanadaNoLights.exr": 47817.05117080077/ 255,
+    # "507.exr": 99853.76623482697/ 255}
+    # output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors1.npy")
+    # np.save(output_path, f_factors)
+    # print(f_factors)
     # f_test()
     # gather_all_architectures3(arch_dir, output_path, epoch)
-    f_factors = {
-        "synagogue.hdr":20.186214,
-        "2.dng":302.321164,
-        "WillyDesk.exr": 3034315.069532,
-        "cathedral.hdr": 25070.241109,
-        "OtterPoint.exr": 631.320964,
-        "bigFogMap.hdr": 3034315.069532,
-        "BigfootPass.exr": 1.126825,
-        "belgium.hdr": 204629.563980,
-        "1.dng": 1.798710,
-        "OCanadaNoLights.exr": 187.517848,
-        "507.exr": 10036.727260
-    }
-    output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy")
-    np.save(output_path, f_factors)
+    # f_factors = {
+    #     "synagogue.hdr":20.186214,
+    #     "2.dng":302.321164,
+    #     "WillyDesk.exr": 3034315.069532,
+    #     "cathedral.hdr": 25070.241109,
+    #     "OtterPoint.exr": 631.320964,
+    #     "bigFogMap.hdr": 3034315.069532,
+    #     "BigfootPass.exr": 1.126825,
+    #     "belgium.hdr": 204629.563980,
+    #     "1.dng": 1.798710,
+    #     "OCanadaNoLights.exr": 187.517848,
+    #     "507.exr": 10036.727260
+    # }
+    # output_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy")
+    # np.save(output_path, f_factors)
     # f_factors = {"belgium": 955688.364876,
     #                 "bigFogMap": 259547.191089,
     #                 "cathedral": 70488.191421,

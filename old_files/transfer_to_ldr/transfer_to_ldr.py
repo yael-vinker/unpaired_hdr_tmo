@@ -300,16 +300,36 @@ def fix_high_luminance(im_log, im_rgb, output_path=""):
     """
     cur_im = np.copy(im_rgb)
     window_height, window_width = get_window_size(im_log.shape[0], im_log.shape[1])
-
+    plt.subplot(2, 3, 1)
+    plt.imshow(im_log, cmap='gray')
+    plt.title("im_log")
     grad = get_gradient(im_log)
+    print(grad.max(), grad.min())
+    plt.subplot(2, 3, 2)
+    grad2 = (grad - np.min(grad)) / (np.max(grad) - np.min(grad))
+    plt.imshow(grad2, cmap='gray')
+    plt.title("grad")
     threshold = get_derivative_threshold(grad)
     binary_im = to_binary(grad, threshold)
+    plt.subplot(2, 3, 3)
+    plt.imshow(binary_im, cmap='gray')
+    plt.title("binary")
     convolve_img = get_convolved_im(window_height, window_width, binary_im, False)
+    plt.subplot(2, 3, 4)
+    plt.imshow(convolve_img, cmap='gray')
+    plt.title("convolve_img")
     convolve_im_binary = conv_to_binary(convolve_img, np.mean(convolve_img))
+    plt.subplot(2, 3, 5)
+    plt.imshow(convolve_im_binary, cmap='gray')
+    plt.title("convolve_im_binary")
     filtered_im = filter_relevant_pixels_quarter(np.copy(convolve_im_binary), window_width, window_height)
+    plt.subplot(2, 3, 6)
+    plt.imshow(filtered_im, cmap='gray')
+    plt.title("filtered_im")
     center_windows = np.argwhere(filtered_im == 1)
     hdr_points = np.argwhere(filtered_im == 0.5)
     new_im = np.copy(im_rgb)
+    plt.savefig(output_path)
 
     print("====== ldr windows number = ", len(center_windows))
     blue_lst = []
@@ -368,11 +388,19 @@ def get_file_name(path):
     return str(pre)
 
 
+def to_gray(im):
+    return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
+
+
 def run_single(rgb_img, output_path=""):
     # print("=============== run single =============")
     yiq_img = rgb2yiq(rgb_img)
+    gray_img2 = to_gray(rgb_img)
+    print_image_details(gray_img2, "gray_img2")
     gray_img = np.copy(yiq_img[:, :, 0])
+    print_image_details(gray_img,"yiq_img")
     img_log = log_transform(gray_img)
+    print_image_details(img_log, "img_log")
     # if train:
     # fixed_rgb, center_pos, window_width, window_height = fix_high_luminance(img_log, np.copy(rgb_img), train)
     return fix_high_luminance(img_log, np.copy(rgb_img), output_path)
@@ -409,7 +437,9 @@ def run(input_path, output_path, train):
 
 def run_single_window_tone_map(im_path, reshape=False):
     rgb_img = read_img(im_path)
+    print_image_details(rgb_img, "rgb_im")
     fixed_rgb = run_single(rgb_img)
+    print_image_details(fixed_rgb, "fixed_rgb")
     # plt.imshow(fixed_rgb)
     # plt.show()
     return fixed_rgb
