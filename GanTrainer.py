@@ -62,10 +62,10 @@ class GanTrainer:
         self.bilateral_mu = opt.bilateral_mu
         if opt.apply_intensity_loss:
             self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
-                                                         opt.std_method)
+                                                         opt.std_method, opt.ssim_window_size)
             self.intensity_loss_factor = opt.apply_intensity_loss
         if opt.mu_loss_factor:
-            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list)
+            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size)
             self.mu_loss_factor = opt.mu_loss_factor
 
         self.loss_g_d_factor = opt.loss_g_d_factor

@@ -14,14 +14,14 @@ from utils import printer
 # ============= Classes ===============
 # =======================================
 class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
-    def __init__(self, pyramid_weight_list, window_size=11, pyramid_pow=False, use_c3=False,
+    def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
                  apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1):
         super(OUR_CUSTOM_SSIM_PYRAMID, self).__init__()
         self.window_size = window_size
         self.channel = 1
         self.window = create_window(window_size, self.channel)
-        self.gaussian_kernel = get_gaussian_kernel(window_size=5, channel=1)
-        self.laplacian_kernel = get_laplacian_kernel(kernel_size=5)
+        self.gaussian_kernel = get_gaussian_kernel(window_size=window_size, channel=1)
+        self.laplacian_kernel = get_laplacian_kernel(kernel_size=window_size)
         self.mse_loss = torch.nn.MSELoss()
         self.pyramid_weight_list = pyramid_weight_list
         self.pyramid_pow = pyramid_pow
@@ -68,14 +68,15 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
         elif self.struct_method == "laplace_ssim":
             hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
             return our_custom_ssim_pyramid_laplace(fake, hdr_input, self.gaussian_kernel, self.laplacian_kernel,
-                                           self.pyramid_weight_list, self.mse_loss)
+                                           self.pyramid_weight_list, self.mse_loss, self.window_size)
 
 
 class IntensityLoss(torch.nn.Module):
-    def __init__(self, epsilon, pyramid_weight_list, alpha=1, std_method="std"):
+    def __init__(self, epsilon, pyramid_weight_list, alpha=1, std_method="std", wind_size=5):
         super(IntensityLoss, self).__init__()
         self.epsilon = epsilon
-        self.window = create_window(5, 1)
+        self.wind_size = wind_size
+        self.window = create_window(wind_size, 1)
         # self.window = get_gaussian_kernel2(5, 1)
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
@@ -112,7 +113,7 @@ class IntensityLoss(torch.nn.Module):
             ssim_loss_list.append(self.pyramid_weight_list[i] *
                                   self.std_loss(self.window, fake, hdr_input, hdr_original_im,
                                                 self.epsilon, self.mse_loss,
-                                                self.alpha, cur_weights, f_factors))
+                                                self.alpha, cur_weights, f_factors, self.wind_size))
             fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_input = F.interpolate(hdr_input, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_original_im = F.interpolate(hdr_original_im, scale_factor=0.5, mode='bicubic', align_corners=False)
@@ -145,9 +146,9 @@ class IntensityLossLaplacian(torch.nn.Module):
 
 
 class MuLoss(torch.nn.Module):
-    def __init__(self, pyramid_weight_list):
+    def __init__(self, pyramid_weight_list, wind_size):
         super(MuLoss, self).__init__()
-        self.window = create_window(5, 1)
+        self.window = create_window(wind_size, 1)
         # self.window = get_gaussian_kernel2(5, 1)
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
@@ -262,7 +263,7 @@ def our_custom_ssim2(img1, img2, window, window_size, channel, mse_loss, use_c3,
 
 
 # def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, epsilon, gamma_input):
-def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, gamma_input, mse_loss):
+def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, gamma_input, mse_loss, wind_size):
     b, c, h, w = fake.shape
 
     if fake.is_cuda:
@@ -273,12 +274,12 @@ def struct_loss_laplac(gaussian_kernel, laplacian_kernel, fake, gamma_input, mse
     laplacian_kernel = laplacian_kernel.type_as(fake)
     laplacian_kernel = laplacian_kernel.repeat(c, 1, 1, 1)
 
-    gamma_input_gaussian = F.conv2d(gamma_input, gaussian_kernel, padding=5 // 2, groups=1)
-    laplacian_res_gamma = F.conv2d(gamma_input_gaussian, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
+    gamma_input_gaussian = F.conv2d(gamma_input, gaussian_kernel, padding=wind_size // 2, groups=1)
+    laplacian_res_gamma = F.conv2d(gamma_input_gaussian, laplacian_kernel, padding=wind_size // 2, stride=1, groups=c)
     laplacian_res_gamma[laplacian_res_gamma < 0] = 0
 
-    laplacian_res_fake = F.conv2d(fake, gaussian_kernel, padding=5 // 2, groups=1)
-    laplacian_res_fake = F.conv2d(laplacian_res_fake, laplacian_kernel, padding=5 // 2, stride=1, groups=c)
+    laplacian_res_fake = F.conv2d(fake, gaussian_kernel, padding=wind_size // 2, groups=1)
+    laplacian_res_fake = F.conv2d(laplacian_res_fake, laplacian_kernel, padding=wind_size // 2, stride=1, groups=c)
     laplacian_res_fake[laplacian_res_fake < 0] = 0
     return mse_loss(laplacian_res_fake, laplacian_res_gamma)
 
@@ -326,11 +327,12 @@ def our_custom_ssim_pyramid_div(img1, img2, window, window_size, channel, pyrami
     return torch.sum(torch.stack(ssim_loss_list))
 
 
-def our_custom_ssim_pyramid_laplace(fake, gamma_input, gaussian_kernel, laplacian_kernel, pyramid_weight_list, mse_loss):
+def our_custom_ssim_pyramid_laplace(fake, gamma_input, gaussian_kernel, laplacian_kernel,
+                                    pyramid_weight_list, mse_loss, wind_size):
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
         ssim_loss_list.append(pyramid_weight_list[i] * struct_loss_laplac(gaussian_kernel, laplacian_kernel,
-                                                                          fake, gamma_input, mse_loss))
+                                                                          fake, gamma_input, mse_loss, wind_size))
 
         fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
         gamma_input = F.interpolate(gamma_input, scale_factor=0.5, mode='bicubic', align_corners=False)
@@ -429,8 +431,7 @@ def std_gamma_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=N
 
 
 def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None):
-    wind_size = 5
+                      f_factors=None, wind_size=5):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -769,7 +770,7 @@ def get_laplacian_kernel(kernel_size):
 def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu):
     gamma_input = data_loader_util.crop_input_hdr_batch(gamma_input)
     gamma_input = gamma_input ** bilateral_mu
-    m = nn.ZeroPad2d(5 // 2)
+    m = nn.ZeroPad2d(wind_size // 2)
     radiometric_weights_arr = []
     for i in range(4):
         centers_gamma = gamma_input.expand(-1, wind_size * wind_size, -1, -1)
