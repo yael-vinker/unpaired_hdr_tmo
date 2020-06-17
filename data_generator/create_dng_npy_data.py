@@ -48,13 +48,14 @@ def print_result(output_dir):
         data = np.load(im_path, allow_pickle=True)
         input_im = data[()]["input_image"]
         color_im = data[()]["display_image"]
-        total_mean += np.mean(input_im)
+        total_mean += (input_im.mean())
+        hdr_image_util.print_tensor_details(input_im, "input_im " + img_name)
+        display_tensor(input_im, True, img_name)
+        hdr_image_util.print_tensor_details(color_im / color_im.max(), "display_image " + img_name)
+        hdr_image_util.print_tensor_details(color_im, "display_image " + img_name)
+        display_tensor(color_im / color_im.max(), False)
     print((total_mean * 255) / len(os.listdir(output_dir)))
-        # hdr_image_util.print_tensor_details(input_im, "input_im " + img_name)
-        # display_tensor(input_im, True, img_name)
-        # hdr_image_util.print_tensor_details(color_im / color_im.max(), "display_image " + img_name)
-        # hdr_image_util.print_tensor_details(color_im, "display_image " + img_name)
-        # display_tensor(color_im / color_im.max(), False)
+
 
 
 def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
@@ -347,65 +348,32 @@ def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
 
 
 if __name__ == '__main__':
-    save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
-                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
-                       0, 1.5)
+    # save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
+    #                    "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+    #                    0, 1.5)
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/exr_data")
-    parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/")
-    parser.add_argument("--output_dir", type=str,
-                        default="/Users/yaelvinker/PycharmProjects/lab/utils/")
+    parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/folders/data")
+    parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data_generator/res_test")
     parser.add_argument("--isLdr", type=int, default=0)
     parser.add_argument("--number_of_images", type=int, default=7)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
     parser.add_argument("--factor_coeff", type=float, default=1.0)
-    parser.add_argument('--gamma_log', type=int, default=2)
-    parser.add_argument('--f_factor_path', type=str, default="")
+    parser.add_argument("--gamma_log", type=int, default=2)
+    parser.add_argument("--f_factor_path", type=str, default="none")
+    parser.add_argument("--use_new_f", type=int, default=1)
 
     args = parser.parse_args()
     if args.isLdr:
        pref = "flicker"
     else:
        pref = "hdrplus"
-    # output_dir_name = pref + "_gamma_use_factorise_data_" + str(args.use_factorise_data) + \
-    #                  "_factor_coeff_" + str(args.factor_coeff)
-    output_dir_name = pref + "_gamma_log_" + str(args.gamma_log)
-    # args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
-    #if not os.path.exists(args.output_dir):
-    #    os.mkdir(args.output_dir)
-    #save_f_factor(args)
-    #data = np.load("/Users/yaelvinker/PycharmProjects/lab/utils/f_factors_train.npy", allow_pickle=True)
-    #print(data[()])
-    # create_data(args)
+    output_dir_name = pref + "_new_f_" + str(args.use_new_f)
+    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
+    if not os.path.exists(args.output_dir):
+       os.mkdir(args.output_dir)
+    create_data(args)
     # print_result(args.output_dir)
     # save_f_factor(args)
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/test/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1")
-    #
-    # split_train_test_data(
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0")
-    #
-    # split_train_test_data(
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0/hdrplus_gamma_use_factorise_data_1_factor_coeff_1.0_use_normalization_0")
-    #
-    # split_train_test_data(
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0",
-    #     "/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_use_factorise_data_1_factor_coeff_0.1_use_normalization_0")
-
-    # log_factor = args.log_factor
-    # print("log factor = ", log_factor)
-    # # create_dict_data_log_factorised(input_hdr_dir, output_hdr_dir, isLdr=False, log_factor_=log_factor)
-    # print_result(output_saccthdr_dir)
-    # selected_test_images_list = ['merged_JN34_20150324_141124_427', 'merged_9bf4_20150818_173321_675',
-    #                              'merged_6G7M_20150328_160426_633', 'merged_0155_20160817_141742_989',
-    #                              'merged_0043_20160831_082253_094', 'merged_0030_20151008_090054_301',
-    #                              'merged_4742_20150918_185622_484', 'belgium', 'cathedral', 'synagogue',
-    #                              'merged_0006_20160724_095820_954', 'merged_0009_20160702_164047_896']
-    # split_test_data(output_hdr_dir, hdr_test_dir, selected_test_images_list, log_factor)
-    # print_result(output_hdr_dir)
