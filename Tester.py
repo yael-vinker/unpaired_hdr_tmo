@@ -11,8 +11,6 @@ import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
 import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
-from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
-    hdr_windows_loader_c, hdr_windows_loader_d
 
 
 class Tester:
@@ -39,11 +37,6 @@ class Tester:
         self.apply_wind_norm = args.apply_wind_norm
         self.wind_size = args.ssim_window_size
         self.std_norm_factor = args.std_norm_factor
-        self.loader_map = {"a": hdr_windows_loader_a,
-                           "b": hdr_windows_loader_b,
-                           "c": hdr_windows_loader_c,
-                           "d": hdr_windows_loader_d}
-        self.input_loader = self.loader_map[args.wind_norm_option]
 
     def load_original_test_hdr_images(self, root):
         print("using input loader number ", self.args.wind_norm_option)
@@ -178,11 +171,6 @@ class Tester:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
-                if self.apply_wind_norm:
-                    gray_original_im = hdr_image_util.to_gray_tensor(im_hdr_original)
-                    gray_original_im_norm = gray_original_im / gray_original_im.max()
-                    im_log_normalize_tensor = self.input_loader(self.wind_size, gray_original_im_norm,
-                                                                 im_log_normalize_tensor, self.std_norm_factor)
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
 

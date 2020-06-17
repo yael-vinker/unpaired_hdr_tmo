@@ -16,8 +16,6 @@ import utils.data_loader_util as data_loader_util
 import tranforms
 import models.unet_multi_filters.Unet as Generator
 import data_generator.create_dng_npy_data as create_dng_npy_data
-from utils.ProcessedDatasetFolder import hdr_windows_loader_a, hdr_windows_loader_b, \
-    hdr_windows_loader_c, hdr_windows_loader_d
 from utils import printer
 import argparse
 
@@ -298,7 +296,7 @@ def get_model_params(model_name):
                     "con_operator": get_con_operator(model_name),
                     "clip": get_clip(model_name),
                     "factorised_data": True,
-                    "input_loader": get_input_loader(model_name),
+                    "input_loader": None,
                     "wind_size": 5,
                     "std_norm_factor": get_std_norm_factor(model_name),
                     "apply_wind_norm": get_apply_wind_norm(model_name),
@@ -373,19 +371,6 @@ def get_gamma_log(model_name):
     if "data_1" in model_name:
         return 1
     return 10
-
-
-def get_input_loader(model_name):
-    if "apply_wind_norm_a" in model_name:
-        return hdr_windows_loader_a
-    if "apply_wind_norm_b" in model_name:
-        return hdr_windows_loader_b
-    if "apply_wind_norm_c" in model_name:
-        return hdr_windows_loader_c
-    if "apply_wind_norm_d" in model_name:
-        return hdr_windows_loader_d
-    else:
-        return None
 
 
 def get_std_norm_factor(model_name):
