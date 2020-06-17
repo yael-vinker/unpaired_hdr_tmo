@@ -1,6 +1,6 @@
 #!/bin/csh
 
-source /cs/labs/raananf/yael_vinker/my_venv/bin/activate.csh
+source /cs/labs/raananf/yael_vinker/python7-venv/bin/activate.csh
 
 echo "change_random_seed $1"
 echo "batch_size $2"
@@ -52,8 +52,12 @@ echo "gamma_log ${43}"
 echo "custom_sig_factor ${44}"
 echo "epoch_to_save ${45}"
 echo "final_epoch ${46}"
+echo "bilateral_mu ${47}"
+echo "max_stretch ${48}"
+echo "min_stretch ${49}"
 
-python3.6 -W ignore -u main_train.py \
+
+python3.7 -W ignore -u main_train.py \
   --change_random_seed $1 \
   --batch_size $2 \
   --num_epochs $3 \
@@ -99,5 +103,9 @@ python3.6 -W ignore -u main_train.py \
   --gamma_log ${43} \
   --custom_sig_factor ${44} \
   --epoch_to_save ${45} \
-  --final_epoch ${46}
-
+  --final_epoch ${46} \
+  --bilateral_mu ${47} \
+  --max_stretch ${48} \
+  --min_stretch ${49} \
+  --ssim_window_size ${50} \
+  --use_new_f ${51}

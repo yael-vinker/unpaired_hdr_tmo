@@ -14,9 +14,10 @@ data_root_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/train_half2"
 test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train_test"
 test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
-result_dir_prefix="/cs/labs/raananf/yael_vinker/06_21/results/"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/06_21_results/"
 f_factor_path="/cs/labs/raananf/yael_vinker/data/test/test_factors.npy"
 gamma_log=10
+use_new_f=0
 
 add_frame=1
 input_dim=1
@@ -43,12 +44,13 @@ apply_intensity_loss_laplacian_weights=1
 loss_g_d_factor=1
 train_with_D=1
 
+ssim_window_size=5
 struct_method="gamma_ssim"
-ssim_loss_factor=1
-pyramid_weight_list="2,4,6"
+ssim_loss_factor=2
+pyramid_weight_list="1,2,3"
 
 alpha=0.5
-bilateral_sigma_r=0.1
+bilateral_sigma_r=0.07
 apply_intensity_loss=1
 std_pyramid_weight_list="8,4,1"
 
@@ -70,4 +72,5 @@ sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $normalization $last_layer $d_model $d_down_dim $d_norm $milestones $add_frame $input_dim \
   $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
-  $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch
+  $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
+  $use_new_f

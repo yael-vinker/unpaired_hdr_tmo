@@ -294,12 +294,12 @@ def create_data(args):
         print(i)
 
 
-def save_f_factor(args, train_reshape, dict_name):
-    input_dir = args.input_dir
-    output_path = os.path.join(args.output_dir, dict_name)
+def save_f_factor(input_dir, output_dir, train_reshape, dict_name):
+    output_path = os.path.join(output_dir, dict_name)
     print(output_path)
     f_factor_dict = {}
-    for img_name, i in zip(os.listdir(input_dir), range(args.number_of_images)):
+    counter = 0
+    for img_name in os.listdir(input_dir):
         im_path = os.path.join(input_dir, img_name)
         rgb_img = hdr_image_util.read_hdr_image(im_path)
         if np.min(rgb_img) < 0:
@@ -308,7 +308,9 @@ def save_f_factor(args, train_reshape, dict_name):
         f_factor = hdr_image_util.get_new_brightness_factor(rgb_img)
         f_factor_dict[img_name] = f_factor
         np.save(output_path, f_factor_dict)
-        print(i)
+        print("[%d] [%s] [%.2f]" % (counter, img_name, f_factor))
+        counter += 1
+
 
 
 def add_f_factor_to_data(input_dir, f_factor_path, output_dir, number_of_images):
@@ -342,6 +344,11 @@ def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
 
 
 if __name__ == '__main__':
+    input_dir = "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size"
+    output_dir = "/cs/snapless/raananf/yael_vinker/data/open_exr_source"
+    train_reshape = False
+    dict_name = "exr_newf.npy"
+    save_f_factor(input_dir, output_dir, train_reshape, dict_name)
     # save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
     #                    "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
     #                    0, 1.5)
