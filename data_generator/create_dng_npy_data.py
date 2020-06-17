@@ -294,26 +294,20 @@ def create_data(args):
         print(i)
 
 
-def save_f_factor(args):
+def save_f_factor(args, train_reshape, dict_name):
     input_dir = args.input_dir
-    output_path = os.path.join(args.output_dir, "f_factors_train.npy")
+    output_path = os.path.join(args.output_dir, dict_name)
     print(output_path)
     f_factor_dict = {}
     for img_name, i in zip(os.listdir(input_dir), range(args.number_of_images)):
-        args.img_name = img_name
         im_path = os.path.join(input_dir, img_name)
         rgb_img = hdr_image_util.read_hdr_image(im_path)
         if np.min(rgb_img) < 0:
             rgb_img = rgb_img + np.abs(np.min(rgb_img))
-        gray_im = hdr_image_util.to_gray(rgb_img)
-        gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=True)
-        f_factor = hdr_image_util.get_brightness_factor(gray_im)
-        brightness_factor = f_factor * 255
-        print("brightness_factor", brightness_factor)
-        gamma_factor = (1 / (1 + 1.5 * np.log10(brightness_factor)))
-        f_factor_dict[os.path.splitext(img_name)[0]] = gamma_factor
+        rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
+        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img)
+        f_factor_dict[img_name] = f_factor
         np.save(output_path, f_factor_dict)
-        print()
         print(i)
 
 

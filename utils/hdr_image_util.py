@@ -114,6 +114,7 @@ def get_new_brightness_factor(M):
     J = J / np.max(J)
 
     npix = J.shape[0]
+    Cout = 0
     for i in range(100):
 
         C = np.sqrt(2) ** i
@@ -129,9 +130,10 @@ def get_new_brightness_factor(M):
         h = h[0]
 
         rat = np.mean(h[0]) / np.mean(h[1])
-        print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
         if rat > 0.5:
             Cout = C * np.sqrt(2)
+        else:
+            print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
     return Cout
 
 

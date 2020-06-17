@@ -1,10 +1,6 @@
 import inspect
 import os
 import sys
-
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
 from utils import params
 from models import Discriminator
 import imageio
@@ -16,10 +12,15 @@ import utils.data_loader_util as data_loader_util
 import tranforms
 import models.unet_multi_filters.Unet as Generator
 import data_generator.create_dng_npy_data as create_dng_npy_data
-from utils import printer
 import argparse
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
-# ====== TRAIN RELATED ======
+
+# ======================================
+# =========== TRAIN RELATED ============
+# ======================================
 def weights_init(m):
     """custom weights initialization called on netG and netD"""
     classname = m.__class__.__name__
@@ -63,21 +64,13 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
                  add_frame, unet_norm, add_clipping, normalization, use_xaviar, output_dim, apply_exp):
     layer_factor = get_layer_factor(con_operator)
-    if model == params.unet_network:
-        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor, con_operator=con_operator, filters=filters,
-                                 bilinear=False, network=model, dilation=0, to_crop=add_frame,
-                                 unet_norm=unet_norm, add_clipping=add_clipping,
-                                 normalization=normalization, apply_exp=apply_exp).to(device_)
-    elif model == params.torus_network:
-        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor, con_operator=con_operator, filters=filters,
-                                 bilinear=False, network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 unet_norm=unet_norm, add_clipping=add_clipping,
-                                 normalization=normalization).to(device_)
-    else:
+    if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
-
+    new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
+                             layer_factor=layer_factor, con_operator=con_operator, filters=filters,
+                             bilinear=False, network=model, dilation=0, to_crop=add_frame,
+                             unet_norm=unet_norm, add_clipping=add_clipping,
+                             normalization=normalization, apply_exp=apply_exp).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
@@ -115,7 +108,6 @@ def save_discriminator_model(path, epoch, output_dir, netD, optimizerD):
     }, path)
 
 
-# ====== TEST RELATED ======
 def get_layer_factor(con_operator):
     if con_operator in params.layer_factor_2_operators:
         return 2
@@ -127,22 +119,17 @@ def get_layer_factor(con_operator):
         assert 0, "Unsupported con_operator request: {}".format(con_operator)
 
 
-def save_batch_images(fake_batch, hdr_origin_batch, output_path, im_name):
-    new_batch = hdr_image_util.back_to_color_batch(hdr_origin_batch, fake_batch)
-    for i in range(fake_batch.size(0)):
-        ours_tone_map_numpy = hdr_image_util.to_0_1_range(new_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy())
-        im = (ours_tone_map_numpy * 255).astype('uint8')
-        imageio.imwrite(os.path.join(output_path, im_name + "_" + str(i) + ".jpg"), im, format='JPEG-PIL')
-
-
-# ====== USE TRAINED MODEL ======
+# ======================================
+# ============ TEST RELATED ============
+# ========= USE TRAINED MODEL ==========
+# ======================================
 def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
-                                       models_names, model_epoch, output_dir_name):
+                               models_names, model_epoch, output_dir_name):
     input_images_path = get_hdr_source_path(images_source)
     for i in range(len(models_names)):
         model_name = models_names[i]
         model_params = get_model_params(model_name)
-        f_factor_path = get_f_factor_path(images_source, model_params["gamma_log"])
+        f_factor_path = get_f_factor_path(images_source, model_params["gamma_log"], use_new_f=False)
         print("cur model = ", model_name)
         cur_model_path = os.path.join(arch_dir, model_name)
         if os.path.exists(cur_model_path):
@@ -197,8 +184,8 @@ def load_g_model(model_params, device, net_path):
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
-    #else:
-    #new_state_dict = state_dict
+    # else:
+    # new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
@@ -207,55 +194,17 @@ def load_g_model(model_params, device, net_path):
 def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_operator, unet_depth_,
                       add_frame, use_pyramid_loss, unet_norm, add_clipping, output_dim=1):
     layer_factor = get_layer_factor(con_operator)
-    if model == params.unet_network:
-        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor,
-                                 con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
-                                 to_crop=add_frame, unet_norm=unet_norm,
-                                 add_clipping=add_clipping, normalization='max_normalization', apply_exp=False).to(
-            device_)
-    elif model == params.torus_network:
-        new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
-                                 layer_factor=layer_factor,
-                                 con_operator=con_operator, filters=filters, bilinear=False,
-                                 network=params.torus_network, dilation=2, to_crop=add_frame,
-                                 unet_norm=unet_norm,
-                                 add_clipping=add_clipping, normalization='max_normalization', apply_exp=False).to(
-            device_)
-    else:
-        assert 0, "Unsupported model request: {}  (creates only G or D)".format(model)
-
+    if model != params.unet_network:
+        assert 0, "Unsupported g model request: {}".format(model)
+    new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
+                             layer_factor=layer_factor,
+                             con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
+                             to_crop=add_frame, unet_norm=unet_norm,
+                             add_clipping=add_clipping, normalization='max_normalization', apply_exp=False).to(device_)
     if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
         print("Using [%d] GPUs" % torch.cuda.device_count())
         new_net = nn.DataParallel(new_net, list(range(torch.cuda.device_count())))
     return new_net
-
-
-def get_dataset_properties():
-    return {"add_frame": True,
-            "normalization": "bugy_max_normalization",
-            "apply_wind_norm": False,
-            "std_norm_factor": 1,
-            "wind_norm_option": "a",
-            "batch_size": 16
-            }
-
-
-def run_model_on_single_npy(input_images_path, G_net, device, output_path):
-    from utils import ProcessedDatasetFolder
-    dataset_properties = get_dataset_properties()
-    npy_dataset = ProcessedDatasetFolder.ProcessedDatasetFolder(root=input_images_path,
-                                                                dataset_properties=dataset_properties,
-                                                                hdrMode=True)
-    dataloader = torch.utils.data.DataLoader(npy_dataset, batch_size=dataset_properties["batch_size"],
-                                             shuffle=True, num_workers=params.workers, pin_memory=True)
-
-    for (h, data_hdr) in enumerate(dataloader, 0):
-        hdr_input = data_hdr[params.gray_input_image_key].to(device)
-        with torch.no_grad():
-            fake = G_net(hdr_input.detach())
-        color_batch = hdr_image_util.back_to_color_batch(data_hdr["color_im"], fake)
-        hdr_image_util.save_color_tensor_batch_as_numpy(color_batch, output_path, h)
 
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
@@ -268,22 +217,19 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
-    #hdr_image_util.save_gray_tensor_as_numpy(gray_im_log, output_path, im_name + "_input")
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
-    #printer.print_g_progress(preprocessed_im_batch, "tester")
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
-    #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, im_name)
 
     original_im_tensor = rgb_img.unsqueeze(0)
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    #hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
+    # hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
 
     file_name = im_name + "_stretch"
     fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
-    #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
+    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
 
     file_name = im_name + "_stretch"
     color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
@@ -298,31 +244,36 @@ def get_model_params(model_name):
                     "clip": get_clip(model_name),
                     "factorised_data": True,
                     "input_loader": None,
-                    "wind_size": 5,
-                    "std_norm_factor": get_std_norm_factor(model_name),
-                    "apply_wind_norm": get_apply_wind_norm(model_name),
                     "gamma_log": get_gamma_log(model_name)}
     return model_params
 
 
-def get_f_factor_path(name, data_gamma_log):
-    path_dict = {
+def get_f_factor_path(name, data_gamma_log, use_new_f):
+    path_dict_prev_f = {
         "test_source": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
         "open_exr_exr_format": {1: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
                                 2: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean90.npy",
                                 10: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean160.npy"},
         "hdr_test": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
-        "npy_pth" : {1: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
-                     2: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
-                     10: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}}
+        "npy_pth": {1: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+                    2: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
+                    10: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}}
+    # TODO : update these dirs when apply the new f on the test data
+    path_dict_new_f = {
+        "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+        "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
+        "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+        "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}
+    if use_new_f:
+        return path_dict_new_f[name]
     if not data_gamma_log and name == "npy_pth":
-        return path_dict[name][1]
-    return path_dict[name][data_gamma_log]
+        return path_dict_prev_f[name][1]
+    return path_dict_prev_f[name][data_gamma_log]
 
 
 def get_hdr_source_path(name):
     path_dict = {
-        "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data",
+        "test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data",
         "new_source": "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data",
         "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
         "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
@@ -422,8 +373,9 @@ if __name__ == '__main__':
     parser.add_argument("--output_dir_name", type=str, default="exr_320")
     args = parser.parse_args()
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    models_names = ["data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
-#    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
+    models_names = [
+        "data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
+    #    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
 
     apply_models_from_arch_dir(args.input_format, device, args.images_source, args.arch_dir,
                                models_names, args.models_epoch, args.output_dir_name)

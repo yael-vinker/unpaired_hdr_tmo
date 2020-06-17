@@ -320,7 +320,7 @@ class GanTrainer:
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):
         input_images_path = model_save_util.get_hdr_source_path(data_source)
-        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log)
+        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log, self.use_new_f)
         output_images_path = os.path.join(self.output_dir, data_format + "_" + str(self.final_epoch))
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
