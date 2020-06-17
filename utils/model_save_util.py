@@ -157,7 +157,7 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
                 if not os.path.exists(cur_output_path):
                     os.mkdir(cur_output_path)
                 run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
-                                  input_format, f_factor_path)
+                                  input_format, f_factor_path, net_G=None, use_new_f=False)
             else:
                 print("model %s does not exists: " % cur_net_path)
         else:
@@ -165,7 +165,7 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
 
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, input_format,
-                      f_factor_path, net_G=None):
+                      f_factor_path, net_G, use_new_f):
     if not net_G:
         net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
@@ -176,7 +176,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
                     or os.path.splitext(img_name)[1] == ".dng":
                 run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                          output_images_path, model_params, f_factor_path)
+                                          output_images_path, model_params, f_factor_path, use_new_f)
         else:
             print("%s in already exists" % (img_name))
 
@@ -258,12 +258,13 @@ def run_model_on_single_npy(input_images_path, G_net, device, output_path):
         hdr_image_util.save_color_tensor_batch_as_numpy(color_batch, output_path, h)
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
-                                                                        use_factorise_gamma_data=True, factor_coeff=1.0,
+                                                                        factor_coeff=1.0,
                                                                         train_reshape=False,
                                                                         gamma_log=model_params["gamma_log"],
-                                                                        f_factor_path=f_factor_path)
+                                                                        f_factor_path=f_factor_path,
+                                                                        use_new_f=use_new_f)
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)

@@ -96,20 +96,6 @@ def hdr_log_loader_factorize(im_hdr, range_factor, brightness_factor):
     return im
 
 
-def apply_preproccess_for_hdr_im_factorised(hdr_im, addFrame):
-    temp_hdr_im = skimage.transform.resize(hdr_im, (128, 128),
-                                       mode='reflect', preserve_range=True).astype("float32")
-    brightness_factor = hdr_image_util.get_brightness_factor(temp_hdr_im)
-    if np.min(hdr_im) < 0:
-        hdr_im = hdr_im - np.min(hdr_im)
-    im_hdr_log = hdr_log_loader_factorize(hdr_im, 1, brightness_factor)
-    im_log_gray = hdr_image_util.to_gray(im_hdr_log)
-    im_log_normalize_tensor = tranforms.tmqi_input_transforms(im_log_gray)
-    if addFrame:
-        im_log_normalize_tensor = data_loader_util.add_frame_to_im(im_log_normalize_tensor)
-    return im_log_normalize_tensor
-
-
 def apply_preproccess_for_hdr_im_factorize(hdr_im, log_factor, addFrame=False):
     brightness_factor = hdr_image_util.get_brightness_factor(hdr_im)
     print(brightness_factor)

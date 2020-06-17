@@ -173,7 +173,7 @@ class Scale(object):
         # if self.dtype == np.uint8:
         #     scaled_im = skimage.transform.resize(pic, (self.size, self.size),  mode='reflect', preserve_range=False)
         #     return util.img_as_ubyte(scaled_im) / 255
-        im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=True)
+        im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=True, order=3)
         # im = skimage.transform.resize(pic, (self.size, self.size), mode='reflect', preserve_range=False, anti_aliasing=True)
         return im
 

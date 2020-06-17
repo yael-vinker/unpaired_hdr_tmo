@@ -88,6 +88,7 @@ class GanTrainer:
         self.normalize = custom_transform.Normalize(0.5, 0.5)
         self.use_factorise_gamma_data = opt.use_factorise_gamma_data
         self.gamma_log = opt.gamma_log
+        self.use_new_f = opt.use_new_f
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
@@ -324,4 +325,4 @@ class GanTrainer:
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, data_format, f_factor_path, self.netG)
+                                          output_images_path, data_format, f_factor_path, self.netG, self.use_new_f)

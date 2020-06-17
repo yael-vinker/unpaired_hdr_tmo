@@ -1,12 +1,7 @@
 import numpy as np
-import torch
-# from __future__ import print_function
 from torchvision.datasets import DatasetFolder
 import utils.hdr_image_util as hdr_image_util
-from utils import params
 import utils.data_loader_util as data_loader_util
-from torch import nn
-import torch.nn.functional as F
 IMG_EXTENSIONS_local = ('.npy')
 
 

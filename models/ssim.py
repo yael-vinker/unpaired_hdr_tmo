@@ -116,6 +116,7 @@ class IntensityLoss(torch.nn.Module):
 class MuLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list, wind_size):
         super(MuLoss, self).__init__()
+        self.wind_size = wind_size
         self.window = create_window(wind_size, 1)
         # self.window = get_gaussian_kernel2(5, 1)
         self.pyramid_weight_list = pyramid_weight_list
@@ -132,7 +133,7 @@ class MuLoss(torch.nn.Module):
             if r_weights:
                 cur_weights = r_weights[i]
             mu_loss_list.append(self.pyramid_weight_list[i] * self.mu_loss_method(self.window, fake, hdr_input,
-                                                                      self.mse_loss, cur_weights))
+                                                                      self.mse_loss, cur_weights, self.wind_size))
             fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_input = F.interpolate(hdr_input, scale_factor=0.5, mode='bicubic', align_corners=False)
         return torch.sum(torch.stack(mu_loss_list))

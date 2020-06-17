@@ -38,7 +38,7 @@ def parse_arguments():
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
-    parser.add_argument("--ssim_window_size", type=int, default=5)
+    parser.add_argument("--ssim_window_size", type=int, default=7)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="2,2,6")
 
     parser.add_argument('--apply_intensity_loss', type=float, default=1)
@@ -73,7 +73,9 @@ def parse_arguments():
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
-    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path)
+    # parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path) #52180538.8149
+    parser.add_argument('--f_factor_path', type=str, default="none")  # 52180538.8149
+    parser.add_argument('--use_new_f', type=int, default=1)
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
 
@@ -157,7 +159,10 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "clip_"
     if opt.apply_exp:
         result_dir_pref = result_dir_pref + "exp_"
-    result_dir_pref = result_dir_pref + "data_" + str(opt.gamma_log)
+    if opt.use_new_f:
+        result_dir_pref = result_dir_pref + "new_f_"
+    else:
+        result_dir_pref = result_dir_pref + "data" + str(opt.gamma_log) + "_"
     if not opt.train_with_D:
         result_dir_pref = result_dir_pref + "no_D_"
     if opt.change_random_seed:
@@ -166,18 +171,18 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     if opt.apply_sig_mu_ssim:
         result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
-    result_dir_pref = result_dir_pref + "d_" + str(opt.loss_g_d_factor)
+    result_dir_pref = result_dir_pref + "d" + str(opt.loss_g_d_factor)
     if opt.ssim_loss_factor:
-        result_dir_pref = result_dir_pref + "_" + opt.struct_method + "_" + str(opt.ssim_loss_factor) + "_pyramid_" + opt.pyramid_weight_list
+        result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
     if opt.apply_intensity_loss:
-        s = opt.std_method + "_"
+        s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + str(opt.ssim_window_size) + "_"
         if opt.apply_intensity_loss_laplacian_weights:
-            s = s + "_b_" + str(opt.bilateral_mu) + "_sigma_r_" + str(opt.bilateral_sigma_r)
-        result_dir_pref = result_dir_pref + s + str(opt.apply_intensity_loss) + "_eps_" + str(opt.intensity_epsilon) + "_" + opt.std_pyramid_weight_list
+            s = s + "bmu" + str(opt.bilateral_mu) + "_sigr" + str(opt.bilateral_sigma_r) + "_"
+        result_dir_pref = result_dir_pref + s + "eps" + str(opt.intensity_epsilon)
         if opt.std_method not in ["std", "std_bilateral"]:
-            result_dir_pref = result_dir_pref + "_alpha_" + str(opt.alpha)
+            result_dir_pref = result_dir_pref + "_alpha" + str(opt.alpha)
     if opt.mu_loss_factor:
-        result_dir_pref = result_dir_pref + "_mu_loss_" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
+        result_dir_pref = result_dir_pref + "_mu_loss" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     if opt.last_layer == "msig":
         result_dir_pref = result_dir_pref + "_msig_" + str(opt.custom_sig_factor)
     output_dir = result_dir_pref \
