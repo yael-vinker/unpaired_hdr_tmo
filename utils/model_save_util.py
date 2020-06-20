@@ -259,8 +259,12 @@ def get_f_factor_path(name, data_gamma_log, use_new_f):
                     2: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
                     10: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}}
     # TODO : update these dirs when apply the new f on the test data
+    path_dict_new = {"test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+                    "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_newf.npy",
+                    "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+                    "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_fid_newf.npy"}
     if use_new_f:
-        return "none"
+        return path_dict_new[name]
     if not data_gamma_log and name == "npy_pth":
         return path_dict_prev_f[name][1]
     return path_dict_prev_f[name][data_gamma_log]

@@ -547,8 +547,14 @@ def get_laplacian_kernel(kernel_size):
     return kernel.double()
 
 
-def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu):
-    gamma_input = data_loader_util.crop_input_hdr_batch(gamma_input)
+def get_blf_log_input(hdr_original_gray_norm, brightness_factor, alpha=1):
+    brightness_factor = brightness_factor.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
+    return np.log(hdr_original_gray_norm * brightness_factor) ** alpha
+
+
+def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu, blf_input="gamma"):
+    if blf_input == "gamma":
+        gamma_input = data_loader_util.crop_input_hdr_batch(gamma_input)
     gamma_input = gamma_input ** bilateral_mu
     m = nn.ZeroPad2d(wind_size // 2)
     radiometric_weights_arr = []

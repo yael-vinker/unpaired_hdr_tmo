@@ -55,6 +55,10 @@ def parse_arguments():
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--bilateral_sigma_r', type=float, default=0.07)
     parser.add_argument('--bilateral_mu', type=float, default=1)
+    parser.add_argument('--blf_input', type=str, default="gamma",
+                        help="can be 'log' for log(hdr/hdr.max * brightness)**alpha or 'gamma' for gamma.")
+    parser.add_argument('--blf_alpha', type=float, default=1,
+                        help="if blf_input is log than specify alpha")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -178,6 +182,8 @@ def create_dir(opt):
         s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + str(opt.ssim_window_size) + "_"
         if opt.apply_intensity_loss_laplacian_weights:
             s = s + "bmu" + str(opt.bilateral_mu) + "_sigr" + str(opt.bilateral_sigma_r) + "_"
+            if opt.blf_input == "log":
+                s = s + str(opt.blf_input) + str(opt.blf_alpha) + "_"
         result_dir_pref = result_dir_pref + s + "eps" + str(opt.intensity_epsilon)
         if opt.std_method not in ["std", "std_bilateral"]:
             result_dir_pref = result_dir_pref + "_alpha" + str(opt.alpha)
