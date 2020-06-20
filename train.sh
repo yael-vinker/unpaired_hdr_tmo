@@ -55,6 +55,10 @@ echo "final_epoch ${46}"
 echo "bilateral_mu ${47}"
 echo "max_stretch ${48}"
 echo "min_stretch ${49}"
+echo "ssim_window_size ${50}"
+echo "use_new_f ${51}"
+echo "blf_input ${52}"
+echo "blf_alpha ${53}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -108,4 +112,6 @@ python3.7 -W ignore -u main_train.py \
   --max_stretch ${48} \
   --min_stretch ${49} \
   --ssim_window_size ${50} \
-  --use_new_f ${51}
+  --use_new_f ${51} \
+  --blf_input ${52} \
+  --blf_alpha ${53}

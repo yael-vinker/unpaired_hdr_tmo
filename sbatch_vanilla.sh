@@ -9,9 +9,11 @@ con_operator="square_and_square_root"
 use_xaviar=1
 
 # ====== DATASET ======
-data_root_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train"
+#data_root_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train"
+data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data/train/train_hdrplus_new_f_1"
 data_root_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/train_half2"
-test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train_test"
+#test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train_test"
+test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data/test/test_hdrplus_new_f_1"
 test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
 result_dir_prefix="/cs/labs/raananf/yael_vinker/06_21_results/"
@@ -60,6 +62,8 @@ normalization="stretch"
 max_stretch=1.05
 min_stretch=0.025
 bilateral_mu=1
+blf_input="gamma"
+blf_alpha=1
 
 echo "========================= 1 ==========================="
 sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train.sh \
@@ -73,4 +77,4 @@ sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
-  $use_new_f
+  $use_new_f $blf_input $blf_alpha
