@@ -68,7 +68,8 @@ class GanTrainer:
             self.intensity_loss_factor = opt.apply_intensity_loss
         if opt.mu_loss_factor:
             self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size)
-            self.mu_loss_factor = opt.mu_loss_factor
+        self.mu_loss_factor = opt.mu_loss_factor
+
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
@@ -201,8 +202,8 @@ class GanTrainer:
                 blf_input = ssim.get_blf_log_input(hdr_original_gray_norm, gamma_factor, alpha=self.blf_alpha)
             r_weights = ssim.get_radiometric_weights(blf_input, self.wind_size, self.bilateral_sigma_r,
                                                      self.bilateral_mu, self.blf_input)
-        self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake)
-        self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor)
+        self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
+        self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         self.optimizerG.step()
 
@@ -214,26 +215,22 @@ class GanTrainer:
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
 
-    def update_ssim_loss(self, hdr_input, hdr_input_original_gray_norm, fake):
+    def update_ssim_loss(self, hdr_input, hdr_input_original_gray_norm, fake, r_weights):
         if self.ssim_loss_g_factor:
-            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm, hdr_input)
+            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm,
+                                                                      hdr_input, r_weights)
             retain_graph = False
             if self.apply_intensity_loss:
                 retain_graph = True
             self.errG_ssim.backward(retain_graph=retain_graph)
             self.G_loss_ssim.append(self.errG_ssim.item())
 
-    def update_sigma_loss(self, hdr_input_original_gray, fake):
-        if self.sigma_loss:
-            self.errG_sigma = self.sig_loss_factor * self.sigma_loss(fake, hdr_input_original_gray)
-            self.errG_sigma.backward()
-            self.G_loss_sigma.append(self.errG_sigma.item())
-
-    def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor):
+    def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray):
         if self.apply_intensity_loss:
             self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input,
                                                                                    hdr_original_gray_norm,
-                                                                                   r_weights, gamma_factor)
+                                                                                   r_weights, gamma_factor,
+                                                                                   hdr_original_gray)
             retain_graph = False
             if self.mu_loss_factor:
                 retain_graph = True
