@@ -59,6 +59,8 @@ echo "ssim_window_size ${50}"
 echo "use_new_f ${51}"
 echo "blf_input ${52}"
 echo "blf_alpha ${53}"
+echo "std_mul_max ${54}"
+
 
 
 python3.7 -W ignore -u main_train.py \
@@ -114,4 +116,5 @@ python3.7 -W ignore -u main_train.py \
   --ssim_window_size ${50} \
   --use_new_f ${51} \
   --blf_input ${52} \
-  --blf_alpha ${53}
+  --blf_alpha ${53} \
+  --std_mul_max ${54}

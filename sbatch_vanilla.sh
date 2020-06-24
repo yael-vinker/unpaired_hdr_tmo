@@ -55,6 +55,7 @@ alpha=0.5
 bilateral_sigma_r=0.07
 apply_intensity_loss=1
 std_pyramid_weight_list="8,4,1"
+std_mul_max=0
 
 mu_loss_factor=2
 mu_pyramid_weight_list="1,1,1"
@@ -77,4 +78,4 @@ sbatch --mem=4000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
-  $use_new_f $blf_input $blf_alpha
+  $use_new_f $blf_input $blf_alpha $std_mul_max
