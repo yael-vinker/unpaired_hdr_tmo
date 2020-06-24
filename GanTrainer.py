@@ -66,10 +66,10 @@ class GanTrainer:
             self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
                                                          opt.std_method, opt.ssim_window_size)
             self.intensity_loss_factor = opt.apply_intensity_loss
+        self.std_mul_max = opt.std_mul_max
         if opt.mu_loss_factor:
             self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size)
         self.mu_loss_factor = opt.mu_loss_factor
-
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
@@ -226,6 +226,8 @@ class GanTrainer:
             self.G_loss_ssim.append(self.errG_ssim.item())
 
     def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray):
+        if not self.std_mul_max:
+            hdr_original_gray = None
         if self.apply_intensity_loss:
             self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input,
                                                                                    hdr_original_gray_norm,

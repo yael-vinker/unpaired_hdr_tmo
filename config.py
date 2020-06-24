@@ -53,11 +53,12 @@ def parse_arguments():
 
     parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
-    parser.add_argument('--bilateral_sigma_r', type=float, default=0.07)
+    parser.add_argument('--bilateral_sigma_r', type=float, default=0.05)
     parser.add_argument('--bilateral_mu', type=float, default=1)
+    parser.add_argument('--std_mul_max', type=int, default=0)
     parser.add_argument('--blf_input', type=str, default="gamma",
                         help="can be 'log' for log(hdr/hdr.max * brightness)**alpha or 'gamma' for gamma.")
-    parser.add_argument('--blf_alpha', type=float, default=1,
+    parser.add_argument('--blf_alpha', type=float, default=0.8,
                         help="if blf_input is log than specify alpha")
 
     # ====== DATASET ======
@@ -179,7 +180,10 @@ def create_dir(opt):
     if opt.ssim_loss_factor:
         result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
     if opt.apply_intensity_loss:
-        s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + str(opt.ssim_window_size) + "_"
+        s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + \
+            str(opt.ssim_window_size) + "_"
+        if opt.std_mul_max:
+            s += "std_mul_max_"
         if opt.apply_intensity_loss_laplacian_weights:
             s = s + "bmu" + str(opt.bilateral_mu) + "_sigr" + str(opt.bilateral_sigma_r) + "_"
             if opt.blf_input == "log":
