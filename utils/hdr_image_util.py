@@ -114,7 +114,7 @@ def get_new_brightness_factor(M):
     J = J / np.max(J)
 
     npix = J.shape[0]
-    Cout = 0
+    Cout = 1
     for i in range(100):
 
         C = np.sqrt(2) ** i
@@ -124,12 +124,14 @@ def get_new_brightness_factor(M):
         I = I[I < 0.99]
 
         if I.shape[0] / npix < 0.1:
+            # Cout = C * np.sqrt(2)
             break
 
         h = np.histogram(I, bins=5)
         h = h[0]
 
         rat = np.mean(h[0]) / np.mean(h[1])
+        # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
         if rat > 0.5:
             Cout = C * np.sqrt(2)
         else:
@@ -273,5 +275,5 @@ def save_color_tensor_as_numpy(tensor, output_path, im_name):
     im = (tensor_0_1 * 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)
-    imageio.imwrite(os.path.join(output_path, im_name + ".jpg"), im, format='JPEG-PIL')
+    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
 
