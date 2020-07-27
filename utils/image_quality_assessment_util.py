@@ -448,6 +448,37 @@ def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
             shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
+def gather_all_architectures_exr(arch_dir, output_path, epoch, date, im_number):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "exr_320")
+        old_name = im_number + "_stretch.png"
+        cur_output_path = os.path.join(output_path, epoch, im_number)
+        output_name = date + "_" + arch_name + ".png"
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        if os.path.exists(os.path.join(im_path, old_name)):
+            shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+        # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
+
+
+def gather_im_by_epoch(arch_dir, output_path, im_number):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for arch_name in os.listdir(arch_dir):
+        im_path = os.path.join(os.path.abspath(arch_dir), arch_name, "model_results")
+        cur_output_path = os.path.join(output_path, arch_name + "_" + im_number)
+        if not os.path.exists(cur_output_path):
+            os.makedirs(cur_output_path)
+        for ep in os.listdir(im_path):
+            cur_im_path = os.path.join(im_path, ep)
+            old_name = im_number + "_stretch.png"
+            output_name = ep + "_" + im_number + ".png"
+            if os.path.exists(os.path.join(cur_im_path, old_name)):
+                shutil.copy(os.path.join(cur_im_path, old_name), os.path.join(cur_output_path, output_name))
 
 def save_dng_data_for_fid(input_path, output_path, other_path):
     from shutil import copyfile
@@ -471,6 +502,9 @@ if __name__ == '__main__':
     #    normalization_test()
     # sub_test()
     # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    gather_im_by_epoch("/cs/labs/raananf/yael_vinker/Jun/06_24/results_04_07",
+        "/cs/labs/raananf/yael_vinker/Jun/summary_04_07/by_epochs", "OtterPoint")
+
     epochs = ["120"]
     im_numbers = ["synagogue", "belgium"]
     # for epoch in epochs:

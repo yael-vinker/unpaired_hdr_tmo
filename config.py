@@ -56,7 +56,7 @@ def parse_arguments():
     parser.add_argument('--bilateral_sigma_r', type=float, default=0.05)
     parser.add_argument('--bilateral_mu', type=float, default=1)
     parser.add_argument('--std_mul_max', type=int, default=0)
-    parser.add_argument('--blf_input', type=str, default="gamma",
+    parser.add_argument('--blf_input', type=str, default="log",
                         help="can be 'log' for log(hdr/hdr.max * brightness)**alpha or 'gamma' for gamma.")
     parser.add_argument('--blf_alpha', type=float, default=0.8,
                         help="if blf_input is log than specify alpha")

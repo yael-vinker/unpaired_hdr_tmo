@@ -122,7 +122,7 @@ def get_single_hdr_im(im_path, file_extension, testMode):
 
 
 def print_cuda_details(device):
-    if (device == 'cuda') and (torch.cuda.device_count() > 1):
+    if (device == 'cuda') and (torch.cuda.device_count() >= 1):
         print("Using [%d] GPUs" % torch.cuda.device_count())
         for i in range(torch.cuda.device_count()):
             print("GPU [%d] device name = %s" % (i, torch.cuda.get_device_name(i)))
