@@ -3,6 +3,8 @@ import inspect
 import os
 import torch.optim as optim
 import tranforms as my_transforms
+from torch.utils.tensorboard import SummaryWriter
+import logging
 import imageio
 from models import ssim
 import numpy as np
@@ -45,6 +47,8 @@ def get_opt():
     parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="2,2,2")
 
     opt = parser.parse_args()
+
+
     train_size = "_256_"
     if opt.full_size_im:
         train_size = "_full_size_"
@@ -56,10 +60,15 @@ def get_opt():
     mkdir(output_dir)
     mkdir(os.path.join(output_dir, "images"))
     mkdir(os.path.join(output_dir, "loss"))
+    mkdir(os.path.join(output_dir, "logs"))
 
     opt.output_path = output_dir
     opt.images_output_path = os.path.join(output_dir, "images")
     opt.loss_output_path = os.path.join(output_dir, "loss")
+    opt.log_dir = os.path.join(output_dir, "logs")
+
+    opt.logger = logging.getLogger(__name__)
+    opt.writer = SummaryWriter()
 
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     opt.device = device
@@ -69,9 +78,11 @@ def get_opt():
         device)
     return opt
 
+
 def mkdir(path):
     if not os.path.exists(path):
         os.mkdir(path)
+
 
 def imshow(tensor, title=None):
     plt.figure()
@@ -176,6 +187,9 @@ def save_im(opt, run, loss, input_im, color_im):
     im_color = color_im[0].clone().permute(1, 2, 0).detach().cpu().numpy()
     im_color = hdr_image_util.back_to_color(im_color, im)
     im_name = "iter[%d]loss[%.4f]color_norm.png" % (run[0], loss)
+    opt.writer.add_image("gen_image", im_color)
+    opt.writer.close()
+
     imageio.imwrite(os.path.join(opt.images_output_path, im_name), im_color)
     im_name = "iter[%d]loss[%.4f]color_clip.png" % (run[0], loss)
     im_color2 = (np.clip(im_color,0,1) * 255).astype('uint8')
@@ -198,7 +212,9 @@ def save_loss(opt, run, struct_err_lst, contrast_err_lst, cmprs_err_lst):
     plt.savefig(os.path.join(opt.loss_output_path, str(run[0]) + ".png"))  # should before show method
     plt.close()
 
+
 def train_on_single_image():
+    print(torch.__version__)
     opt = get_opt()
     input_im, color_im, gray_original_norm, \
         gray_original, gamma_factor, r_weights = get_input(opt)
