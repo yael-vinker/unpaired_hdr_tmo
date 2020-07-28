@@ -23,10 +23,9 @@ def get_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument("--im_path", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data/"
                                                        "hdr_data_with_f/train/OtterPoint.npy")
-    # parser.add_argument("--im_path", type=str, default="/Users/yaelvinker/PycharmProjects"
-    #                                                    "/lab/utils/folders/hdr_data/OtterPoint.exr")
     parser.add_argument("--full_size_im", type=int, default=0)
     parser.add_argument("--num_steps", type=int, default=1001)
+    parser.add_argument("--steps_to_save", type=int, default=10)
     parser.add_argument("--output_path", type=str, default="/Users/yaelvinker/PycharmProjects/lab/single_image_trainer/single_image_output")
 
     parser.add_argument("--wind_size", type=int, default=5)
@@ -234,7 +233,7 @@ def train_on_single_image():
             loss = struct_err + contrast_err + mu_err
             loss.backward()
 
-            if run[0] % 10 == 0:
+            if run[0] % opt.steps_to_save == 0:
                 cur_time = time.time() - start
                 print("run {}:".format(run))
                 print("struct_err[%.4f] contrast_err[%.4f] mu_err[%.4f] sec[%.4f]" %
