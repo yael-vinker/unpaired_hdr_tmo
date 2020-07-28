@@ -16,9 +16,10 @@ from utils import printer
 # =======================================
 class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
-                 apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1):
+                 apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1, crop_input=True):
         super(OUR_CUSTOM_SSIM_PYRAMID, self).__init__()
         self.window_size = window_size
+        self.crop_input = crop_input
         self.channel = 1
         self.window = create_window(window_size, self.channel)
         self.gaussian_kernel = get_gaussian_kernel(window_size=window_size, channel=1)
@@ -54,7 +55,8 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
             self.window = window
             self.channel = channel
         if self.struct_method == "gamma_ssim":
-            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+            if self.crop_input:
+                hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
             return our_custom_ssim_pyramid(fake, hdr_input, window, self.window_size, channel,
                                            self.pyramid_weight_list,
                                            self.mse_loss, self.use_c3,
@@ -74,9 +76,10 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
 
 
 class IntensityLoss(torch.nn.Module):
-    def __init__(self, epsilon, pyramid_weight_list, alpha=1, std_method="std", wind_size=5):
+    def __init__(self, epsilon, pyramid_weight_list, alpha=1, std_method="std", wind_size=5, crop_input=True):
         super(IntensityLoss, self).__init__()
         self.epsilon = epsilon
+        self.crop_input = crop_input
         self.wind_size = wind_size
         self.window = create_window(wind_size, 1)
         # self.window = get_gaussian_kernel2(wind_size, 1)
@@ -112,7 +115,8 @@ class IntensityLoss(torch.nn.Module):
     def forward(self, fake, hdr_input, hdr_original_im, r_weights=None, f_factors=None, hdr_original_gray=None):
         if f_factors is not None and f_factors.sum() == 0:
             f_factors = None
-        hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+        if self.crop_input:
+            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
         cur_weights = None
         ssim_loss_list = []
         for i in range(len(self.pyramid_weight_list)):
@@ -134,7 +138,7 @@ class IntensityLoss(torch.nn.Module):
 
 
 class MuLoss(torch.nn.Module):
-    def __init__(self, pyramid_weight_list, wind_size):
+    def __init__(self, pyramid_weight_list, wind_size, crop_input=True):
         super(MuLoss, self).__init__()
         self.wind_size = wind_size
         self.window = create_window(wind_size, 1)
@@ -142,9 +146,11 @@ class MuLoss(torch.nn.Module):
         self.pyramid_weight_list = pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.mu_loss_method = mu_loss
+        self.crop_input = crop_input
 
     def forward(self, fake, img2, hdr_input, r_weights):
-        hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
+        if self.crop_input:
+            hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
         if r_weights:
             self.mu_loss_method = mu_loss_bilateral
         cur_weights = None
@@ -471,29 +477,29 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
     hdr_pow_windows = hdr_pow_windows.permute(0, 3, 1, 2)
     hdr_pow_mu = torch.sum(hdr_pow_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
 
-    hdr_original_windows = get_im_as_windows(hdr_original_im, wind_size)
-    hdr_original_windows = hdr_original_windows.squeeze(dim=1)
-    hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
-    hdr_original_bf_mu = torch.sum(hdr_original_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
-            hdr_original_windows - hdr_original_bf_mu)
-    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * weights_map, axis=1).unsqueeze(
-        dim=1) / weights_map_sum
-    std_hdr_original = torch.pow(
-        torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
+    # hdr_original_windows = get_im_as_windows(hdr_original_im, wind_size)
+    # hdr_original_windows = hdr_original_windows.squeeze(dim=1)
+    # hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
+    # hdr_original_bf_mu = torch.sum(hdr_original_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
+    # hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
+    # hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
+    #         hdr_original_windows - hdr_original_bf_mu)
+    # sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * weights_map, axis=1).unsqueeze(
+    #     dim=1) / weights_map_sum
+    # std_hdr_original = torch.pow(
+    #     torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
 
-    hdr_original_bf_mu = torch.sum(hdr_original_windows * distance_gause, axis=1).unsqueeze(dim=1) / torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
-    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
-            hdr_original_windows - hdr_original_bf_mu)
-    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * distance_gause, axis=1).unsqueeze(
-        dim=1) / torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
-    std_hdr_original2 = torch.pow(
-        torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
+    # hdr_original_bf_mu = torch.sum(hdr_original_windows * distance_gause, axis=1).unsqueeze(dim=1) / torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
+    # hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
+    # hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
+    #         hdr_original_windows - hdr_original_bf_mu)
+    # sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * distance_gause, axis=1).unsqueeze(
+    #     dim=1) / torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
+    # std_hdr_original2 = torch.pow(
+    #     torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
     # w1 = (r_weights.sum(dim=1) - 1)
 
-    std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + epsilon)
+    std_objective = (alpha / (f_factors + epsilon)) * std_gamma * (hdr_pow_mu)
 
     if hdr_original_gray is not None:
         hdr_original_gray = hdr_original_gray.view(hdr_original_gray.size(0), -1)
