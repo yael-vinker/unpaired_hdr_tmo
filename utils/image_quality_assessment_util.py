@@ -493,6 +493,7 @@ def save_dng_data_for_fid(input_path, output_path, other_path):
             copyfile(origin_im_path, new_im_path)
 
 
+
 if __name__ == '__main__':
     rename_files("/Users/yaelvinker/Downloads/image-quality-assessment-master/src/tests/test_images/fattal/")
     # save_dng_data_for_fid("/cs/labs/raananf/yael_vinker/dng_collection",

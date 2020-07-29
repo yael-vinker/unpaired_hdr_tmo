@@ -90,7 +90,6 @@ class IntensityLoss(torch.nn.Module):
             "std_bilateral": std_loss_bilateral,
             "gamma_factor_loss": gamma_factor_loss,
             "gamma_factor_loss_bilateral": gamma_factor_loss_bilateral,
-            "std_gamma_loss": std_gamma_loss,
             "bilateral_origin": loss_bilateral_original_im,
             "bilateral_origin_blf": loss_bilateral_original_im_blf,
             "blf_wind_off": std_loss_blf_off,
@@ -394,29 +393,6 @@ def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_los
 
     res = ones - (std_fake / (std_fake + std_objective.detach()))
     return res.mean()
-
-
-def std_gamma_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None):
-    if fake.is_cuda:
-        window = window.cuda(fake.get_device())
-    window = window.type_as(fake)
-    window = window / window.sum()
-    mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
-    mu_fake_sq = mu_fake.pow(2)
-    sigma_fake_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu_fake_sq
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + 1e-10, 0.5)
-
-    mu_gamma = F.conv2d(gamma_hdr, window, padding=5 // 2, groups=1)
-    mu_gamma_sq = mu_gamma.pow(2)
-    sigma_gamma_sq = F.conv2d(gamma_hdr * gamma_hdr, window, padding=5 // 2, groups=1) - mu_gamma_sq
-    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + 1e-10, 0.5)
-
-    f_factors = f_factors.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
-    hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
-    mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=5 // 2, groups=1)
-    std_objective = alpha * std_gamma
-    return mse_loss(std_fake, std_objective.detach())
 
 
 def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,

@@ -96,7 +96,6 @@ def parse_arguments():
     parser.add_argument("--result_dir_prefix", type=str, default="")
     parser.add_argument("--final_epoch", type=int, default=0)
 
-
     args = parser.parse_args()
     return args
 
