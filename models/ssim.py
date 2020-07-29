@@ -366,27 +366,32 @@ def std_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, a
 
 
 def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None):
+                      f_factors=None, wind_size=5, hdr_original_gray=None, apply_on_log=False):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
         ones = ones.cuda(fake.get_device())
     window = window.type_as(fake)
     window = window / window.sum()
-    mu_fake = F.conv2d(fake, window, padding=5 // 2, groups=1)
+    mu_fake = F.conv2d(fake, window, padding=wind_size // 2, groups=1)
     mu_fake_sq = mu_fake.pow(2)
-    sigma_fake_sq = F.conv2d(fake * fake, window, padding=5 // 2, groups=1) - mu_fake_sq
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + 1e-10, 0.5)
+    sigma_fake_sq = F.conv2d(fake * fake, window, padding=wind_size // 2, groups=1) - mu_fake_sq
+    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + params.epsilon, 0.5)
 
-    mu_gamma = F.conv2d(gamma_hdr, window, padding=5 // 2, groups=1)
+    mu_gamma = F.conv2d(gamma_hdr, window, padding=wind_size // 2, groups=1)
     mu_gamma_sq = mu_gamma.pow(2)
-    sigma_gamma_sq = F.conv2d(gamma_hdr * gamma_hdr, window, padding=5 // 2, groups=1) - mu_gamma_sq
-    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + 1e-10, 0.5)
+    sigma_gamma_sq = F.conv2d(gamma_hdr * gamma_hdr, window, padding=wind_size // 2, groups=1) - mu_gamma_sq
+    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + params.epsilon, 0.5)
 
     f_factors = f_factors.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
     hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
-    mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=5 // 2, groups=1)
-    std_objective = (alpha / f_factors) * std_gamma * (mu_hdr_im_pow_gamma + epsilon)
+    mu_hdr_im_pow_gamma = F.conv2d(hdr_im_pow_gamma, window, padding=wind_size // 2, groups=1)
+    std_objective = (alpha / (f_factors + epsilon)) * std_gamma * (mu_hdr_im_pow_gamma)
+    if hdr_original_gray is not None:
+        hdr_original_gray = hdr_original_gray.view(hdr_original_gray.size(0), -1)
+        hdr_original_gray_max = hdr_original_gray.max(1, keepdim=True)[0].reshape(f_factors.shape)
+        std_objective = std_objective * hdr_original_gray_max
+
     res = ones - (std_fake / (std_fake + std_objective.detach()))
     return res.mean()
 
@@ -501,10 +506,10 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
 
     std_objective = (alpha / (f_factors + epsilon)) * std_gamma * (hdr_pow_mu)
 
-    if hdr_original_gray is not None:
-        hdr_original_gray = hdr_original_gray.view(hdr_original_gray.size(0), -1)
-        hdr_original_gray_max = hdr_original_gray.max(1, keepdim=True)[0].reshape(f_factors.shape)
-        std_objective = std_objective * hdr_original_gray_max
+    # if hdr_original_gray is not None:
+    #     hdr_original_gray = hdr_original_gray.view(hdr_original_gray.size(0), -1)
+    #     hdr_original_gray_max = hdr_original_gray.max(1, keepdim=True)[0].reshape(f_factors.shape)
+    #     std_objective = std_objective * hdr_original_gray_max
 
     res = ones - (std_fake / (std_fake + std_objective.detach()))
     return res.mean()
@@ -1053,6 +1058,9 @@ def std_loss_blf_off(window, fake, gamma_hdr, hdr_original_im, threshold=0.1, ms
         hdr_original_im = torch.log(hdr_original_im * 1000 + 1)
         hdr_original_im = hdr_original_im / hdr_original_im.max()
     std_hdr_original = get_std_no_blf(hdr_original_im, wind_size, distance_gause)
+    import matplotlib.pyplot as plt
+    plt.imshow(std_hdr_original[0,0].numpy(), cmap='gray')
+    plt.show()
     res = ones - (std_fake / (std_fake + std_objective.detach() + params.epsilon2))
     res[std_hdr_original >= threshold] = 0
     return res.mean()
@@ -1085,7 +1093,7 @@ def std_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_lo
     return res.mean()
 
 
-def mu_loss(window, fake, hdr_input, mse_loss, r_weights):
+def mu_loss(window, fake, hdr_input, mse_loss, r_weights, wind_size):
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
     window = window.type_as(fake)

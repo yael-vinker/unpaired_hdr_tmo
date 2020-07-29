@@ -1,0 +1,7 @@
+tensorboard:
+
+ssh -N -L 6006:silico-002:6006 yael_vinker%river@gw.cs.huji.ac.il
+
+srun --mem=16g -c8 --time=1-12 --pty $SHELL
+source /cs/labs/raananf/yael_vinker/python7-venv/bin/activate.csh
+python -m tensorboard.main --logdir logs --host 0.0.0.0

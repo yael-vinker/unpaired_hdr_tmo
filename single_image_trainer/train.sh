@@ -17,7 +17,7 @@ echo "alpha ${12}"
 echo "std_method ${13}"
 echo "blf_alpha ${14}"
 echo "mu_pyramid_weight_list ${15}"
-
+echo "use_cmprs_loss ${16}"
 
 python3.7 -W ignore -u single_image_trainer.py \
   --im_path $1 \
@@ -34,4 +34,5 @@ python3.7 -W ignore -u single_image_trainer.py \
   --alpha ${12} \
   --std_method ${13} \
   --blf_alpha ${14} \
-  --mu_pyramid_weight_list ${15}
+  --mu_pyramid_weight_list ${15} \
+  --use_cmprs_loss ${16}
