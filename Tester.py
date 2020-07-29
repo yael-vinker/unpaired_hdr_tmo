@@ -135,7 +135,8 @@ class Tester:
         plot_util.plot_general_accuracy(self.G_accuracy_test, self.D_accuracy_fake_test, self.D_accuracy_real_test,
                                         "TEST epoch acc = " + str(epoch), epoch, acc_path)
 
-    def save_test_images(self, epoch, out_dir, input_images_mean, netD, netG, criterion, ssim_loss, num_epochs):
+    def save_test_images(self, epoch, out_dir, input_images_mean, netD, netG,
+                         criterion, ssim_loss, num_epochs, add_frame):
         out_dir = os.path.join(out_dir, "result_images")
         new_out_dir = os.path.join(out_dir, "images_epoch=" + str(epoch))
 
@@ -152,7 +153,10 @@ class Tester:
         printer.print_g_progress_tensor(test_hdr_batch_image, "from test")
         fake = self.get_fake_test_images(test_hdr_batch_image, netG)
         printer.print_g_progress_tensor(fake, "from test res")
-        test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
+        if add_frame:
+            test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
+        else:
+            test_real_batch_frame = test_real_batch["input_im"]
         printer.print_g_progress_tensor(test_real_batch_frame, "ldr from test")
         # fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
         # printer.print_g_progress_tensor(fake_ldr, "fake ldr from test")

@@ -50,7 +50,8 @@ class GanTrainer:
                                                           pyramid_pow=False, use_c3=False,
                                                           apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
                                                           struct_method=opt.struct_method,
-                                                          std_norm_factor=opt.std_norm_factor)
+                                                          std_norm_factor=opt.std_norm_factor,
+                                                          crop_input=opt.add_frame)
 
         if opt.use_sigma_loss:
             self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
@@ -64,11 +65,11 @@ class GanTrainer:
         self.blf_alpha = opt.blf_alpha
         if opt.apply_intensity_loss:
             self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
-                                                         opt.std_method, opt.ssim_window_size)
+                                                         opt.std_method, opt.ssim_window_size, opt.add_frame)
             self.intensity_loss_factor = opt.apply_intensity_loss
         self.std_mul_max = opt.std_mul_max
         if opt.mu_loss_factor:
-            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size)
+            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size, opt.add_frame)
         self.mu_loss_factor = opt.mu_loss_factor
 
         self.loss_g_d_factor = opt.loss_g_d_factor
@@ -304,8 +305,8 @@ class GanTrainer:
         if epoch % self.epoch_to_save == 0:
             model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
                                        self.netD, self.optimizerD)
-            self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
-                                         self.mse_loss, self.ssim_loss, self.num_epochs)
+            # self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
+            #                              self.mse_loss, self.ssim_loss, self.num_epochs, self.to_crop)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
         if epoch == self.final_epoch:
