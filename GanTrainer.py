@@ -45,7 +45,7 @@ class GanTrainer:
         self.wind_size = opt.ssim_window_size
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
-            self.ssim_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.ssim_window_size,
+            self.struct_loss = ssim.StructLoss(window_size=opt.ssim_window_size,
                                                           pyramid_weight_list=opt.pyramid_weight_list,
                                                           pyramid_pow=False, use_c3=False,
                                                           apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
@@ -68,13 +68,13 @@ class GanTrainer:
         self.mu_loss_factor = opt.mu_loss_factor
 
         self.loss_g_d_factor = opt.loss_g_d_factor
-        self.ssim_loss_g_factor = opt.ssim_loss_factor
-        self.errG_d, self.errG_ssim, self.errG_intensity, self.errG_mu = None, None, None, None
+        self.struct_loss_factor = opt.ssim_loss_factor
+        self.errG_d, self.errG_struct, self.errG_intensity, self.errG_mu = None, None, None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
-        self.G_loss_ssim, self.G_loss_d, self.G_loss_intensity = [], [], []
+        self.G_loss_struct, self.G_loss_d, self.G_loss_intensity = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
         self.apply_intensity_loss = opt.apply_intensity_loss
 
@@ -84,7 +84,6 @@ class GanTrainer:
         self.input_dim = opt.input_dim
         self.input_images_mean = opt.input_images_mean
         self.log_factor = opt.log_factor
-        self.normalize = custom_transform.Normalize(0.5, 0.5)
         self.use_factorise_gamma_data = opt.use_factorise_gamma_data
         self.gamma_log = opt.gamma_log
         self.use_new_f = opt.use_new_f
@@ -98,7 +97,7 @@ class GanTrainer:
         self.output_dir = opt.output_dir
         self.epoch_to_save = opt.epoch_to_save
         self.best_accG = 0
-        self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.ssim_loss_g_factor,
+        self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.struct_loss_factor,
                                     self.log_factor, opt)
         self.final_epoch = opt.final_epoch
 
@@ -198,7 +197,7 @@ class GanTrainer:
                 blf_input = ssim.get_blf_log_input(hdr_original_gray_norm, gamma_factor, alpha=self.blf_alpha)
             r_weights = ssim.get_radiometric_weights(blf_input, self.wind_size, self.bilateral_sigma_r,
                                                      self.bilateral_mu, self.blf_input)
-        self.update_ssim_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
+        self.update_struct_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         self.optimizerG.step()
@@ -206,20 +205,20 @@ class GanTrainer:
     def update_g_d_loss(self, output_on_fake, label):
         self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
         retain_graph = False
-        if self.ssim_loss_g_factor:
+        if self.struct_loss_factor:
             retain_graph = True
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
 
-    def update_ssim_loss(self, hdr_input, hdr_input_original_gray_norm, fake, r_weights):
-        if self.ssim_loss_g_factor:
-            self.errG_ssim = self.ssim_loss_g_factor * self.ssim_loss(fake, hdr_input_original_gray_norm,
-                                                                      hdr_input, r_weights)
+    def update_struct_loss(self, hdr_input, hdr_input_original_gray_norm, fake, r_weights):
+        if self.struct_loss_factor:
+            self.errG_struct = self.struct_loss_factor * self.struct_loss(fake, hdr_input_original_gray_norm,
+                                                                            hdr_input, r_weights)
             retain_graph = False
             if self.apply_intensity_loss:
                 retain_graph = True
-            self.errG_ssim.backward(retain_graph=retain_graph)
-            self.G_loss_ssim.append(self.errG_ssim.item())
+            self.errG_struct.backward(retain_graph=retain_graph)
+            self.G_loss_struct.append(self.errG_struct.item())
 
     def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray):
         if not self.std_mul_max:
@@ -250,9 +249,9 @@ class GanTrainer:
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_ssim, self.G_loss_intensity, self.D_loss_fake,
+        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_struct, self.G_loss_intensity, self.D_loss_fake,
                                       self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
-                                      (self.loss_g_d_factor != 0), (self.ssim_loss_g_factor != 0))
+                                      (self.loss_g_d_factor != 0), (self.struct_loss_factor != 0))
         plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
                                         "accuracy epoch = " + str(epoch),
                                         self.epoch, acc_path)
@@ -290,18 +289,18 @@ class GanTrainer:
         if self.train_with_D:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, self.errD.item(), self.errD_real.item(),
                                                self.errD_fake.item(), self.loss_g_d_factor, self.errG_d,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity,
+                                               self.struct_loss_factor, self.errG_struct, self.errG_intensity,
                                                self.errG_mu)
         else:
             printer.print_epoch_losses_summary(epoch, self.num_epochs, 0, 0, 0, 0, 0,
-                                               self.ssim_loss_g_factor, self.errG_ssim, self.errG_intensity,
+                                               self.struct_loss_factor, self.errG_struct, self.errG_intensity,
                                                self.errG_mu)
         printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG)
         if epoch % self.epoch_to_save == 0:
             model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
                                        self.netD, self.optimizerD)
             # self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
-            #                              self.mse_loss, self.ssim_loss, self.num_epochs, self.to_crop)
+            #                              self.mse_loss, self.struct_loss, self.num_epochs, self.to_crop)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
         if epoch == self.final_epoch:

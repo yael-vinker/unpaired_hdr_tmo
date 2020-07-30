@@ -10,10 +10,10 @@ from utils import params, data_loader_util
 # =======================================
 # ============= Classes ===============
 # =======================================
-class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
+class StructLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
                  apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1, crop_input=True):
-        super(OUR_CUSTOM_SSIM_PYRAMID, self).__init__()
+        super(StructLoss, self).__init__()
         self.window_size = window_size
         self.crop_input = crop_input
         self.channel = 1

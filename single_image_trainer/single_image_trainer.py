@@ -34,7 +34,7 @@ def get_opt():
     parser.add_argument("--compare_arch_path", type=str, default="/Users/yaelvinker/PycharmProjects/lab/"
                                                            "single_image_trainer/single_image_output")
 
-    parser.add_argument("--use_bilateral", type=int, default=0)
+    parser.add_argument("--use_bilateral", type=int, default=1)
     parser.add_argument("--use_max_cntrst", type=int, default=1)
     parser.add_argument("--wind_size", type=int, default=5)
     parser.add_argument('--use_struct_loss', type=int, default=1)
@@ -48,7 +48,7 @@ def get_opt():
     parser.add_argument('--intensity_epsilon', type=float, default=0.001)
     # parser.add_argument('--intensity_epsilon', type=float, default=0.1)
     parser.add_argument('--alpha', type=float, default=0.5)
-    parser.add_argument('--std_method', type=str, default="gamma_factor_loss")
+    parser.add_argument('--std_method', type=str, default="blf_wind_off")
     parser.add_argument('--blf_alpha', type=float, default=0.8,
                         help="if blf_input is log than specify alpha")
 
@@ -177,7 +177,7 @@ def get_input(opt):
 
 
 def get_losses(opt):
-    struct_loss = ssim.OUR_CUSTOM_SSIM_PYRAMID(window_size=opt.wind_size,
+    struct_loss = ssim.StructLoss(window_size=opt.wind_size,
                                                pyramid_weight_list=opt.pyramid_weight_list,
                                                pyramid_pow=False, use_c3=False,
                                                apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
@@ -264,7 +264,6 @@ def save_loss(opt, run, struct_err_lst, contrast_err_lst, cmprs_err_lst):
 
 
 def train_on_single_image():
-    print(torch.__version__)
     opt = get_opt()
     input_im, color_im, gray_original_norm, \
         gray_original, gamma_factor, r_weights = get_input(opt)

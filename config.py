@@ -51,7 +51,6 @@ def parse_arguments():
     parser.add_argument('--mu_loss_factor', type=float, default=2)
     parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
-    parser.add_argument('--use_sigma_loss', type=int, default=0)
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
     parser.add_argument('--bilateral_sigma_r', type=float, default=0.05)
     parser.add_argument('--bilateral_mu', type=float, default=1)
