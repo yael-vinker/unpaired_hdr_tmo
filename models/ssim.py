@@ -1,14 +1,10 @@
 from math import exp
 
-import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.autograd import Variable
+from torch import nn
 
 from utils import params, data_loader_util
-import torch
-from torch import nn
-from utils import printer
 
 
 # =======================================
@@ -67,12 +63,12 @@ class OUR_CUSTOM_SSIM_PYRAMID(torch.nn.Module):
                                            self.mse_loss, self.use_c3, self.apply_sig_mu_ssim, r_weights)
         elif self.struct_method == "gamma_ssim_bilateral":
             return our_custom_ssim_pyramid_bilateral(fake, hdr_input_original_gray_norm, window, self.window_size,
-                                       channel, self.pyramid_weight_list,
-                                       self.mse_loss, self.use_c3, self.apply_sig_mu_ssim, r_weights)
+                                                     channel, self.pyramid_weight_list,
+                                                     self.mse_loss, self.use_c3, self.apply_sig_mu_ssim, r_weights)
         elif self.struct_method == "laplace_ssim":
             hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
             return our_custom_ssim_pyramid_laplace(fake, hdr_input, self.gaussian_kernel, self.laplacian_kernel,
-                                           self.pyramid_weight_list, self.mse_loss, self.window_size)
+                                                   self.pyramid_weight_list, self.mse_loss, self.window_size)
 
 
 class IntensityLoss(torch.nn.Module):
@@ -158,7 +154,8 @@ class MuLoss(torch.nn.Module):
             if r_weights:
                 cur_weights = r_weights[i]
             mu_loss_list.append(self.pyramid_weight_list[i] * self.mu_loss_method(self.window, fake, hdr_input,
-                                                                      self.mse_loss, cur_weights, self.wind_size))
+                                                                                  self.mse_loss, cur_weights,
+                                                                                  self.wind_size))
             fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
             hdr_input = F.interpolate(hdr_input, scale_factor=0.5, mode='bicubic', align_corners=False)
         return torch.sum(torch.stack(mu_loss_list))
@@ -335,15 +332,15 @@ def our_custom_ssim_pyramid(img1, img2, window, window_size, channel, pyramid_we
 
 
 def our_custom_ssim_pyramid_bilateral(img1, img2, window, window_size, channel, pyramid_weight_list,
-                            mse_loss, use_c3, apply_sig_mu_ssim, r_weights):
+                                      mse_loss, use_c3, apply_sig_mu_ssim, r_weights):
     cur_weights = None
     ssim_loss_list = []
     for i in range(len(pyramid_weight_list)):
         if r_weights is not None:
             cur_weights = r_weights[i]
         ssim_loss_list.append(pyramid_weight_list[i] * our_custom_ssim_bilateral(img1, img2, window, window_size,
-                                                                       channel, mse_loss, use_c3,
-                                                                       apply_sig_mu_ssim, cur_weights))
+                                                                                 channel, mse_loss, use_c3,
+                                                                                 apply_sig_mu_ssim, cur_weights))
 
         img1 = F.interpolate(img1, scale_factor=0.5, mode='bicubic', align_corners=False)
         img2 = F.interpolate(img2, scale_factor=0.5, mode='bicubic', align_corners=False)
@@ -404,8 +401,8 @@ def gamma_factor_loss(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_los
     return res.mean()
 
 
-def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
+def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                                r_weights=None, f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
     ones, window = get_window_and_ones(window, fake)
     weights_map, weights_map_sum = get_weights_map(window, wind_size, r_weights)
 
@@ -430,7 +427,7 @@ def gamma_factor_loss_bilateral(window, fake, gamma_hdr, hdr_original_im, epsilo
 
 
 def gamma_factor_stdmu_std(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None):
+                           f_factors=None, wind_size=5, hdr_original_gray=None):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -552,8 +549,9 @@ def gamma_factor_stdmu_res(window, fake, gamma_hdr, hdr_original_im, epsilon, ms
     return res.mean()
 
 
-def gamma_factor_stdmu_std_no_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None):
+def gamma_factor_stdmu_std_no_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                                  r_weights=None,
+                                  f_factors=None, wind_size=5, hdr_original_gray=None):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -614,8 +612,9 @@ def gamma_factor_stdmu_std_no_blf(window, fake, gamma_hdr, hdr_original_im, epsi
     return res.mean()
 
 
-def gamma_factor_stdmu_std_no_blf2(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None):
+def gamma_factor_stdmu_std_no_blf2(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                                   r_weights=None,
+                                   f_factors=None, wind_size=5, hdr_original_gray=None):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -676,10 +675,9 @@ def gamma_factor_stdmu_std_no_blf2(window, fake, gamma_hdr, hdr_original_im, eps
     return res.mean()
 
 
-
-
-def gamma_factor_stdmu_res_no_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                           f_factors=None, wind_size=5, hdr_original_gray=None):
+def gamma_factor_stdmu_res_no_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                                  r_weights=None,
+                                  f_factors=None, wind_size=5, hdr_original_gray=None):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -741,7 +739,7 @@ def gamma_factor_stdmu_res_no_blf(window, fake, gamma_hdr, hdr_original_im, epsi
 
 
 def gamma_factor_blfmu_std(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None):
+                           f_factors=None, wind_size=5, hdr_original_gray=None):
     ones = torch.ones(fake.shape)
     if fake.is_cuda:
         window = window.cuda(fake.get_device())
@@ -792,40 +790,14 @@ def gamma_factor_blfmu_std(window, fake, gamma_hdr, hdr_original_im, epsilon, ms
 
 def gamma_factor_blfmu_res(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
                            f_factors=None, wind_size=5, hdr_original_gray=None):
-    ones = torch.ones(fake.shape)
-    if fake.is_cuda:
-        window = window.cuda(fake.get_device())
-        ones = ones.cuda(fake.get_device())
-    window = window.type_as(fake)
-    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
-    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
-    weights_map = distance_gause * r_weights
-    weights_map_sum = torch.sum(weights_map, axis=1).unsqueeze(dim=1)
+    ones, window = get_window_and_ones(window, fake)
+    weights_map, weights_map_sum = get_weights_map(window, wind_size, r_weights)
 
-    fake_windows = get_im_as_windows(fake, wind_size)
-    fake_windows = fake_windows.squeeze(dim=1)
-    fake_windows = fake_windows.permute(0, 3, 1, 2)
-    fake_bf_mu = torch.sum(fake_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    fake_bf_mu = fake_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    fake_minus_mean_sq = (fake_windows - fake_bf_mu) * (fake_windows - fake_bf_mu)
-    sigma_fake_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + params.epsilon, 0.5)
-
-    gamma_windows = get_im_as_windows(gamma_hdr, wind_size)
-    gamma_windows = gamma_windows.squeeze(dim=1)
-    gamma_windows = gamma_windows.permute(0, 3, 1, 2)
-    gamma_bf_mu = torch.sum(gamma_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    gamma_bf_mu = gamma_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    gamma_minus_mean_sq = (gamma_windows - gamma_bf_mu) * (gamma_windows - gamma_bf_mu)
-    sigma_gamma_sq = torch.sum(gamma_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + params.epsilon, 0.5)
+    std_fake = get_std_blf(fake, wind_size, weights_map, weights_map_sum)
+    std_gamma = get_std_blf(gamma_hdr, wind_size, weights_map, weights_map_sum)
 
     f_factors = f_factors.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
-    hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
-    hdr_pow_windows = get_im_as_windows(hdr_im_pow_gamma, wind_size)
-    hdr_pow_windows = hdr_pow_windows.squeeze(dim=1)
-    hdr_pow_windows = hdr_pow_windows.permute(0, 3, 1, 2)
-    hdr_pow_mu = torch.sum(hdr_pow_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
+    hdr_pow_mu = get_hdr_pow_mu(hdr_original_im, f_factors, wind_size, weights_map, weights_map_sum)
 
     w_blf = (r_weights.sum(dim=1) - 1).unsqueeze(dim=1)
     std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + epsilon)
@@ -840,141 +812,53 @@ def gamma_factor_blfmu_res(window, fake, gamma_hdr, hdr_original_im, epsilon, ms
     return res.mean()
 
 
-def loss_bilateral_original_im(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5):
-    ones = torch.ones(fake.shape)
-    if fake.is_cuda:
-        window = window.cuda(fake.get_device())
-        ones = ones.cuda(fake.get_device())
-    window = window.type_as(fake)
-    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
-    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
-    weights_map = distance_gause * r_weights
-    weights_map_sum = torch.sum(weights_map, axis=1).unsqueeze(dim=1)
+def loss_bilateral_original_im(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                               r_weights=None, f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
+    ones, window = get_window_and_ones(window, fake)
+    weights_map, weights_map_sum = get_weights_map(window, wind_size, r_weights)
 
-    fake_windows = get_im_as_windows(fake, wind_size)
-    fake_windows = fake_windows.squeeze(dim=1)
-    fake_windows = fake_windows.permute(0, 3, 1, 2)
-    fake_bf_mu = torch.sum(fake_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    fake_bf_mu = fake_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    fake_minus_mean_sq = (fake_windows - fake_bf_mu) * (fake_windows - fake_bf_mu)
-    sigma_fake_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + params.epsilon, 0.5)
-
-    hdr_original_windows = get_im_as_windows(hdr_original_im, wind_size)
-    hdr_original_windows = hdr_original_windows.squeeze(dim=1)
-    hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
-    hdr_original_bf_mu = torch.sum(hdr_original_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (hdr_original_windows - hdr_original_bf_mu)
-    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_hdr_original = torch.pow(torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
+    std_fake = get_std_blf(fake, wind_size, weights_map, weights_map_sum)
+    std_hdr_original = get_std_blf(hdr_original_im, wind_size, weights_map, weights_map_sum)
 
     res = ones - (std_fake / (std_fake + std_hdr_original.detach() + epsilon))
     return res.mean()
 
 
-def loss_bilateral_original_im_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5):
-    ones = torch.ones(fake.shape)
-    if fake.is_cuda:
-        window = window.cuda(fake.get_device())
-        ones = ones.cuda(fake.get_device())
-    window = window.type_as(fake)
-    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
-    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
-    weights_map = distance_gause * r_weights
-    weights_map_sum = torch.sum(weights_map, axis=1).unsqueeze(dim=1)
+def loss_bilateral_original_im_blf(window, fake, gamma_hdr, hdr_original_im, epsilon, mse_loss=None, alpha=1,
+                                r_weights=None, f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
+    ones, window = get_window_and_ones(window, fake)
+    weights_map, weights_map_sum = get_weights_map(window, wind_size, r_weights)
 
-    fake_windows = get_im_as_windows(fake, wind_size)
-    fake_windows = fake_windows.squeeze(dim=1)
-    fake_windows = fake_windows.permute(0, 3, 1, 2)
-    fake_bf_mu = torch.sum(fake_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    fake_bf_mu = fake_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    fake_minus_mean_sq = (fake_windows - fake_bf_mu) * (fake_windows - fake_bf_mu)
-    sigma_fake_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + params.epsilon, 0.5)
-
-    hdr_original_windows = get_im_as_windows(hdr_original_im, wind_size)
-    hdr_original_windows = hdr_original_windows.squeeze(dim=1)
-    hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
-    hdr_original_bf_mu = torch.sum(hdr_original_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (hdr_original_windows - hdr_original_bf_mu)
-    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_hdr_original = torch.pow(torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
+    std_fake = get_std_blf(fake, wind_size, weights_map, weights_map_sum)
+    std_hdr_original = get_std_blf(hdr_original_im, wind_size, weights_map, weights_map_sum)
 
     res = ones - (std_fake / (std_fake + std_hdr_original.detach() + epsilon))
     res *= r_weights.mean(dim=1).unsqueeze(dim=1)
     return res.mean()
 
 
-def get_std_no_blf(input_im, wind_size, distance_gause):
-    hdr_original_windows = get_im_as_windows(input_im, wind_size)
-    hdr_original_windows = hdr_original_windows.squeeze(dim=1)
-    hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
-    hdr_original_bf_mu = torch.sum(hdr_original_windows * distance_gause, axis=1).unsqueeze(dim=1) / \
-                         torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
-    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
-            hdr_original_windows - hdr_original_bf_mu)
-    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * distance_gause, axis=1).unsqueeze(dim=1) / \
-                            torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
-    std_hdr_original = torch.pow(
-        torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
-    return std_hdr_original
-
-
 def std_loss_blf_off(window, fake, gamma_hdr, hdr_original_im, threshold=0.1, mse_loss=None, alpha=1, r_weights=None,
-                      f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
-    ones = torch.ones(fake.shape)
-    if fake.is_cuda:
-        window = window.cuda(fake.get_device())
-        ones = ones.cuda(fake.get_device())
-    window = window.type_as(fake)
-    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
-    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
-    weights_map = distance_gause * r_weights
-    weights_map_sum = torch.sum(weights_map, axis=1).unsqueeze(dim=1)
+                     f_factors=None, wind_size=5, hdr_original_gray=None, log=False):
+    ones, window = get_window_and_ones(window, fake)
+    distance_gause = get_distance_gause(window, wind_size, r_weights)
+    weights_map, weights_map_sum = get_weights_map(window, wind_size, r_weights)
 
-    fake_windows = get_im_as_windows(fake, wind_size)
-    fake_windows = fake_windows.squeeze(dim=1)
-    fake_windows = fake_windows.permute(0, 3, 1, 2)
-    fake_bf_mu = torch.sum(fake_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    fake_bf_mu = fake_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    fake_minus_mean_sq = (fake_windows - fake_bf_mu) * (fake_windows - fake_bf_mu)
-    sigma_fake_sq = torch.sum(fake_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_fake = torch.pow(torch.max(sigma_fake_sq, torch.zeros_like(sigma_fake_sq)) + params.epsilon, 0.5)
-
-    gamma_windows = get_im_as_windows(gamma_hdr, wind_size)
-    gamma_windows = gamma_windows.squeeze(dim=1)
-    gamma_windows = gamma_windows.permute(0, 3, 1, 2)
-    gamma_bf_mu = torch.sum(gamma_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    gamma_bf_mu = gamma_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
-    gamma_minus_mean_sq = (gamma_windows - gamma_bf_mu) * (gamma_windows - gamma_bf_mu)
-    sigma_gamma_sq = torch.sum(gamma_minus_mean_sq * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
-    std_gamma = torch.pow(torch.max(sigma_gamma_sq, torch.zeros_like(sigma_gamma_sq)) + params.epsilon, 0.5)
+    std_fake = get_std_blf(fake, wind_size, weights_map, weights_map_sum)
+    std_gamma = get_std_blf(gamma_hdr, wind_size, weights_map, weights_map_sum)
 
     f_factors = f_factors.unsqueeze(dim=1).unsqueeze(dim=1).unsqueeze(dim=1)
-    hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
-    hdr_pow_windows = get_im_as_windows(hdr_im_pow_gamma, wind_size)
-    hdr_pow_windows = hdr_pow_windows.squeeze(dim=1)
-    hdr_pow_windows = hdr_pow_windows.permute(0, 3, 1, 2)
-    hdr_pow_mu = torch.sum(hdr_pow_windows * weights_map, axis=1).unsqueeze(dim=1) / weights_map_sum
+    hdr_pow_mu = get_hdr_pow_mu(hdr_original_im, f_factors, wind_size, weights_map, weights_map_sum)
 
     std_objective = (alpha / f_factors) * std_gamma * (hdr_pow_mu + params.epsilon2)
     if hdr_original_gray is not None:
-        hdr_original_gray = hdr_original_gray.view(hdr_original_gray.size(0), -1)
-        hdr_original_gray_max = hdr_original_gray.max(1, keepdim=True)[0].reshape(f_factors.shape)
+        hdr_original_gray_max = get_batch_max(hdr_original_gray, f_factors)
         std_objective = std_objective * hdr_original_gray_max
 
     if log:
         hdr_original_im = torch.log(hdr_original_im * 1000 + 1)
         hdr_original_im = hdr_original_im / hdr_original_im.max()
     std_hdr_original = get_std_no_blf(hdr_original_im, wind_size, distance_gause)
-    import matplotlib.pyplot as plt
-    plt.imshow(std_hdr_original[0,0].numpy(), cmap='gray')
-    plt.show()
+
     res = ones - (std_fake / (std_fake + std_objective.detach() + params.epsilon2))
     res[std_hdr_original >= threshold] = 0
     return res.mean()
@@ -1046,8 +930,6 @@ def gaussian(window_size, sigma):
     # return gauss / gauss.sum()
     return gauss
 
-# def get_bilateral_filter(window_size)
-
 
 def create_window(window_size, channel):
     window = torch.ones((1, channel, window_size, window_size))
@@ -1108,6 +990,22 @@ def get_std(windows, mu1, wind_size):
     std1 = std1.permute(0, 2, 3, 1)
     std1 = std1.unsqueeze(dim=1)
     return std1
+
+
+def get_std_no_blf(input_im, wind_size, distance_gause):
+    hdr_original_windows = get_im_as_windows(input_im, wind_size)
+    hdr_original_windows = hdr_original_windows.squeeze(dim=1)
+    hdr_original_windows = hdr_original_windows.permute(0, 3, 1, 2)
+    hdr_original_bf_mu = torch.sum(hdr_original_windows * distance_gause, axis=1).unsqueeze(dim=1) / \
+                         torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
+    hdr_original_bf_mu = hdr_original_bf_mu.expand(-1, wind_size * wind_size, -1, -1)
+    hdr_original_minus_mean_sq = (hdr_original_windows - hdr_original_bf_mu) * (
+            hdr_original_windows - hdr_original_bf_mu)
+    sigma_hdr_original_sq = torch.sum(hdr_original_minus_mean_sq * distance_gause, axis=1).unsqueeze(dim=1) / \
+                            torch.sum(distance_gause, axis=1).unsqueeze(dim=1)
+    std_hdr_original = torch.pow(
+        torch.max(sigma_hdr_original_sq, torch.zeros_like(sigma_hdr_original_sq)) + params.epsilon, 0.5)
+    return std_hdr_original
 
 
 def get_mu_blf(im_windows, weights_map, weights_map_sum):
@@ -1175,12 +1073,23 @@ def get_window_and_ones(window, fake):
 
 
 def get_weights_map(window, wind_size, r_weights):
-    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
-    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
+    distance_gause = get_distance_gause(window, wind_size, r_weights)
     weights_map = distance_gause * r_weights
     weights_map_sum = torch.sum(weights_map, axis=1).unsqueeze(dim=1)
     return weights_map, weights_map_sum
 
+def get_distance_gause(window, wind_size, r_weights):
+    window_expand = window.reshape(1, wind_size * wind_size, 1, 1).contiguous()
+    distance_gause = window_expand.expand(1, -1, r_weights.shape[2], r_weights.shape[3])
+    return distance_gause
+
+def get_hdr_pow_mu(hdr_original_im, f_factors, wind_size, weights_map, weights_map_sum):
+    hdr_im_pow_gamma = torch.pow(hdr_original_im, 1 - f_factors)
+    hdr_pow_windows = get_im_as_windows(hdr_im_pow_gamma, wind_size)
+    hdr_pow_windows = hdr_pow_windows.squeeze(dim=1)
+    hdr_pow_windows = hdr_pow_windows.permute(0, 3, 1, 2)
+    hdr_pow_mu = get_mu_blf(hdr_pow_windows, weights_map, weights_map_sum)
+    return hdr_pow_mu
 
 def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu, blf_input="gamma"):
     if blf_input == "gamma":

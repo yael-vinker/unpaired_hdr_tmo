@@ -53,11 +53,6 @@ class GanTrainer:
                                                           std_norm_factor=opt.std_norm_factor,
                                                           crop_input=opt.add_frame)
 
-        if opt.use_sigma_loss:
-            self.sigma_loss = ssim.OUR_SIGMA_SSIM(window_size=opt.ssim_window_size)
-            self.sig_loss_factor = opt.use_sigma_loss
-        else:
-            self.sigma_loss = None
         self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
         self.bilateral_sigma_r = opt.bilateral_sigma_r
         self.bilateral_mu = opt.bilateral_mu
@@ -74,12 +69,12 @@ class GanTrainer:
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.ssim_loss_g_factor = opt.ssim_loss_factor
-        self.errG_d, self.errG_ssim, self.errG_sigma, self.errG_intensity, self.errG_mu = None, None, None, None, None
+        self.errG_d, self.errG_ssim, self.errG_intensity, self.errG_mu = None, None, None, None
         self.errD_real, self.errD_fake, self.errD = None, None, None
         self.accG, self.accD, self.accDreal, self.accDfake = None, None, None, None
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
-        self.G_loss_ssim, self.G_loss_d, self.G_loss_sigma, self.G_loss_intensity = [], [], [], []
+        self.G_loss_ssim, self.G_loss_d, self.G_loss_intensity = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
         self.apply_intensity_loss = opt.apply_intensity_loss
 
@@ -211,7 +206,7 @@ class GanTrainer:
     def update_g_d_loss(self, output_on_fake, label):
         self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
         retain_graph = False
-        if self.ssim_loss_g_factor or self.sigma_loss:
+        if self.ssim_loss_g_factor:
             retain_graph = True
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
