@@ -26,6 +26,7 @@ def parse_arguments():
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
+    parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
@@ -36,19 +37,20 @@ def parse_arguments():
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
+    parser.add_argument("--multi_scale_D", type=int, default=1)
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
-    parser.add_argument("--ssim_window_size", type=int, default=7)
+    parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="2,2,6")
 
-    parser.add_argument('--apply_intensity_loss', type=float, default=1)
+    parser.add_argument('--apply_intensity_loss', type=float, default=0)
     parser.add_argument('--std_method', type=str, default="gamma_factor_loss_bilateral")
     parser.add_argument('--alpha', type=float, default=0.5)
     parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
     parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
     parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="5,5,1")
 
-    parser.add_argument('--mu_loss_factor', type=float, default=2)
+    parser.add_argument('--mu_loss_factor', type=float, default=0)
     parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
@@ -195,7 +197,9 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "_msig_" + str(opt.custom_sig_factor)
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator \
-                 + "_d_model_" + opt.d_model
+                 + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers)
+    if opt.multi_scale_D:
+        output_dir += "_2scale"
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path

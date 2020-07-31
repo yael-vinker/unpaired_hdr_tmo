@@ -15,7 +15,7 @@ if __name__ == '__main__':
                                          opt.unet_norm, opt.add_clipping, opt.normalization, opt.use_xaviar,
                                          opt.output_dim, opt.apply_exp)
     net_D = model_save_util.create_D_net(opt.output_dim, opt.d_down_dim, opt.device, opt.checkpoint, opt.d_norm,
-                                         opt.use_xaviar, opt.d_model)
+                                         opt.use_xaviar, opt.d_model, opt.d_nlayers)
 
     printer.print_net("G add frame", net_G, opt, input_size=364)
     printer.print_net("G", net_G, opt, input_size=256)

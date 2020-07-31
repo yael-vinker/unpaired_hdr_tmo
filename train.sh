@@ -48,6 +48,7 @@ echo "apply_intensity_loss_laplacian_weights ${36}"
 
 echo "loss_g_d_factor $9"
 echo "train_with_D ${10}"
+echo "multi_scale_D ${54}"
 
 echo "ssim_window_size ${50}"
 echo "struct_method ${39}"
@@ -124,4 +125,5 @@ python3.7 -W ignore -u main_train.py \
   --use_new_f ${51} \
   --blf_input ${52} \
   --blf_alpha ${53} \
-  --std_mul_max ${54}
+  --std_mul_max ${54} \
+  --multi_scale_D ${54}

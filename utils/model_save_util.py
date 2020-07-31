@@ -74,11 +74,11 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
-def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model):
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model, d_nlayers):
     if d_model == "original":
         new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
     elif d_model == "patchD":
-        new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=3, norm_layer=norm).to(device_)
+        new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers, norm_layer=norm).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
@@ -364,20 +364,30 @@ def is_factorised_data(model_name):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--input_format", type=str, default="npy")
-    parser.add_argument("--images_source", type=str, default="npy_pth")
-    parser.add_argument("--arch_dir", type=str, default="/cs/labs/raananf/yael_vinker/04_26/results_09_24")
-    parser.add_argument("--models_epoch", type=int, default=320)
-    parser.add_argument("--output_dir_name", type=str, default="exr_320")
-    args = parser.parse_args()
+    output_dir = "stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD"
+    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/model/net_epoch_320.pth")
+    model_params = get_model_params(output_dir)
+    f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
+    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/res_npy/")
+    input_images_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/folders/hdr_data")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    models_names = [
-        "data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
-    #    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
+    run_model_on_path(model_params, device, net_path, input_images_path,
+                      output_images_path, "npy", f_factor_path, None, False)
 
-    apply_models_from_arch_dir(args.input_format, device, args.images_source, args.arch_dir,
-                               models_names, args.models_epoch, args.output_dir_name)
+    # parser = argparse.ArgumentParser(description="Parser for gan network")
+    # parser.add_argument("--input_format", type=str, default="npy")
+    # parser.add_argument("--images_source", type=str, default="npy_pth")
+    # parser.add_argument("--arch_dir", type=str, default="/cs/labs/raananf/yael_vinker/04_26/results_09_24")
+    # parser.add_argument("--models_epoch", type=int, default=320)
+    # parser.add_argument("--output_dir_name", type=str, default="exr_320")
+    # args = parser.parse_args()
+    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    # models_names = [
+    #     "data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
+    # #    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
+    #
+    # apply_models_from_arch_dir(args.input_format, device, args.images_source, args.arch_dir,
+    #                            models_names, args.models_epoch, args.output_dir_name)
     # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
     # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
     # load_model(im_hdr_original)
