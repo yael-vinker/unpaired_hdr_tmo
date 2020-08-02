@@ -69,6 +69,8 @@ echo "min_stretch ${49}"
 echo "bilateral_mu ${47}"
 echo "blf_input ${52}"
 echo "blf_alpha ${53}"
+echo "g_activation ${54}"
+echo "d_last_activation ${55}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -126,4 +128,6 @@ python3.7 -W ignore -u main_train.py \
   --blf_input ${52} \
   --blf_alpha ${53} \
   --std_mul_max ${54} \
-  --multi_scale_D ${54}
+  --multi_scale_D ${54} \
+  --g_activation ${55} \
+  --d_last_activation ${56}

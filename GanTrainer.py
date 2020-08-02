@@ -178,6 +178,7 @@ class GanTrainer:
         fake = self.netG(hdr_input)
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
+
         label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
         # Fake label = 0, so we count the samples on which D was right
         self.accDfake_counter += (output_on_fake <= 0.5).sum().item()

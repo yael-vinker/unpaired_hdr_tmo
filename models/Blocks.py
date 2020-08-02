@@ -23,15 +23,17 @@ class Conv2dBlock(nn.Module):
         elif activation == "relu":
             self.activation = nn.ReLU(inplace=True)
         else:
-            assert 0, "Unsupported activation: {}".format(activation)
+            self.activation = None
+            # assert 0, "Unsupported activation: {}".format(activation)
 
     def forward(self, x):
         y = x.float()
         out = self.conv(y)
-        if self.norm:
+        if self.norm is not None:
             out = self.norm(out)
-        out1 = self.activation(out)
-        return out1
+        if self.activation is not None:
+            out = self.activation(out)
+        return out
 
 class ConvTranspose2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, activation="none"):

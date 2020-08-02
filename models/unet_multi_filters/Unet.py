@@ -6,34 +6,36 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, unet_norm, add_clipping, normalization, apply_exp):
+                 network, dilation, to_crop, unet_norm, add_clipping, activation, apply_exp):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
         self.network = network
         down_ch = filters
         self.depth = depth
-        self.inc = inconv(n_channels, down_ch, unet_norm)
+        self.inc = inconv(n_channels, down_ch, unet_norm, activation)
         ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm)
+                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation)
             )
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm))
+        self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
             if i >= self.depth - 2:
                 self.up_path.append(
-                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network, dilation=dilation, unet_norm=unet_norm)
+                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network,
+                       dilation=dilation, unet_norm=unet_norm, activation=activation)
                 )
             else:
                 self.up_path.append(
-                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network, dilation=dilation, unet_norm=unet_norm)
+                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network,
+                       dilation=dilation, unet_norm=unet_norm, activation=activation)
                 )
             ch = ch // 2
             if network == params.torus_network:
@@ -49,6 +51,8 @@ class UNet(nn.Module):
             self.last_sig = nn.Sigmoid()
         if last_layer == 'msig':
             self.last_sig = Blocks.MySig(3)
+        else:
+            self.last_sig = None
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
@@ -73,7 +77,7 @@ class UNet(nn.Module):
             j = int(round((w - tw) / 2.))
             i, j, h, w = i, j, th, tw
             x_out = x_out[:, :, i: i + h, j:j + w]
-        if self.last_sig:
+        if self.last_sig is not None:
             x_out = self.last_sig(x_out)
         if self.exp:
             x_out = self.exp(x_out)

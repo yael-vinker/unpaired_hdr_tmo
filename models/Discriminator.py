@@ -4,7 +4,7 @@ from models import Blocks
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_size, input_dim, dim, norm):
+    def __init__(self, input_size, input_dim, dim, norm, last_activation):
         super(Discriminator, self).__init__()
         self.model = []
         self.model += [Blocks.Conv2dBlock(input_dim, dim, 4, 2, 1, norm='none', activation="leakyReLU")]
@@ -16,7 +16,8 @@ class Discriminator(nn.Module):
         for i in range(n_downsample):
             self.model += [Blocks.Conv2dBlock(dim, dim * 2, 4, 2, 1, norm=norm, activation="leakyReLU")]
             dim *= 2
-        self.model += [Blocks.Conv2dBlock(dim, 1, 4, 1, 0, norm='none', activation="sigmoid")]
+        # self.model += [nn.Conv2d(dim, 1, 4, 1, 0, bias=False)]
+        self.model += [Blocks.Conv2dBlock(dim, 1, 4, 1, 0, norm='none', activation=last_activation)]
         # self.model += [nn.Conv2d(dim, 1, 1, 1, 0)]
 
         self.model = nn.Sequential(*self.model)
@@ -27,52 +28,10 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 
-class MultiscaleDiscriminator(nn.Module):
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d,
-                 use_sigmoid=False, num_D=3, getIntermFeat=False):
-        super(MultiscaleDiscriminator, self).__init__()
-        self.num_D = num_D
-        self.n_layers = n_layers
-        self.getIntermFeat = getIntermFeat
-
-        for i in range(num_D):
-            netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, use_sigmoid, getIntermFeat)
-            if getIntermFeat:
-                for j in range(n_layers+2):
-                    setattr(self, 'scale'+str(i)+'_layer'+str(j), getattr(netD, 'model'+str(j)))
-            else:
-                setattr(self, 'layer'+str(i), netD.model)
-
-        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
-
-    def singleD_forward(self, model, input):
-        if self.getIntermFeat:
-            result = [input]
-            for i in range(len(model)):
-                result.append(model[i](result[-1]))
-            return result[1:]
-        else:
-            return [model(input)]
-
-    def forward(self, input):
-        num_D = self.num_D
-        result = []
-        input_downsampled = input
-        for i in range(num_D):
-            if self.getIntermFeat:
-                model = [getattr(self, 'scale'+str(num_D-1-i)+'_layer'+str(j)) for j in range(self.n_layers+2)]
-            else:
-                model = getattr(self, 'layer'+str(num_D-1-i))
-            result.append(self.singleD_forward(model, input_downsampled))
-            if i != (num_D-1):
-                input_downsampled = self.downsample(input_downsampled)
-        return result
-
-
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm"):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm", last_activation="none"):
         """Construct a PatchGAN discriminator
         Parameters:
             input_nc (int)  -- the number of channels in input images
@@ -101,6 +60,8 @@ class NLayerDiscriminator(nn.Module):
         ]
 
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
+        if last_activation == "sigmoid":
+            sequence += [nn.Sigmoid()]
         self.model = nn.Sequential(*sequence)
 
     def forward(self, input):

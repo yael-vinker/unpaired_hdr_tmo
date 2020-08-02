@@ -25,6 +25,7 @@ def parse_arguments():
     parser.add_argument("--unet_depth", type=int, default=4)
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
+    parser.add_argument('--g_activation', type=str, default='leakyrelu', help="none/relu/leakyrelu")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
     parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
@@ -32,12 +33,13 @@ def parse_arguments():
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
     parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")
+    parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument("--multi_scale_D", type=int, default=1)
+    parser.add_argument("--multi_scale_D", type=int, default=0)
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
@@ -196,8 +198,8 @@ def create_dir(opt):
     if opt.last_layer == "msig":
         result_dir_pref = result_dir_pref + "_msig_" + str(opt.custom_sig_factor)
     output_dir = result_dir_pref \
-                 + "_" + model_name + "_" + con_operator \
-                 + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers)
+                 + "_" + model_name + "_" + con_operator + "_act_" + opt.g_activation \
+                 + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers) + "_" + opt.d_last_activation
     if opt.multi_scale_D:
         output_dir += "_2scale"
     model_path = params.models_save_path

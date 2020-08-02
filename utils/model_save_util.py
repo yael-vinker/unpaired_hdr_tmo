@@ -62,7 +62,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, unet_norm, add_clipping, normalization, use_xaviar, output_dim, apply_exp):
+                 add_frame, unet_norm, add_clipping, activation, use_xaviar, output_dim, apply_exp):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
@@ -70,15 +70,17 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                              layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                              bilinear=False, network=model, dilation=0, to_crop=add_frame,
                              unet_norm=unet_norm, add_clipping=add_clipping,
-                             normalization=normalization, apply_exp=apply_exp).to(device_)
+                             activation=activation, apply_exp=apply_exp).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
-def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model, d_nlayers):
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model, d_nlayers, last_activation):
     if d_model == "original":
-        new_net = Discriminator.Discriminator(params.input_size, input_dim_, down_dim, norm).to(device_)
+        new_net = Discriminator.Discriminator(params.input_size, input_dim_,
+                                              down_dim, norm, last_activation).to(device_)
     elif d_model == "patchD":
-        new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers, norm_layer=norm).to(device_)
+        new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
+                                                    norm_layer=norm, last_activation=last_activation).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
@@ -192,7 +194,7 @@ def load_g_model(model_params, device, net_path):
 
 
 def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                      add_frame, use_pyramid_loss, unet_norm, add_clipping, output_dim=1):
+                      add_frame, use_pyramid_loss, unet_norm, add_clipping, output_dim=1, activation="relu"):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
@@ -200,7 +202,7 @@ def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_opera
                              layer_factor=layer_factor,
                              con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
                              to_crop=add_frame, unet_norm=unet_norm,
-                             add_clipping=add_clipping, normalization='max_normalization', apply_exp=False).to(device_)
+                             add_clipping=add_clipping, activation=activation, apply_exp=False).to(device_)
     if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
         print("Using [%d] GPUs" % torch.cuda.device_count())
         new_net = nn.DataParallel(new_net, list(range(torch.cuda.device_count())))
