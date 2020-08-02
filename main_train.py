@@ -25,8 +25,12 @@ if __name__ == '__main__':
     optimizer_D = optim.Adam(net_D.parameters(), lr=opt.D_lr, betas=(params.beta1, 0.999))
     optimizer_G = optim.Adam(net_G.parameters(), lr=opt.G_lr, betas=(params.beta1, 0.999))
 
-    lr_scheduler_D = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_D, milestones=opt.milestones)
-    lr_scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_G, milestones=opt.milestones)
+    step_gamma = 0.5 ** (1 / 50)
+    lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_D, step_size=1, gamma=step_gamma)
+    lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_G, step_size=1, gamma=step_gamma)
+
+    # lr_scheduler_D = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_D, milestones=opt.milestones)
+    # lr_scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_G, milestones=opt.milestones)
 
     gan_trainer = GanTrainer.GanTrainer(opt, net_G, net_D, optimizer_G, optimizer_D, lr_scheduler_G, lr_scheduler_D)
     gan_trainer.train()
