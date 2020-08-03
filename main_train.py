@@ -25,7 +25,7 @@ if __name__ == '__main__':
     optimizer_D = optim.Adam(net_D.parameters(), lr=opt.D_lr, betas=(params.beta1, 0.999))
     optimizer_G = optim.Adam(net_G.parameters(), lr=opt.G_lr, betas=(params.beta1, 0.999))
 
-    step_gamma = 0.5 ** (1 / 50)
+    step_gamma = 0.5 ** (1 / opt.lr_decay_step)
     lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_D, step_size=1, gamma=step_gamma)
     lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_G, step_size=1, gamma=step_gamma)
 

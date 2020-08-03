@@ -16,6 +16,7 @@ def parse_arguments():
     parser.add_argument("--num_epochs", type=int, default=params.num_epochs)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
+    parser.add_argument("--lr_decay_step", type=float, default=30)
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
 
@@ -25,9 +26,9 @@ def parse_arguments():
     parser.add_argument("--unet_depth", type=int, default=4)
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
-    parser.add_argument('--g_activation', type=str, default='leakyrelu', help="none/relu/leakyrelu")
+    parser.add_argument('--g_activation', type=str, default='relu', help="none/relu/leakyrelu")
     parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
-    parser.add_argument("--d_nlayers", type=int, default=3)
+    parser.add_argument("--d_nlayers", type=int, default=6)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
@@ -160,6 +161,10 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if not opt.add_frame:
+        result_dir_pref = result_dir_pref + "no_frame_"
+    result_dir_pref = result_dir_pref + "g" + str(opt.G_lr) + "_d" + \
+                      str(opt.D_lr) + "_decay" + str(opt.lr_decay_step) + "_"
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
     if opt.add_clipping:

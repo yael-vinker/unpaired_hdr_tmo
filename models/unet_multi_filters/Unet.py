@@ -45,14 +45,15 @@ class UNet(nn.Module):
             self.exp = Blocks.Exp()
         else:
             self.exp = None
+        self.last_sig = None
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()
-        if last_layer == 'sigmoid':
+        if last_layer == "sigmoid":
             self.last_sig = nn.Sigmoid()
         if last_layer == 'msig':
             self.last_sig = Blocks.MySig(3)
-        else:
-            self.last_sig = None
+        # else:
+
         if add_clipping:
             self.clip = Blocks.Clip()
         else:
@@ -68,6 +69,7 @@ class UNet(nn.Module):
         up_x = x_results[(self.depth)]
         for i, up_layer in enumerate(self.up_path):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
+
         x_out = self.outc(up_x)
         # x_out = torch.cat([x, x_out], dim=1)
         if self.to_crop:

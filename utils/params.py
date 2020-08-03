@@ -78,3 +78,8 @@ filters = 32
 
 ssim_tmqi = "ssim_tmqi"
 ssim_custom = "ssim_custom"
+
+patchD_map_dim = {3: 30 ** 2,
+                  4: 14 ** 2,
+                  5: 6 ** 2,
+                  6: 2 ** 2}

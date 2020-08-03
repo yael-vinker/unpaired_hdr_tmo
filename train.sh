@@ -7,6 +7,7 @@ echo "batch_size $2"
 echo "num_epochs $3"
 echo "G_lr $4"
 echo "D_lr $5"
+echo "lr_decay_step ${58}"
 echo "model $6"
 echo "con_operator $7"
 echo "use_xaviar $8"
@@ -48,7 +49,7 @@ echo "apply_intensity_loss_laplacian_weights ${36}"
 
 echo "loss_g_d_factor $9"
 echo "train_with_D ${10}"
-echo "multi_scale_D ${54}"
+echo "multi_scale_D ${55}"
 
 echo "ssim_window_size ${50}"
 echo "struct_method ${39}"
@@ -69,8 +70,8 @@ echo "min_stretch ${49}"
 echo "bilateral_mu ${47}"
 echo "blf_input ${52}"
 echo "blf_alpha ${53}"
-echo "g_activation ${54}"
-echo "d_last_activation ${55}"
+echo "g_activation ${56}"
+echo "d_last_activation ${57}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -128,6 +129,6 @@ python3.7 -W ignore -u main_train.py \
   --blf_input ${52} \
   --blf_alpha ${53} \
   --std_mul_max ${54} \
-  --multi_scale_D ${54} \
-  --g_activation ${55} \
-  --d_last_activation ${56}
+  --multi_scale_D ${55} \
+  --g_activation ${56} \
+  --lr_decay_step ${58}

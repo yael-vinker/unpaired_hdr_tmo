@@ -41,18 +41,19 @@ class GanTrainer:
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
         self.multi_scale_D = opt.multi_scale_D
+        self.d_nlayers = opt.d_nlayers
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
         self.wind_size = opt.ssim_window_size
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
             self.struct_loss = ssim.StructLoss(window_size=opt.ssim_window_size,
-                                                          pyramid_weight_list=opt.pyramid_weight_list,
-                                                          pyramid_pow=False, use_c3=False,
-                                                          apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
-                                                          struct_method=opt.struct_method,
-                                                          std_norm_factor=opt.std_norm_factor,
-                                                          crop_input=opt.add_frame)
+                                                  pyramid_weight_list=opt.pyramid_weight_list,
+                                                  pyramid_pow=False, use_c3=False,
+                                                  apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
+                                                  struct_method=opt.struct_method,
+                                                  std_norm_factor=opt.std_norm_factor,
+                                                  crop_input=opt.add_frame)
 
         self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
         self.bilateral_sigma_r = opt.bilateral_sigma_r
@@ -215,13 +216,15 @@ class GanTrainer:
             # fake labels are real for generator cost
             label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
             self.update_g_d_loss(output_on_fake, label)
-        r_weights = []
+
         if self.use_bilateral_weight:
             blf_input = hdr_input
             if self.blf_input == "log":
                 blf_input = ssim.get_blf_log_input(hdr_original_gray_norm, gamma_factor, alpha=self.blf_alpha)
             r_weights = ssim.get_radiometric_weights(blf_input, self.wind_size, self.bilateral_sigma_r,
                                                      self.bilateral_mu, self.blf_input)
+        else:
+            r_weights = None
         self.update_struct_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
@@ -301,9 +304,9 @@ class GanTrainer:
         self.accDfake = self.accDfake_counter / len_ldr_train_dset
 
         if self.d_model == "patchD":
-            self.accG = self.accG / 900
-            self.accDreal = self.accDreal / 900
-            self.accDfake = self.accDfake / 900
+            self.accG = self.accG / params.patchD_map_dim[self.d_nlayers]
+            self.accDreal = self.accDreal / params.patchD_map_dim[self.d_nlayers]
+            self.accDfake = self.accDfake / params.patchD_map_dim[self.d_nlayers]
 
         self.G_accuracy.append(self.accG)
         self.D_accuracy_real.append(self.accDreal)
