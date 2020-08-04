@@ -37,6 +37,8 @@ class GanTrainer:
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
         self.d_model = opt.d_model
+        self.d_pretrain_epochs = opt.d_pretrain_epochs
+        self.pre_train_mode = False
 
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
@@ -107,7 +109,19 @@ class GanTrainer:
         printer.print_cuda_details(self.device.type)
         self.verify_checkpoint()
         start_epoch = self.epoch
-        print("Starting Training Loop...")
+        if self.d_pretrain_epochs:
+            self.pre_train_mode = True
+            print("Starting Discriminator Pre-training Loop...")
+            for epoch in range(self.d_pretrain_epochs):
+                self.train_epoch()
+                self.lr_scheduler_D.step()
+                printer.print_epoch_acc_summary(epoch, self.d_pretrain_epochs, self.accDfake, self.accDreal, self.accG)
+        self.save_loss_plot(self.d_pretrain_epochs, self.output_dir)
+        self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
+        self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
+        self.pre_train_mode = False
+        self.num_iter = 0
+        print("\nStarting Training Loop...")
         for epoch in range(start_epoch, self.num_epochs):
             start = time.time()
             self.epoch += 1
@@ -130,7 +144,8 @@ class GanTrainer:
                 gamma_factor = data_hdr[params.gamma_factor].to(self.device)
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
-                self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor)
+                if not self.pre_train_mode:
+                    self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor)
         self.update_accuracy()
 
     def train_D(self, hdr_input, real_ldr):
@@ -176,7 +191,10 @@ class GanTrainer:
     def D_fake_pass(self, hdr_input):
         # Train with all-fake batch
         # Generate fake image batch with G
-        fake = self.netG(hdr_input)
+        if not self.pre_train_mode:
+            fake = self.netG(hdr_input)
+        else:
+            fake = hdr_input
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach()).view(-1)
 
@@ -277,12 +295,16 @@ class GanTrainer:
     def save_loss_plot(self, epoch, output_dir):
         loss_path = os.path.join(output_dir, "loss_plot")
         acc_path = os.path.join(output_dir, "accuracy")
-        plot_util.plot_general_losses(self.G_loss_d, self.G_loss_struct, self.G_loss_intensity, self.D_loss_fake,
-                                      self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
-                                      (self.loss_g_d_factor != 0), (self.struct_loss_factor != 0))
+        acc_file_name = "acc" + str(epoch)
+        if self.pre_train_mode:
+            acc_file_name = "pretrain_" + acc_file_name
         plot_util.plot_general_accuracy(self.G_accuracy, self.D_accuracy_fake, self.D_accuracy_real,
-                                        "accuracy epoch = " + str(epoch),
+                                        acc_file_name,
                                         self.epoch, acc_path)
+        if not self.pre_train_mode:
+            plot_util.plot_general_losses(self.G_loss_d, self.G_loss_struct, self.G_loss_intensity, self.D_loss_fake,
+                                          self.D_loss_real, "summary epoch_=_" + str(epoch), self.num_iter, loss_path,
+                                          (self.loss_g_d_factor != 0), (self.struct_loss_factor != 0))
 
     def load_model(self):
         if self.isCheckpoint:
@@ -298,7 +320,6 @@ class GanTrainer:
     def update_accuracy(self):
         len_hdr_train_dset = len(self.train_data_loader_npy.dataset)
         len_ldr_train_dset = len(self.train_data_loader_ldr.dataset)
-
         self.accG = self.accG_counter / len_hdr_train_dset
         self.accDreal = self.accDreal_counter / len_ldr_train_dset
         self.accDfake = self.accDfake_counter / len_ldr_train_dset

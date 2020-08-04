@@ -13,12 +13,13 @@ def parse_arguments():
 
     # ====== TRAINING ======
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--num_epochs", type=int, default=params.num_epochs)
+    parser.add_argument("--num_epochs", type=int, default=5)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--lr_decay_step", type=float, default=30)
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
+    parser.add_argument("--d_pretrain_epochs", type=int, default=5)
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -27,8 +28,8 @@ def parse_arguments():
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument('--g_activation', type=str, default='relu', help="none/relu/leakyrelu")
-    parser.add_argument("--d_down_dim", type=int, default=params.dim_d)
-    parser.add_argument("--d_nlayers", type=int, default=6)
+    parser.add_argument("--d_down_dim", type=int, default=64)
+    parser.add_argument("--d_nlayers", type=int, default=5)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
@@ -89,14 +90,14 @@ def parse_arguments():
     parser.add_argument('--min_stretch', type=float, default=0)
 
     # ====== POST PROCESS ======
-    parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
+    parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
     parser.add_argument("--add_clipping", type=int, default=0)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
     parser.add_argument("--normalization", type=str, default='bugy_max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
-    parser.add_argument("--epoch_to_save", type=int, default=50)
+    parser.add_argument("--epoch_to_save", type=int, default=2)
     parser.add_argument("--result_dir_prefix", type=str, default="")
     parser.add_argument("--final_epoch", type=int, default=0)
 
@@ -161,6 +162,8 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if opt.d_pretrain_epochs:
+        result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
     if not opt.add_frame:
         result_dir_pref = result_dir_pref + "no_frame_"
     result_dir_pref = result_dir_pref + "g" + str(opt.G_lr) + "_d" + \

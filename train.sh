@@ -72,6 +72,9 @@ echo "blf_input ${52}"
 echo "blf_alpha ${53}"
 echo "g_activation ${56}"
 echo "d_last_activation ${57}"
+echo "lr_decay_step ${58}"
+echo "d_nlayers ${59}"
+echo "d_pretrain_epochs ${60}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -131,4 +134,7 @@ python3.7 -W ignore -u main_train.py \
   --std_mul_max ${54} \
   --multi_scale_D ${55} \
   --g_activation ${56} \
-  --lr_decay_step ${58}
+  --d_last_activation ${57} \
+  --lr_decay_step ${58} \
+  --d_nlayers ${59} \
+  --d_pretrain_epochs ${60}

@@ -9,6 +9,7 @@ model="unet"
 con_operator="square_and_square_root"
 use_xaviar=1
 g_activation="relu"
+d_pretrain_epochs=10
 
 # ====== DATASET ======
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train"
@@ -85,4 +86,5 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $apply_intensity_loss_laplacian_weights $std_method $alpha $struct_method \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
-  $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation $lr_decay_step
+  $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
+  $lr_decay_step $d_nlayers $d_pretrain_epochs

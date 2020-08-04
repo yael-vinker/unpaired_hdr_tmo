@@ -58,6 +58,7 @@ def plot_discriminator_losses(loss_D_fake, loss_D_real, title, iters_n, path):
 
 def plot_general_accuracy(acc_G, acc_D_fake, acc_D_real, title, iters_n, path):
     plt.figure()
+    iters_n = max(iters_n, len(acc_D_real))
     plt.plot(range(iters_n), acc_D_fake, '-r', label='acc D fake')
     plt.plot(range(iters_n), acc_D_real, '-b', label='acc D real')
     # plt.plot(range(iters_n), acc_G, '-g', label='acc G')
