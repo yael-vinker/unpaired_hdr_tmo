@@ -41,7 +41,7 @@ d_norm="none"
 milestones="200"
 epoch_to_save=20
 final_epoch=320
-
+d_nlayers=3
 
 # =================== LOSS ==================
 

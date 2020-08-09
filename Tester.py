@@ -173,20 +173,21 @@ class Tester:
             print("Directory ", out_dir, " created")
         with torch.no_grad():
             for im_and_q in self.test_original_hdr_images:
+                print(im_and_q["im_name"])
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "tester")
                 fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
                 printer.print_g_progress(fake, "fake")
 
-                file_name = im_and_q["im_name"]
-                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), fake)
+                # file_name = im_and_q["im_name"]
+                # fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), im_log_normalize_tensor.unsqueeze(0).detach())
                 #hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
 
-                file_name = im_and_q["im_name"]
+                # file_name = im_and_q["im_name"]
                 #hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
 
-                file_name = im_and_q["im_name"] + "_stretch"
+                # file_name = im_and_q["im_name"] + "_stretch"
                 fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
                 #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name)
 

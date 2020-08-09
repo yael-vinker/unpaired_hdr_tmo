@@ -62,6 +62,52 @@ class double_conv(nn.Module):
         return x
 
 
+class double_last_conv(nn.Module):
+    '''(conv => BN => ReLU) * 2'''
+
+    def __init__(self, in_ch, out_ch, unet_norm, activation):
+        super(double_last_conv, self).__init__()
+        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm = None
+        if activation == "relu":
+            self.activation = nn.ReLU(inplace=True)
+        elif activation == "leakyrelu":
+            self.activation = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            assert 0, "Unsupported activation: {%s}" % (activation)
+
+        self.conv1 = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0)
+        if unet_norm == 'batch_norm':
+            self.norm1 = nn.BatchNorm2d(out_ch)
+        elif unet_norm == 'instance_norm':
+            self.norm1 = nn.InstanceNorm2d(out_ch)
+        else:
+            self.norm1 = None
+
+        if activation == "relu":
+            self.activation1 = nn.ReLU(inplace=True)
+        elif activation == "leakyrelu":
+            self.activation1 = nn.LeakyReLU(0.2, inplace=True)
+        else:
+            assert 0, "Unsupported activation: {%s}" % (activation)
+
+    def forward(self, x):
+        x = self.conv(x)
+        if self.norm:
+            x = self.norm(x)
+        x = self.activation(x)
+        x = self.conv1(x)
+        if self.norm1:
+            x = self.norm1(x)
+        x = self.activation1(x)
+        return x
+
+
 class double_conv_traspose(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
@@ -144,6 +190,20 @@ class down(nn.Module):
         x = self.mpconv(x)
         return x
 
+class last_down(nn.Module):
+    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none', activation='relu'):
+        super(last_down, self).__init__()
+        if network == params.unet_network:
+            self.mpconv = nn.Sequential(
+                nn.MaxPool2d(2),
+                double_last_conv(in_ch, out_ch, unet_norm, activation)
+            )
+        else:
+            assert 0, "Unsupported network request: {}".format(self.network)
+
+    def forward(self, x):
+        x = self.mpconv(x)
+        return x
 
 class up(nn.Module):
     def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation, unet_norm, activation):
@@ -170,6 +230,7 @@ class up(nn.Module):
         # input is CHW
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
+        # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
 
         x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2))

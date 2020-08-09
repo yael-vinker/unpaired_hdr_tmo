@@ -23,7 +23,8 @@ class UNet(nn.Module):
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
+        # self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
+        self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):

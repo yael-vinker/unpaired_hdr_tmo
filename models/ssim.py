@@ -12,7 +12,7 @@ from utils import params, data_loader_util
 # =======================================
 class StructLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
-                 apply_sig_mu_ssim=False, struct_method="our_custom_ssim", std_norm_factor=1, crop_input=True):
+                 apply_sig_mu_ssim=False, struct_method="gamma_ssim", std_norm_factor=1, crop_input=True):
         super(StructLoss, self).__init__()
         self.window_size = window_size
         self.crop_input = crop_input
@@ -204,6 +204,12 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
     :param cur_weights:
     :return:
     """
+    # import matplotlib.pyplot as plt
+    # plt.subplot(2,1,1)
+    # plt.imshow(img1[0,0].detach().numpy(), cmap='gray')
+    # plt.subplot(2, 1, 2)
+    # plt.imshow(img2[0, 0].detach().numpy(), cmap='gray')
+    # plt.show()
     window = window / window.sum()
     mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
     mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)

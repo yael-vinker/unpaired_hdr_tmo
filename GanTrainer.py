@@ -346,13 +346,14 @@ class GanTrainer:
                                                self.errG_mu)
         printer.print_epoch_acc_summary(epoch, self.num_epochs, self.accDfake, self.accDreal, self.accG)
         if epoch % self.epoch_to_save == 0:
-            model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
-                                       self.netD, self.optimizerD)
-            # self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
-            #                              self.mse_loss, self.struct_loss, self.num_epochs, self.to_crop)
+            self.tester.save_test_images(epoch, self.output_dir, self.input_images_mean, self.netD, self.netG,
+                                         self.mse_loss, self.struct_loss, self.num_epochs, self.to_crop)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
-        # if epoch == self.final_epoch:
+        print(self.output_dir)
+        if epoch == self.final_epoch:
+            model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
+                                       self.netD, self.optimizerD)
         #     self.save_data_for_assessment()
 
     def save_gradient_flow(self, epoch):

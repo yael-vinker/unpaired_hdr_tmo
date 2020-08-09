@@ -26,7 +26,8 @@ results_path = os.path.join("result_images")
 gradient_flow_path = os.path.join("gradient_flow")
 models_images = os.path.join("model_results")
 
-shape_addition = 45
+# shape_addition = 45
+shape_addition = 6
 input_size = 256
 n_downsample = 1
 n_downsamples_d = 3
@@ -83,3 +84,8 @@ patchD_map_dim = {3: 30 ** 2,
                   4: 14 ** 2,
                   5: 6 ** 2,
                   6: 2 ** 2}
+
+# patchD_map_dim = {3: 35 ** 2,
+#                   4: 19 ** 2,
+#                   5: 6 ** 2,
+#                   6: 2 ** 2}
