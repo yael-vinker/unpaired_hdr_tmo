@@ -35,6 +35,7 @@ use_normalization=0
 last_layer="sigmoid"
 custom_sig_factor=3
 d_model="original"
+num_D=0
 d_last_activation="sigmoid"
 d_down_dim=64
 d_norm="none"
@@ -87,4 +88,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
   $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
-  $lr_decay_step $d_nlayers $d_pretrain_epochs
+  $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D

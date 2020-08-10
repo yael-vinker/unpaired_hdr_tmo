@@ -74,13 +74,18 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
-def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model, d_nlayers, last_activation):
+def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model,
+                 d_nlayers, last_activation, num_D):
     if d_model == "original":
         new_net = Discriminator.Discriminator(params.input_size, input_dim_,
                                               down_dim, norm, last_activation).to(device_)
     elif d_model == "patchD":
         new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
                                                     norm_layer=norm, last_activation=last_activation).to(device_)
+    elif d_model == "multiLayerD":
+        new_net = Discriminator.MultiscaleDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
+                                                        norm_layer=norm, last_activation=last_activation,
+                                                        num_D=num_D).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
@@ -226,12 +231,15 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
 
     original_im_tensor = rgb_img.unsqueeze(0)
+    file_name = im_name + "_no_stretch"
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    # hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, im_name)
+    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
+    file_name = im_name + "_gray_no_stretch"
+    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray, output_path, file_name)
 
-    file_name = im_name + "_stretch"
+    file_name = im_name + "gray_stretch"
     fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
-    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
+    hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
 
     file_name = im_name + "_stretch"
     color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
@@ -366,15 +374,19 @@ def is_factorised_data(model_name):
 
 
 if __name__ == '__main__':
-    output_dir = "stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD"
-    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/model/net_epoch_320.pth")
+    output_dir = "d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid"
+    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/summary_08_04/d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid/net_epoch_320.pth")
     model_params = get_model_params(output_dir)
-    f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
-    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/res_npy/")
-    input_images_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/folders/hdr_data")
+    # f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
+    f_factor_path = "none"
+    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/summary_08_04/"
+                                      "d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid/output_f_play/")
+    input_images_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, input_images_path,
                       output_images_path, "npy", f_factor_path, None, False)
+
+    # 160986.84587859685
 
     # parser = argparse.ArgumentParser(description="Parser for gan network")
     # parser.add_argument("--input_format", type=str, default="npy")

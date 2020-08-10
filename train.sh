@@ -75,6 +75,7 @@ echo "d_last_activation ${57}"
 echo "lr_decay_step ${58}"
 echo "d_nlayers ${59}"
 echo "d_pretrain_epochs ${60}"
+echo "num_D ${61}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -137,4 +138,5 @@ python3.7 -W ignore -u main_train.py \
   --d_last_activation ${57} \
   --lr_decay_step ${58} \
   --d_nlayers ${59} \
-  --d_pretrain_epochs ${60}
+  --d_pretrain_epochs ${60} \
+  --num_D ${61}
