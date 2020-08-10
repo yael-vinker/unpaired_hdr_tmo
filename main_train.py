@@ -15,9 +15,10 @@ if __name__ == '__main__':
                                          opt.unet_norm, opt.add_clipping, opt.g_activation, opt.use_xaviar,
                                          opt.output_dim, opt.apply_exp)
     net_D = model_save_util.create_D_net(opt.output_dim, opt.d_down_dim, opt.device, opt.checkpoint, opt.d_norm,
-                                         opt.use_xaviar, opt.d_model, opt.d_nlayers, opt.d_last_activation)
+                                         opt.use_xaviar, opt.d_model, opt.d_nlayers, opt.d_last_activation, opt.num_D)
 
-    printer.print_net("G add frame", net_G, opt, input_size=364)
+    input_size = 256 + params.shape_addition * 2
+    printer.print_net("G", net_G, opt, input_size=input_size)
     printer.print_net("G", net_G, opt, input_size=256)
     printer.print_net("D", net_D, opt, input_size=256)
 
@@ -28,9 +29,6 @@ if __name__ == '__main__':
     step_gamma = 0.5 ** (1 / opt.lr_decay_step)
     lr_scheduler_D = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_D, step_size=1, gamma=step_gamma)
     lr_scheduler_G = torch.optim.lr_scheduler.StepLR(optimizer=optimizer_G, step_size=1, gamma=step_gamma)
-
-    # lr_scheduler_D = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_D, milestones=opt.milestones)
-    # lr_scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizer_G, milestones=opt.milestones)
 
     gan_trainer = GanTrainer.GanTrainer(opt, net_G, net_D, optimizer_G, optimizer_D, lr_scheduler_G, lr_scheduler_D)
     gan_trainer.train()

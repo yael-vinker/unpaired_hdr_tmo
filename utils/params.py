@@ -85,6 +85,13 @@ patchD_map_dim = {3: 30 ** 2,
                   5: 6 ** 2,
                   6: 2 ** 2}
 
+def get_multiLayerD_map_dim(num_D, d_nlayers):
+    num_dim = 0
+    for i in range(num_D):
+        num_dim += patchD_map_dim[d_nlayers + i]
+    return num_dim
+
+
 # patchD_map_dim = {3: 35 ** 2,
 #                   4: 19 ** 2,
 #                   5: 6 ** 2,

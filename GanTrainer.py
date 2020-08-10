@@ -170,22 +170,32 @@ class GanTrainer:
 
     def D_real_pass(self, real_ldr):
         # Forward pass real batch through D
-        output_on_real = self.netD(real_ldr).view(-1)
-        # Real label = 1, so we count the samples on which D was right
-        self.accDreal_counter += (output_on_real > 0.5).sum().item()
-
-        # Calculate loss on all-real batch
-        label = torch.full(output_on_real.shape, self.real_label, device=self.device)
-        full_scale_loss = self.mse_loss(output_on_real, label)
-        if self.multi_scale_D:
-            real_ldr = F.interpolate(real_ldr, scale_factor=0.5, mode='bicubic', align_corners=False)
-            real_ldr = real_ldr.clamp(0, 1)
-            output_on_real = self.netD(real_ldr).view(-1)
-            label = torch.full(output_on_real.shape, self.real_label, device=self.device)
-            half_scale_loss = self.mse_loss(output_on_real, label)
-            self.errD_real = full_scale_loss + half_scale_loss
+        output_on_real = self.netD(real_ldr)
+        if self.d_model == "multiLayerD":
+            loss = 0
+            for input_i in output_on_real:
+                pred = input_i[-1]
+                target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
+                loss += self.mse_loss(pred, target_tensor)
+                self.accDreal_counter += (pred > 0.5).sum().item()
+            self.errD_real = loss
         else:
-            self.errD_real = full_scale_loss
+            output_on_real = output_on_real.view(-1)
+            # Real label = 1, so we count the samples on which D was right
+            self.accDreal_counter += (output_on_real > 0.5).sum().item()
+
+            # Calculate loss on all-real batch
+            label = torch.full(output_on_real.shape, self.real_label, device=self.device)
+            full_scale_loss = self.mse_loss(output_on_real, label)
+            if self.multi_scale_D:
+                real_ldr = F.interpolate(real_ldr, scale_factor=0.5, mode='bicubic', align_corners=False)
+                real_ldr = real_ldr.clamp(0, 1)
+                output_on_real = self.netD(real_ldr).view(-1)
+                label = torch.full(output_on_real.shape, self.real_label, device=self.device)
+                half_scale_loss = self.mse_loss(output_on_real, label)
+                self.errD_real = full_scale_loss + half_scale_loss
+            else:
+                self.errD_real = full_scale_loss
         self.errD_real.backward()
 
     def D_fake_pass(self, hdr_input):
@@ -196,23 +206,34 @@ class GanTrainer:
         else:
             fake = hdr_input
         # Classify all fake batch with D
-        output_on_fake = self.netD(fake.detach()).view(-1)
+        output_on_fake = self.netD(fake.detach())
 
-        label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
-        # Fake label = 0, so we count the samples on which D was right
-        self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
-        # Calculate D's loss on the all-fake batch
-        full_scale_loss = self.mse_loss(output_on_fake, label)
-        if self.multi_scale_D:
-            fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
-            fake = fake.clamp(0, 1)
-            output_on_fake = self.netD(fake.detach()).view(-1)
-            label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
-            half_scale_loss = self.mse_loss(output_on_fake, label)
-            self.errD_fake = full_scale_loss + half_scale_loss
+        if self.d_model == "multiLayerD":
+            loss = 0
+            for input_i in output_on_fake:
+                pred = input_i[-1]
+                target_tensor = torch.full(pred.shape, self.fake_label, device=self.device)
+                loss += self.mse_loss(pred, target_tensor)
+                self.accDfake_counter += (pred <= 0.5).sum().item()
+            self.errD_fake = loss
+
         else:
-            self.errD_fake = full_scale_loss
-        # Calculate the gradients for this batch
+            output_on_fake = output_on_fake.view(-1)
+            label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
+            # Fake label = 0, so we count the samples on which D was right
+            self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
+            # Calculate D's loss on the all-fake batch
+            full_scale_loss = self.mse_loss(output_on_fake, label)
+            if self.multi_scale_D:
+                fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
+                fake = fake.clamp(0, 1)
+                output_on_fake = self.netD(fake.detach()).view(-1)
+                label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
+                half_scale_loss = self.mse_loss(output_on_fake, label)
+                self.errD_fake = full_scale_loss + half_scale_loss
+            else:
+                self.errD_fake = full_scale_loss
+            # Calculate the gradients for this batch
         self.errD_fake.backward()
 
     def train_G(self, hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor):
@@ -227,13 +248,8 @@ class GanTrainer:
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake, "output")
         if self.train_with_D:
-            output_on_fake = self.netD(fake).view(-1)
-            # Real label = 1, so wo count number of samples on which G tricked D
-            self.accG_counter += (output_on_fake > 0.5).sum().item()
-            # updates all G's losses
-            # fake labels are real for generator cost
-            label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
-            self.update_g_d_loss(output_on_fake, label)
+            output_on_fake = self.netD(fake)
+            self.update_g_d_loss(output_on_fake)
 
         if self.use_bilateral_weight:
             blf_input = hdr_input
@@ -248,8 +264,22 @@ class GanTrainer:
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         self.optimizerG.step()
 
-    def update_g_d_loss(self, output_on_fake, label):
-        self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
+    def update_g_d_loss(self, output_on_fake):
+        if self.d_model == "multiLayerD":
+            loss = 0
+            for input_i in output_on_fake:
+                pred = input_i[-1]
+                target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
+                loss += self.mse_loss(pred, target_tensor)
+                self.accG_counter += (pred > 0.5).sum().item()
+            self.errG_d = self.loss_g_d_factor * loss
+        else:
+            output_on_fake = output_on_fake.view(-1)
+            # Real label = 1, so wo count number of samples on which G tricked D
+            self.accG_counter += (output_on_fake > 0.5).sum().item()
+            # fake labels are real for generator cost
+            label = torch.full(output_on_fake.shape, self.real_label, device=self.device)
+            self.errG_d = self.loss_g_d_factor * (self.mse_loss(output_on_fake, label))
         retain_graph = False
         if self.struct_loss_factor:
             retain_graph = True
@@ -328,6 +358,10 @@ class GanTrainer:
             self.accG = self.accG / params.patchD_map_dim[self.d_nlayers]
             self.accDreal = self.accDreal / params.patchD_map_dim[self.d_nlayers]
             self.accDfake = self.accDfake / params.patchD_map_dim[self.d_nlayers]
+        elif self.d_model == "multiLayerD":
+            self.accG = self.accG / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
+            self.accDreal = self.accDreal / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
+            self.accDfake = self.accDfake / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
 
         self.G_accuracy.append(self.accG)
         self.D_accuracy_real.append(self.accDreal)

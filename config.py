@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument("--lr_decay_step", type=float, default=30)
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
-    parser.add_argument("--d_pretrain_epochs", type=int, default=5)
+    parser.add_argument("--d_pretrain_epochs", type=int, default=0)
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -28,13 +28,14 @@ def parse_arguments():
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
     parser.add_argument('--unet_norm', type=str, default='none', help="none/instance_norm/batch_norm")
     parser.add_argument('--g_activation', type=str, default='relu', help="none/relu/leakyrelu")
-    parser.add_argument("--d_down_dim", type=int, default=64)
-    parser.add_argument("--d_nlayers", type=int, default=5)
+    parser.add_argument("--d_down_dim", type=int, default=16)
+    parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='patchD', help="original/patchD")
+    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
+    parser.add_argument('--num_D', type=int, default=0, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
 
@@ -162,6 +163,7 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    result_dir_pref = result_dir_pref + "d_ch" + str(opt.d_down_dim) + "_"
     if opt.d_pretrain_epochs:
         result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
     if not opt.add_frame:
@@ -208,6 +210,8 @@ def create_dir(opt):
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator + "_act_" + opt.g_activation \
                  + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers) + "_" + opt.d_last_activation
+    if opt.d_model == "multiLayerD":
+        output_dir = output_dir + "_num_D" + str(opt.num_D)
     if opt.multi_scale_D:
         output_dir += "_2scale"
     model_path = params.models_save_path
