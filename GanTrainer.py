@@ -37,6 +37,7 @@ class GanTrainer:
         self.real_label, self.fake_label = 1, 0
         self.epoch, self.num_iter, self.test_num_iter = 0, 0, 0
         self.d_model = opt.d_model
+        self.num_D = opt.num_D
         self.d_pretrain_epochs = opt.d_pretrain_epochs
         self.pre_train_mode = False
 
@@ -171,7 +172,7 @@ class GanTrainer:
     def D_real_pass(self, real_ldr):
         # Forward pass real batch through D
         output_on_real = self.netD(real_ldr)
-        if self.d_model == "multiLayerD":
+        if "multiLayerD" in self.d_model:
             loss = 0
             for input_i in output_on_real:
                 pred = input_i[-1]
@@ -208,7 +209,7 @@ class GanTrainer:
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach())
 
-        if self.d_model == "multiLayerD":
+        if "multiLayerD" in self.d_model:
             loss = 0
             for input_i in output_on_fake:
                 pred = input_i[-1]
@@ -265,7 +266,7 @@ class GanTrainer:
         self.optimizerG.step()
 
     def update_g_d_loss(self, output_on_fake):
-        if self.d_model == "multiLayerD":
+        if "multiLayerD" in self.d_model:
             loss = 0
             for input_i in output_on_fake:
                 pred = input_i[-1]
@@ -358,10 +359,14 @@ class GanTrainer:
             self.accG = self.accG / params.patchD_map_dim[self.d_nlayers]
             self.accDreal = self.accDreal / params.patchD_map_dim[self.d_nlayers]
             self.accDfake = self.accDfake / params.patchD_map_dim[self.d_nlayers]
-        elif self.d_model == "multiLayerD":
-            self.accG = self.accG / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
-            self.accDreal = self.accDreal / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
-            self.accDfake = self.accDfake / params.get_multiLayerD_map_dim(num_D=2, d_nlayers=self.d_nlayers)
+        elif "multiLayerD_patchD" == self.d_model:
+            self.accG = self.accG / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
+            self.accDreal = self.accDreal / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
+            self.accDfake = self.accDfake / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
+        elif "multiLayerD_dcgan" == self.d_model:
+            self.accG = self.accG / self.num_D
+            self.accDreal = self.accDreal / self.num_D
+            self.accDfake = self.accDfake / self.num_D
 
         self.G_accuracy.append(self.accG)
         self.D_accuracy_real.append(self.accDreal)

@@ -72,14 +72,18 @@ class NLayerDiscriminator(nn.Module):
 
 
 class MultiscaleDiscriminator(nn.Module):
-    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm",
+    def __init__(self, input_size, d_model, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm",
                  last_activation="none", num_D=3, getIntermFeat=False):
         super(MultiscaleDiscriminator, self).__init__()
         self.num_D = num_D
         self.n_layers = n_layers
         self.getIntermFeat = getIntermFeat
         for i in range(num_D):
-            netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, last_activation)
+            if "dcgan" in d_model:
+                netD = Discriminator(input_size, input_nc, ndf, norm_layer, last_activation)
+                input_size = input_size // 2
+            elif "patchD" in d_model:
+                netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, last_activation)
             if getIntermFeat:
                 for j in range(n_layers + 2):
                     setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))
@@ -96,7 +100,8 @@ class MultiscaleDiscriminator(nn.Module):
         result = []
         input_downsampled = input
         for i in range(num_D):
-            model = getattr(self, 'layer' + str(num_D - 1 - i))
+            # model = getattr(self, 'layer' + str(num_D - 1 - i))
+            model = getattr(self, 'layer' + str(i))
             result.append(self.singleD_forward(model, input_downsampled))
             if i != (num_D - 1):
                 input_downsampled = self.downsample(input_downsampled)

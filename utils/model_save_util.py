@@ -82,8 +82,8 @@ def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar,
     elif d_model == "patchD":
         new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
                                                     norm_layer=norm, last_activation=last_activation).to(device_)
-    elif d_model == "multiLayerD":
-        new_net = Discriminator.MultiscaleDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
+    elif "multiLayerD" in d_model:
+        new_net = Discriminator.MultiscaleDiscriminator(params.input_size, d_model, input_dim_, ndf=down_dim, n_layers=d_nlayers,
                                                         norm_layer=norm, last_activation=last_activation,
                                                         num_D=num_D).to(device_)
     else:

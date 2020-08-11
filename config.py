@@ -34,8 +34,8 @@ def parse_arguments():
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
-    parser.add_argument('--num_D', type=int, default=0, help="if d_model is multiLayerD then specify numD")
+    parser.add_argument('--d_model', type=str, default='multiLayerD_dcgan', help="original/patchD/multiLayerD")
+    parser.add_argument('--num_D', type=int, default=2, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
 
@@ -163,6 +163,8 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
+    if opt.unet_norm != "none":
+        result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
     result_dir_pref = result_dir_pref + "d_ch" + str(opt.d_down_dim) + "_"
     if opt.d_pretrain_epochs:
         result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
@@ -210,8 +212,10 @@ def create_dir(opt):
     output_dir = result_dir_pref \
                  + "_" + model_name + "_" + con_operator + "_act_" + opt.g_activation \
                  + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers) + "_" + opt.d_last_activation
-    if opt.d_model == "multiLayerD":
+    if "multiLayerD" in opt.d_model:
         output_dir = output_dir + "_num_D" + str(opt.num_D)
+    if opt.d_norm != "none":
+        output_dir = output_dir + "_" + opt.d_norm
     if opt.multi_scale_D:
         output_dir += "_2scale"
     model_path = params.models_save_path
