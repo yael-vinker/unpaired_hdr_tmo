@@ -7,6 +7,7 @@ D_lr=0.000005
 lr_decay_step=30
 model="unet"
 con_operator="square_and_square_root"
+unet_norm="none"
 use_xaviar=1
 g_activation="relu"
 d_pretrain_epochs=10
@@ -74,6 +75,7 @@ min_stretch=0.025
 bilateral_mu=1
 blf_input="log"
 blf_alpha=0.8
+enhance_detail=0
 
 echo "========================= 1 ==========================="
 sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
@@ -88,4 +90,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $bilateral_sigma_r $apply_exp $f_factor_path $gamma_log $custom_sig_factor \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
   $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
-  $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D
+  $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $enhance_detail

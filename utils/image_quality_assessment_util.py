@@ -434,6 +434,27 @@ def gather_all_architectures_accuracy2(arch_dir, output_path, epoch, date):
                 print(os.path.join(im_path,old_name))
         # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
 
+def gather_all_architectures_loss2(arch_dir, output_path, epoch, date):
+    from shutil import copyfile
+    import shutil
+    # copyfile(src, dst)
+    for test_name in os.listdir(arch_dir):
+        cur_path = os.path.join(os.path.abspath(arch_dir), test_name)
+        for arch_name in os.listdir(cur_path):
+            im_path = os.path.join(os.path.abspath(arch_dir), test_name, arch_name, "loss_plot")
+            old_name = "summary epoch_=_" + epoch + "all.png"
+    #        summarepoch_=_0all
+            cur_output_path = os.path.join(output_path, test_name, "loss" + epoch)
+            output_name = date + "_" + arch_name + ".png"
+            if not os.path.exists(cur_output_path):
+                os.makedirs(cur_output_path)
+            if os.path.exists(os.path.join(im_path, old_name)):
+                print(os.path.join(cur_output_path, output_name))
+                shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+            else:
+                print(os.path.join(im_path,old_name))
+        # os.rename(os.path.join(im_path, old_name), os.path.join(output_path, output_name))
+
 
 def gather_all_architectures2(arch_dir, output_path, epoch, date, im_number):
     from shutil import copyfile

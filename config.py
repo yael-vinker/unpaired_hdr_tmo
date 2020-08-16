@@ -30,7 +30,7 @@ def parse_arguments():
     parser.add_argument('--g_activation', type=str, default='relu', help="none/relu/leakyrelu")
     parser.add_argument("--d_down_dim", type=int, default=16)
     parser.add_argument("--d_nlayers", type=int, default=3)
-    parser.add_argument("--d_norm", type=str, default='none')
+    parser.add_argument("--d_norm", type=str, default='batch_norm')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
@@ -84,11 +84,12 @@ def parse_arguments():
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
-    # parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path) #52180538.8149
-    parser.add_argument('--f_factor_path', type=str, default="none")  # 52180538.8149
-    parser.add_argument('--use_new_f', type=int, default=1)
+    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path) #52180538.8149
+    # parser.add_argument('--f_factor_path', type=str, default="none")  # 52180538.8149
+    parser.add_argument('--use_new_f', type=int, default=0)
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
+    parser.add_argument('--enhance_detail', type=int, default=1)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
@@ -174,6 +175,8 @@ def create_dir(opt):
                       str(opt.D_lr) + "_decay" + str(opt.lr_decay_step) + "_"
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
+    if opt.enhance_detail:
+        result_dir_pref = result_dir_pref + "_detail_en_"
     if opt.add_clipping:
         result_dir_pref = result_dir_pref + "clip_"
     if opt.apply_exp:

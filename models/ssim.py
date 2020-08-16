@@ -1120,3 +1120,10 @@ def get_radiometric_weights(gamma_input, wind_size, sigma_r, bilateral_mu, blf_i
         radiometric_weights_arr.append(radiometric_gaus)
         gamma_input = F.interpolate(gamma_input, scale_factor=0.5, mode='bicubic', align_corners=False)
     return radiometric_weights_arr
+
+
+def enhance_details(batch, window_size):
+    gaus_kernel = get_gaussian_kernel2(window_size, channel=1)
+    gaus_kernel = gaus_kernel / gaus_kernel.sum()
+    gauss_mean = F.conv2d(batch, gaus_kernel, padding=window_size // 2, groups=1)
+    return batch + (batch - gauss_mean)

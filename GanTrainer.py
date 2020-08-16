@@ -40,6 +40,7 @@ class GanTrainer:
         self.num_D = opt.num_D
         self.d_pretrain_epochs = opt.d_pretrain_epochs
         self.pre_train_mode = False
+        self.enhance_detail = opt.enhance_detail
 
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
@@ -171,7 +172,10 @@ class GanTrainer:
 
     def D_real_pass(self, real_ldr):
         # Forward pass real batch through D
-        output_on_real = self.netD(real_ldr)
+        if self.enhance_detail:
+            output_on_real = self.netD(ssim.enhance_details(real_ldr, self.wind_size))
+        else:
+            output_on_real = self.netD(real_ldr)
         if "multiLayerD" in self.d_model:
             loss = 0
             for input_i in output_on_real:
@@ -207,7 +211,10 @@ class GanTrainer:
         else:
             fake = hdr_input
         # Classify all fake batch with D
-        output_on_fake = self.netD(fake.detach())
+        if self.enhance_detail:
+            output_on_fake = self.netD(ssim.enhance_details(fake.detach(), self.wind_size).detach())
+        else:
+            output_on_fake = self.netD(fake.detach())
 
         if "multiLayerD" in self.d_model:
             loss = 0
@@ -249,7 +256,10 @@ class GanTrainer:
         fake = self.netG(hdr_input)
         printer.print_g_progress(fake, "output")
         if self.train_with_D:
-            output_on_fake = self.netD(fake)
+            if self.enhance_detail:
+                output_on_fake = self.netD(ssim.enhance_details(fake, self.wind_size))
+            else:
+                output_on_fake = self.netD(fake)
             self.update_g_d_loss(output_on_fake)
 
         if self.use_bilateral_weight:

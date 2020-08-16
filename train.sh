@@ -76,6 +76,8 @@ echo "lr_decay_step ${58}"
 echo "d_nlayers ${59}"
 echo "d_pretrain_epochs ${60}"
 echo "num_D ${61}"
+echo "unet_norm ${62}"
+echo "enhance_detail ${63}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -139,4 +141,6 @@ python3.7 -W ignore -u main_train.py \
   --lr_decay_step ${58} \
   --d_nlayers ${59} \
   --d_pretrain_epochs ${60} \
-  --num_D ${61}
+  --num_D ${61} \
+  --unet_norm ${62} \
+  --enhance_detail ${63}
