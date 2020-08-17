@@ -86,6 +86,9 @@ def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar,
         new_net = Discriminator.MultiscaleDiscriminator(params.input_size, d_model, input_dim_, ndf=down_dim, n_layers=d_nlayers,
                                                         norm_layer=norm, last_activation=last_activation,
                                                         num_D=num_D).to(device_)
+    elif d_model == "simpleD":
+        new_net = Discriminator.SimpleDiscriminator(params.input_size, input_dim_,
+                                              down_dim, norm, last_activation).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)

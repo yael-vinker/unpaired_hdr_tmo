@@ -30,6 +30,30 @@ class Discriminator(nn.Module):
         return self.model(x)
 
 
+class Flatten(nn.Module):
+    def forward(self, x):
+        x = x.view(x.size()[0], -1)
+        return x
+
+
+
+class SimpleDiscriminator(nn.Module):
+    def __init__(self, input_size, input_dim, dim, norm, last_activation):
+        super(SimpleDiscriminator, self).__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(input_dim, dim, 4, 2, 1, bias=True),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(dim, dim * 2, 4, 2, 1, bias=True),
+            nn.AdaptiveMaxPool2d((1)),
+            Flatten(),
+            nn.Linear(dim * 2, 1, bias=False)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
+
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
@@ -84,6 +108,9 @@ class MultiscaleDiscriminator(nn.Module):
                 input_size = input_size // 2
             elif "patchD" in d_model:
                 netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, last_activation)
+            elif "simpleD" in d_model:
+                netD = SimpleDiscriminator(input_size, input_nc,
+                                                            ndf, norm_layer, last_activation)
             if getIntermFeat:
                 for j in range(n_layers + 2):
                     setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))
