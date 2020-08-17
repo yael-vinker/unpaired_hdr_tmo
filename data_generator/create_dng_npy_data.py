@@ -210,6 +210,8 @@ def get_f(use_new_f, rgb_img, gray_im, mean_target, factor):
 
 def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f):
     mean_target, factor = get_mean_and_factor(gamma_log, use_new_f)
+    print("mean_target, factor")
+    print(mean_target, factor)
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))

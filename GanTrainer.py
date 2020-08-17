@@ -177,13 +177,13 @@ class GanTrainer:
         else:
             output_on_real = self.netD(real_ldr)
         if "multiLayerD" in self.d_model:
-            loss = 0
+            loss = []
             for input_i in output_on_real:
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
-                loss += self.mse_loss(pred, target_tensor)
+                loss.append(self.mse_loss(pred, target_tensor))
                 self.accDreal_counter += (pred > 0.5).sum().item()
-            self.errD_real = loss
+            self.errD_real = torch.sum(torch.stack(loss))
         else:
             output_on_real = output_on_real.view(-1)
             # Real label = 1, so we count the samples on which D was right
@@ -217,13 +217,13 @@ class GanTrainer:
             output_on_fake = self.netD(fake.detach())
 
         if "multiLayerD" in self.d_model:
-            loss = 0
+            loss = []
             for input_i in output_on_fake:
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.fake_label, device=self.device)
-                loss += self.mse_loss(pred, target_tensor)
+                loss.append(self.mse_loss(pred, target_tensor))
                 self.accDfake_counter += (pred <= 0.5).sum().item()
-            self.errD_fake = loss
+            self.errD_fake = torch.sum(torch.stack(loss))
 
         else:
             output_on_fake = output_on_fake.view(-1)
@@ -277,13 +277,13 @@ class GanTrainer:
 
     def update_g_d_loss(self, output_on_fake):
         if "multiLayerD" in self.d_model:
-            loss = 0
+            loss = []
             for input_i in output_on_fake:
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
-                loss += self.mse_loss(pred, target_tensor)
+                loss.append(self.mse_loss(pred, target_tensor))
                 self.accG_counter += (pred > 0.5).sum().item()
-            self.errG_d = self.loss_g_d_factor * loss
+            self.errG_d = self.loss_g_d_factor * torch.sum(torch.stack(loss))
         else:
             output_on_fake = output_on_fake.view(-1)
             # Real label = 1, so wo count number of samples on which G tricked D
