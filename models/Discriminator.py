@@ -4,22 +4,32 @@ from models import Blocks
 
 
 class Discriminator(nn.Module):
-    def __init__(self, input_size, input_dim, dim, norm, last_activation):
+    def __init__(self, input_size, input_dim, dim, norm, last_activation, d_fully_connected, d_nlayers):
         super(Discriminator, self).__init__()
         self.model = []
         self.model += [Blocks.Conv2dBlock(input_dim, dim, 4, 2, 1, norm='none', activation="leakyReLU")]
         # downsampling blocks
-        n_downsample = 0
-        while input_size > 8:
-            input_size = int(input_size / 2)
-            n_downsample += 1
+        if d_fully_connected:
+            n_downsample = d_nlayers
+        else:
+            n_downsample = 0
+            while input_size > 8:
+                input_size = int(input_size / 2)
+                n_downsample += 1
         for i in range(n_downsample):
             next_dim = min(dim * 2, 512)
             self.model += [Blocks.Conv2dBlock(dim, next_dim, 4, 2, 1, norm=norm, activation="leakyReLU")]
             dim = next_dim
             # dim *= 2
         # self.model += [nn.Conv2d(dim, 1, 4, 1, 0, bias=False)]
-        self.model += [Blocks.Conv2dBlock(dim, 1, 4, 1, 0, norm='none', activation=last_activation)]
+        self.model += [Blocks.Conv2dBlock(dim, 1, 4, 1, 0, norm='none', activation='none')]
+        if d_fully_connected:
+            last_layer_size = input_size / 2 ** (n_downsample + 1) - 3
+            print("last_layer_size",last_layer_size)
+            self.model += [Flatten(),
+            nn.Linear(int(last_layer_size ** 2), 1, bias=False)]
+        if last_activation == "sigmoid":
+            self.model += [nn.Sigmoid()]
         # self.model += [nn.Conv2d(dim, 1, 1, 1, 0)]
 
         self.model = nn.Sequential(*self.model)
@@ -38,16 +48,23 @@ class Flatten(nn.Module):
 
 
 class SimpleDiscriminator(nn.Module):
-    def __init__(self, input_size, input_dim, dim, norm, last_activation):
+    def __init__(self, input_size, input_dim, dim, norm, last_activation, simpleD_maxpool):
         super(SimpleDiscriminator, self).__init__()
-        self.model = nn.Sequential(
-            nn.Conv2d(input_dim, dim, 4, 2, 1, bias=True),
+        self.model = []
+        self.model += [nn.Conv2d(input_dim, dim, 4, 2, 1, bias=True),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(dim, dim * 2, 4, 2, 1, bias=True),
-            nn.AdaptiveMaxPool2d((1)),
-            Flatten(),
-            nn.Linear(dim * 2, 1, bias=False)
-        )
+            nn.Conv2d(dim, dim * 2, 4, 2, 1, bias=True)]
+        if simpleD_maxpool:
+            last_dim = dim * 2
+            self.model += [nn.AdaptiveMaxPool2d((1))]
+        else:
+            last_dim = dim * 2 * (int(input_size / 4) ** 2)
+            # self.model += [nn.LeakyReLU(0.2, inplace=True),
+            #                nn.Conv2d(dim * 2, 1, 4, 2, 1, bias=True)]
+        self.model += [Flatten(),
+            nn.Linear(last_dim, 1, bias=False),
+            nn.Sigmoid()]
+        self.model = nn.Sequential(*self.model)
 
     def forward(self, x):
         return self.model(x)
@@ -97,20 +114,21 @@ class NLayerDiscriminator(nn.Module):
 
 class MultiscaleDiscriminator(nn.Module):
     def __init__(self, input_size, d_model, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm",
-                 last_activation="none", num_D=3, getIntermFeat=False):
+                 last_activation="none", num_D=3, getIntermFeat=False, d_fully_connected=False,
+                 simpleD_maxpool=True):
         super(MultiscaleDiscriminator, self).__init__()
         self.num_D = num_D
         self.n_layers = n_layers
         self.getIntermFeat = getIntermFeat
         for i in range(num_D):
             if "dcgan" in d_model:
-                netD = Discriminator(input_size, input_nc, ndf, norm_layer, last_activation)
+                netD = Discriminator(input_size, input_nc, ndf, norm_layer, last_activation, d_fully_connected, n_layers)
                 input_size = input_size // 2
             elif "patchD" in d_model:
                 netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, last_activation)
             elif "simpleD" in d_model:
                 netD = SimpleDiscriminator(input_size, input_nc,
-                                                            ndf, norm_layer, last_activation)
+                                            ndf, norm_layer, last_activation, simpleD_maxpool)
             if getIntermFeat:
                 for j in range(n_layers + 2):
                     setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))

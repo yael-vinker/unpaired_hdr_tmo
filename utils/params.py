@@ -75,6 +75,13 @@ square_root = "square_root"
 square_and_square_root = "square_and_square_root"
 gamma = "gamma"
 
+# con operator short
+con_op_short = {"original_unet": "ou",
+                "square": "s",
+                "square_root": "sr",
+                "square_and_square_root": "ssr",
+                "gamma": "g"}
+
 filters = 32
 
 ssim_tmqi = "ssim_tmqi"

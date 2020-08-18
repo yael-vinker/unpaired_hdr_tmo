@@ -6,7 +6,7 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, unet_norm, add_clipping, activation, apply_exp):
+                 network, dilation, to_crop, unet_norm, stretch_g, activation, apply_exp, doubleConvTranspose):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
@@ -23,20 +23,24 @@ class UNet(nn.Module):
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        # self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
-        self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
+        if doubleConvTranspose:
+            self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
+        else:
+            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
             if i >= self.depth - 2:
                 self.up_path.append(
                     up(ch * layer_factor, down_ch, bilinear, layer_factor, network,
-                       dilation=dilation, unet_norm=unet_norm, activation=activation)
+                       dilation=dilation, unet_norm=unet_norm, activation=activation,
+                       doubleConvTranspose=doubleConvTranspose)
                 )
             else:
                 self.up_path.append(
                     up(ch * layer_factor, ch // 2, bilinear, layer_factor, network,
-                       dilation=dilation, unet_norm=unet_norm, activation=activation)
+                       dilation=dilation, unet_norm=unet_norm, activation=activation,
+                       doubleConvTranspose=doubleConvTranspose)
                 )
             ch = ch // 2
             if network == params.torus_network:
@@ -55,10 +59,13 @@ class UNet(nn.Module):
             self.last_sig = Blocks.MySig(3)
         # else:
 
-        if add_clipping:
-            self.clip = Blocks.Clip()
+        if stretch_g != "none":
+            stretch_options = {"batchMax": Blocks.BatchMaxNormalization(),
+                               "instanceMinMax": Blocks.MinMaxNormalization()}
+            # self.clip = Blocks.Clip()
+            self.stretch = stretch_options[stretch_g]
         else:
-            self.clip = None
+            self.stretch = None
 
     def forward(self, x):
         next_x = self.inc(x)
@@ -84,6 +91,8 @@ class UNet(nn.Module):
             x_out = self.last_sig(x_out)
         if self.exp:
             x_out = self.exp(x_out)
-        if self.clip:
-            x_out = self.clip(x_out)
+        # if self.clip:
+        #     x_out = self.clip(x_out)
+        if self.stretch:
+            x_out = self.stretch(x_out)
         return x_out

@@ -62,33 +62,38 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, unet_norm, add_clipping, activation, use_xaviar, output_dim, apply_exp):
+                 add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim, apply_exp,
+                 g_doubleConvTranspose):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
     new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                              layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                              bilinear=False, network=model, dilation=0, to_crop=add_frame,
-                             unet_norm=unet_norm, add_clipping=add_clipping,
-                             activation=activation, apply_exp=apply_exp).to(device_)
+                             unet_norm=unet_norm, stretch_g=stretch_g,
+                             activation=activation, apply_exp=apply_exp,
+                             doubleConvTranspose=g_doubleConvTranspose).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
 def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar, d_model,
-                 d_nlayers, last_activation, num_D):
+                 d_nlayers, last_activation, num_D, d_fully_connected, simpleD_maxpool):
     if d_model == "original":
         new_net = Discriminator.Discriminator(params.input_size, input_dim_,
-                                              down_dim, norm, last_activation).to(device_)
+                                              down_dim, norm, last_activation,
+                                              d_fully_connected, d_nlayers).to(device_)
     elif d_model == "patchD":
         new_net = Discriminator.NLayerDiscriminator(input_dim_, ndf=down_dim, n_layers=d_nlayers,
                                                     norm_layer=norm, last_activation=last_activation).to(device_)
     elif "multiLayerD" in d_model:
-        new_net = Discriminator.MultiscaleDiscriminator(params.input_size, d_model, input_dim_, ndf=down_dim, n_layers=d_nlayers,
+        new_net = Discriminator.MultiscaleDiscriminator(params.input_size, d_model, input_dim_, ndf=down_dim,
+                                                        n_layers=d_nlayers,
                                                         norm_layer=norm, last_activation=last_activation,
-                                                        num_D=num_D).to(device_)
+                                                        num_D=num_D, d_fully_connected=d_fully_connected,
+                                                        simpleD_maxpool=simpleD_maxpool).to(device_)
     elif d_model == "simpleD":
         new_net = Discriminator.SimpleDiscriminator(params.input_size, input_dim_,
-                                              down_dim, norm, last_activation).to(device_)
+                                              down_dim, norm, last_activation, simpleD_maxpool).to(device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)

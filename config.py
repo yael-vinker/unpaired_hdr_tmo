@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument("--lr_decay_step", type=float, default=30)
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
-    parser.add_argument("--d_pretrain_epochs", type=int, default=0)
+    parser.add_argument("--d_pretrain_epochs", type=int, default=5)
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -34,10 +34,14 @@ def parse_arguments():
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='multiLayerD_dcgan', help="original/patchD/multiLayerD")
+    parser.add_argument('--d_model', type=str, default='simpleD', help="original/patchD/multiLayerD")
     parser.add_argument('--num_D', type=int, default=2, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
+    parser.add_argument('--stretch_g', type=str, default="batchMax")
+    parser.add_argument('--g_doubleConvTranspose', type=int, default=0)
+    parser.add_argument('--d_fully_connected', type=int, default=1)
+    parser.add_argument('--simpleD_maxpool', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -160,39 +164,69 @@ def get_dataset_properties(opt):
     return dataset_properties
 
 
-def create_dir(opt):
-    result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
-                                                                                 opt.con_operator, opt.unet_depth, \
-                                                                                 opt.filters, opt.add_frame
+def get_G_params(opt):
+    result_dir_pref = "G_"
+    result_dir_pref += opt.model + "_" + params.con_op_short[opt.con_operator] + "_" + opt.g_activation
+    if not opt.g_doubleConvTranspose:
+        result_dir_pref += "_doubleConv_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
-    result_dir_pref = result_dir_pref + "d_ch" + str(opt.d_down_dim) + "_"
-    if opt.d_pretrain_epochs:
-        result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
-    if not opt.add_frame:
-        result_dir_pref = result_dir_pref + "no_frame_"
-    result_dir_pref = result_dir_pref + "g" + str(opt.G_lr) + "_d" + \
-                      str(opt.D_lr) + "_decay" + str(opt.lr_decay_step) + "_"
-    if opt.normalization == "stretch":
-        result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
-    if opt.enhance_detail:
-        result_dir_pref = result_dir_pref + "_detail_en_"
     if opt.add_clipping:
         result_dir_pref = result_dir_pref + "clip_"
     if opt.apply_exp:
         result_dir_pref = result_dir_pref + "exp_"
+    if opt.stretch_g != "none":
+        result_dir_pref += opt.stretch_g + "_"
+    return result_dir_pref
+
+
+def get_D_params(opt):
+    result_dir_pref = "D_%s_" % (opt.d_model)
+    if "multiLayerD" in opt.d_model:
+        result_dir_pref = result_dir_pref + "_num_D" + str(opt.num_D)
+    result_dir_pref += "ch%d_" % (opt.d_down_dim)
+    result_dir_pref += "%slayers_%s_" % (str(opt.d_nlayers), opt.d_last_activation)
+    if opt.d_fully_connected:
+        result_dir_pref += "fullyCon_"
+    if "simpleD" in opt.d_model:
+        if opt.simpleD_maxpool:
+            result_dir_pref += "maxPool_"
+    if opt.d_norm != "none":
+        result_dir_pref += opt.d_norm + "_"
+    if opt.multi_scale_D:
+        result_dir_pref += "2scale_"
+    return result_dir_pref
+
+
+def get_training_params(opt):
+    result_dir_pref = ""
+    if opt.change_random_seed:
+        result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+    if opt.d_pretrain_epochs:
+        result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
+    result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)
+    if not opt.add_frame:
+        result_dir_pref = result_dir_pref + "noframe_"
+    if opt.normalization == "stretch":
+        result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
+    if opt.enhance_detail:
+        result_dir_pref = result_dir_pref + "detailen_"
+    return result_dir_pref
+
+
+def get_data_params(opt):
+    result_dir_pref = "data"
     if opt.use_new_f:
         result_dir_pref = result_dir_pref + "new_f_"
     else:
         result_dir_pref = result_dir_pref + "data" + str(opt.gamma_log) + "_"
-    if not opt.train_with_D:
-        result_dir_pref = result_dir_pref + "no_D_"
-    if opt.change_random_seed:
-        result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+    return result_dir_pref
+
+
+def get_losses_params(opt):
+    result_dir_pref = "loss"
     if opt.apply_wind_norm:
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
-    if opt.apply_sig_mu_ssim:
-        result_dir_pref = result_dir_pref + "apply_sig_mu_ssim"
     result_dir_pref = result_dir_pref + "d" + str(opt.loss_g_d_factor)
     if opt.ssim_loss_factor:
         result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
@@ -210,17 +244,21 @@ def create_dir(opt):
             result_dir_pref = result_dir_pref + "_alpha" + str(opt.alpha)
     if opt.mu_loss_factor:
         result_dir_pref = result_dir_pref + "_mu_loss" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
-    if opt.last_layer == "msig":
-        result_dir_pref = result_dir_pref + "_msig_" + str(opt.custom_sig_factor)
-    output_dir = result_dir_pref \
-                 + "_" + model_name + "_" + con_operator + "_act_" + opt.g_activation \
-                 + "_d_" + opt.d_model + "_nlayers" + str(opt.d_nlayers) + "_" + opt.d_last_activation
-    if "multiLayerD" in opt.d_model:
-        output_dir = output_dir + "_num_D" + str(opt.num_D)
-    if opt.d_norm != "none":
-        output_dir = output_dir + "_" + opt.d_norm
-    if opt.multi_scale_D:
-        output_dir += "_2scale"
+    return result_dir_pref
+
+
+def create_dir(opt):
+    result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
+                                                                                 opt.con_operator, opt.unet_depth, \
+                                                                                 opt.filters, opt.add_frame
+
+    if not opt.train_with_D:
+        result_dir_pref = result_dir_pref + "no_D_"
+    else:
+        result_dir_pref += get_D_params(opt)
+    result_dir_pref += "_" + get_G_params(opt) + "_" + get_training_params(opt)
+    output_dir = result_dir_pref
+
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
     result_path = params.results_path

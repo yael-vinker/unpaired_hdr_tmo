@@ -119,9 +119,9 @@ class MaxNormalizationEpsilon(nn.Module):
         return x / x_max - params.epsilon
 
 
-class BugyMaxNormalization(nn.Module):
+class BatchMaxNormalization(nn.Module):
     def __init__(self):
-        super(BugyMaxNormalization, self).__init__()
+        super(BatchMaxNormalization, self).__init__()
 
     def forward(self, x):
         return x / x.max()
