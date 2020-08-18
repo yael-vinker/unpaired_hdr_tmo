@@ -4,13 +4,13 @@ batch_size=16
 num_epochs=325
 G_lr=0.00001
 D_lr=0.000005
-lr_decay_step=30
+lr_decay_step=50
 model="unet"
 con_operator="square_and_square_root"
 unet_norm="none"
 use_xaviar=1
 g_activation="relu"
-d_pretrain_epochs=10
+d_pretrain_epochs=50
 
 # ====== DATASET ======
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_with_gamma_factor_train"
@@ -20,7 +20,6 @@ test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_
 #test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data/test/test_hdrplus_new_f_1"
 test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Aug/results_08_03/"
 f_factor_path="/cs/labs/raananf/yael_vinker/data/test/test_factors.npy"
 gamma_log=10
 use_new_f=0
@@ -38,10 +37,10 @@ custom_sig_factor=3
 d_model="original"
 num_D=0
 d_last_activation="sigmoid"
-d_down_dim=64
+d_down_dim=16
 d_norm="none"
 milestones="200"
-epoch_to_save=20
+epoch_to_save=40
 final_epoch=320
 d_nlayers=3
 
@@ -50,7 +49,7 @@ d_nlayers=3
 std_method="gamma_factor_loss_bilateral"
 
 intensity_epsilon=0.00001
-apply_intensity_loss_laplacian_weights=1
+apply_intensity_loss_laplacian_weights=0
 
 loss_g_d_factor=5
 train_with_D=1
@@ -75,12 +74,14 @@ min_stretch=0.025
 bilateral_mu=1
 blf_input="log"
 blf_alpha=0.8
+
 enhance_detail=0
 stretch_g="none"
 g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=1
 
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Aug/01_18/results_08_18/general_test/"
 echo "========================= 1 ==========================="
 sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $change_random_seed $batch_size $num_epochs \
