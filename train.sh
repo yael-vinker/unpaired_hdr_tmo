@@ -78,6 +78,10 @@ echo "d_pretrain_epochs ${60}"
 echo "num_D ${61}"
 echo "unet_norm ${62}"
 echo "enhance_detail ${63}"
+echo "stretch_g ${64}"
+echo "g_doubleConvTranspose ${65}"
+echo "d_fully_connected ${66}"
+echo "simpleD_maxpool ${67}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -143,4 +147,8 @@ python3.7 -W ignore -u main_train.py \
   --d_pretrain_epochs ${60} \
   --num_D ${61} \
   --unet_norm ${62} \
-  --enhance_detail ${63}
+  --enhance_detail ${63} \
+  --stretch_g ${64} \
+  --g_doubleConvTranspose ${65} \
+  --d_fully_connected ${66} \
+  --simpleD_maxpool ${67}

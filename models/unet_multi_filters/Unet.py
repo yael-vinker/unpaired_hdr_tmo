@@ -13,7 +13,10 @@ class UNet(nn.Module):
         self.network = network
         down_ch = filters
         self.depth = depth
-        self.inc = inconv(n_channels, down_ch, unet_norm, activation)
+        padding = 1
+        if doubleConvTranspose:
+            padding = 0
+        self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding)
         ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
