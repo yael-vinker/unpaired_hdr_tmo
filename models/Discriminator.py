@@ -58,9 +58,9 @@ class SimpleDiscriminator(nn.Module):
             last_dim = dim * 2
             self.model += [nn.AdaptiveMaxPool2d((1))]
         else:
-            last_dim = dim * 2 * (int(input_size / 4) ** 2)
-            # self.model += [nn.LeakyReLU(0.2, inplace=True),
-            #                nn.Conv2d(dim * 2, 1, 4, 2, 1, bias=True)]
+            last_dim = (int(input_size / 4) ** 2)
+            self.model += [nn.LeakyReLU(0.2, inplace=True),
+                           nn.Conv2d(dim * 2, 1, kernel_size=1, stride=1, padding=0, bias=True)]
         self.model += [Flatten(),
             nn.Linear(last_dim, 1, bias=False),
             nn.Sigmoid()]
@@ -129,6 +129,7 @@ class MultiscaleDiscriminator(nn.Module):
             elif "simpleD" in d_model:
                 netD = SimpleDiscriminator(input_size, input_nc,
                                             ndf, norm_layer, last_activation, simpleD_maxpool)
+                input_size = input_size // 2
             if getIntermFeat:
                 for j in range(n_layers + 2):
                     setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))

@@ -13,7 +13,7 @@ class UNet(nn.Module):
         self.network = network
         down_ch = filters
         self.depth = depth
-        padding = 1
+        padding = 2
         if doubleConvTranspose:
             padding = 0
         self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding)
@@ -21,7 +21,7 @@ class UNet(nn.Module):
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation)
+                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation, padding=padding)
             )
             ch = ch * 2
             if network == params.torus_network:
@@ -29,7 +29,7 @@ class UNet(nn.Module):
         if doubleConvTranspose:
             self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
         else:
-            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
+            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation, padding=padding))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
@@ -37,13 +37,13 @@ class UNet(nn.Module):
                 self.up_path.append(
                     up(ch * layer_factor, down_ch, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding)
                 )
             else:
                 self.up_path.append(
                     up(ch * layer_factor, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding)
                 )
             ch = ch // 2
             if network == params.torus_network:
