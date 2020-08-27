@@ -228,7 +228,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         train_reshape=False,
                                                                         gamma_log=model_params["gamma_log"],
                                                                         f_factor_path=f_factor_path,
-                                                                        use_new_f=use_new_f)
+                                                                        use_new_f=use_new_f, data_trc="gamma")
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
 
     gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)

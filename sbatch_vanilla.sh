@@ -3,7 +3,7 @@ change_random_seed=0
 batch_size=16
 num_epochs=325
 G_lr=0.00001
-D_lr=0.000005
+D_lr=0.00001
 lr_decay_step=50
 model="unet"
 con_operator="square_and_square_root"
@@ -21,6 +21,7 @@ test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_
 test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
 f_factor_path="/cs/labs/raananf/yael_vinker/data/test/test_factors.npy"
+#f_factor_path="none"
 gamma_log=10
 use_new_f=0
 
@@ -80,6 +81,7 @@ stretch_g="none"
 g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=1
+data_trc="gamma"
 
 result_dir_prefix="/cs/labs/raananf/yael_vinker/Aug/01_18/results_08_18/general_test/"
 echo "========================= 1 ==========================="
@@ -96,4 +98,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
   $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
   $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
-  $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool
+  $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc

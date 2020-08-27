@@ -82,6 +82,7 @@ echo "stretch_g ${64}"
 echo "g_doubleConvTranspose ${65}"
 echo "d_fully_connected ${66}"
 echo "simpleD_maxpool ${67}"
+echo "data_trc ${68}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -151,4 +152,5 @@ python3.7 -W ignore -u main_train.py \
   --stretch_g ${64} \
   --g_doubleConvTranspose ${65} \
   --d_fully_connected ${66} \
-  --simpleD_maxpool ${67}
+  --simpleD_maxpool ${67} \
+  --data_trc ${68}

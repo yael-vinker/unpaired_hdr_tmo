@@ -17,6 +17,7 @@ class Tester:
     def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
         self.args = args
         self.to_crop = args.add_frame
+        self.data_trc = args.data_trc
         self.test_data_loader_npy, self.test_data_loader_ldr = \
             data_loader_util.load_test_data(args.dataset_properties, title="test")
         self.accG_counter, self.accDreal_counter, self.accDfake_counter = 0, 0, 0
@@ -38,6 +39,7 @@ class Tester:
         self.wind_size = args.ssim_window_size
         self.std_norm_factor = args.std_norm_factor
 
+
     def load_original_test_hdr_images(self, root):
         print("using input loader number ", self.args.wind_norm_option)
         original_hdr_images = []
@@ -50,7 +52,8 @@ class Tester:
                                                    self.args.factor_coeff, train_reshape=False,
                                                    gamma_log=self.args.gamma_log,
                                                    f_factor_path=self.args.f_factor_path,
-                                                   use_new_f=self.args.use_new_f)
+                                                   use_new_f=self.args.use_new_f,
+                                                   data_trc=self.data_trc)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)

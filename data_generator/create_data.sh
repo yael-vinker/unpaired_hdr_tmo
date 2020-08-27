@@ -9,6 +9,7 @@ echo "number_of_images $4"
 echo "use_factorise_datasoph $5"
 echo "factor_coeff $6"
 echo "use_new_f $7"
+echo "data_trc $8"
 
 python3.6 create_dng_npy_data.py \
   --input_dir $1 \
@@ -17,4 +18,5 @@ python3.6 create_dng_npy_data.py \
   --number_of_images $4 \
   --use_factorise_data $5 \
   --factor_coeff $6 \
-  --use_new_f $7
+  --use_new_f $7 \
+  --data_trc $8

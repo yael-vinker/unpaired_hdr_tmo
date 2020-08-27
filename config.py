@@ -34,12 +34,12 @@ def parse_arguments():
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='simpleD', help="original/patchD/multiLayerD")
+    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
     parser.add_argument('--num_D', type=int, default=2, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
-    parser.add_argument('--stretch_g', type=str, default="batchMax")
-    parser.add_argument('--g_doubleConvTranspose', type=int, default=0)
+    parser.add_argument('--stretch_g', type=str, default="none")
+    parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
     parser.add_argument('--d_fully_connected', type=int, default=1)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
 
@@ -90,7 +90,8 @@ def parse_arguments():
     parser.add_argument('--gamma_log', type=int, default=10)
     parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path) #52180538.8149
     # parser.add_argument('--f_factor_path', type=str, default="none")  # 52180538.8149
-    parser.add_argument('--use_new_f', type=int, default=0)
+    parser.add_argument('--use_new_f', type=int, default=1)
+    parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
     parser.add_argument('--enhance_detail', type=int, default=1)
@@ -160,7 +161,8 @@ def get_dataset_properties(opt):
                           "use_c3": False,
                           "wind_norm_option": opt.wind_norm_option,
                           "max_stretch": opt.max_stretch,
-                          "min_stretch": opt.min_stretch}
+                          "min_stretch": opt.min_stretch,
+                          "data_trc": opt.data_trc}
     return dataset_properties
 
 
@@ -169,6 +171,8 @@ def get_G_params(opt):
     result_dir_pref += opt.model + "_" + params.con_op_short[opt.con_operator] + "_" + opt.g_activation
     if not opt.g_doubleConvTranspose:
         result_dir_pref += "_doubleConv_"
+    else:
+        result_dir_pref += "_doubleConvT_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
     if opt.add_clipping:
@@ -215,7 +219,8 @@ def get_training_params(opt):
 
 
 def get_data_params(opt):
-    result_dir_pref = "data"
+    result_dir_pref = "DATA_"
+    result_dir_pref += opt.data_trc + "_" + str(opt.factor_coeff)
     if opt.use_new_f:
         result_dir_pref = result_dir_pref + "new_f_"
     else:
@@ -224,7 +229,7 @@ def get_data_params(opt):
 
 
 def get_losses_params(opt):
-    result_dir_pref = "loss"
+    result_dir_pref = "LOSS_"
     if opt.apply_wind_norm:
         result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
     result_dir_pref = result_dir_pref + "d" + str(opt.loss_g_d_factor)
@@ -235,15 +240,16 @@ def get_losses_params(opt):
             str(opt.ssim_window_size) + "_"
         if opt.std_mul_max:
             s += "std_mul_max_"
-        if opt.apply_intensity_loss_laplacian_weights:
-            s = s + "bmu" + str(opt.bilateral_mu) + "_sigr" + str(opt.bilateral_sigma_r) + "_"
-            if opt.blf_input == "log":
-                s = s + str(opt.blf_input) + str(opt.blf_alpha) + "_"
         result_dir_pref = result_dir_pref + s + "eps" + str(opt.intensity_epsilon)
         if opt.std_method not in ["std", "std_bilateral"]:
             result_dir_pref = result_dir_pref + "_alpha" + str(opt.alpha)
+    if opt.apply_intensity_loss_laplacian_weights:
+        result_dir_pref = result_dir_pref + "_sigr" + str(opt.bilateral_sigma_r) + "_" #"bmu" + str(opt.bilateral_mu)
+        if opt.blf_input == "log":
+            result_dir_pref = result_dir_pref + str(opt.blf_input) + str(opt.blf_alpha) + "_"
+
     if opt.mu_loss_factor:
-        result_dir_pref = result_dir_pref + "_mu_loss" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
+        result_dir_pref = result_dir_pref + "_cmprs" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     return result_dir_pref
 
 
@@ -256,8 +262,10 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "no_D_"
     else:
         result_dir_pref += get_D_params(opt)
-    result_dir_pref += "_" + get_G_params(opt) + "_" + get_training_params(opt)
+    result_dir_pref += "_" + get_G_params(opt) + "_" + get_training_params(opt) + "_" + get_losses_params(opt) \
+                       + "_" + get_data_params(opt)
     output_dir = result_dir_pref
+    print(output_dir)
 
     model_path = params.models_save_path
     loss_graph_path = params.loss_path

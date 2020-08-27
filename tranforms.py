@@ -309,7 +309,7 @@ class Clip(object):
 
 
 image_transform_no_norm = torch_transforms.Compose([
-    CenterCrop(params.input_size),
+    # CenterCrop(params.input_size),
     ToTensor(),
 ])
 

@@ -302,7 +302,7 @@ class GanTrainer:
             self.errG_struct = self.struct_loss_factor * self.struct_loss(fake, hdr_input_original_gray_norm,
                                                                             hdr_input, r_weights)
             retain_graph = False
-            if self.apply_intensity_loss:
+            if self.apply_intensity_loss or self.mu_loss_factor:
                 retain_graph = True
             self.errG_struct.backward(retain_graph=retain_graph)
             self.G_loss_struct.append(self.errG_struct.item())
@@ -373,7 +373,7 @@ class GanTrainer:
             self.accG = self.accG / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
             self.accDreal = self.accDreal / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
             self.accDfake = self.accDfake / params.get_multiLayerD_map_dim(num_D=self.num_D, d_nlayers=self.d_nlayers)
-        elif "multiLayerD_dcgan" == self.d_model:
+        elif "multiLayerD_dcgan" == self.d_model or "multiLayerD_simpleD" == self.d_model:
             self.accG = self.accG / self.num_D
             self.accDreal = self.accDreal / self.num_D
             self.accDfake = self.accDfake / self.num_D

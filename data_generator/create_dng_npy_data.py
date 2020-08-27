@@ -208,10 +208,8 @@ def get_f(use_new_f, rgb_img, gray_im, mean_target, factor):
     return f_factor
 
 
-def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f):
+def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f, data_trc):
     mean_target, factor = get_mean_and_factor(gamma_log, use_new_f)
-    print("mean_target, factor")
-    print(mean_target, factor)
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
@@ -226,10 +224,19 @@ def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_pat
             f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
     else:
         f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
+    if f_factor < 1:
+        print("==== %s ===== buggy im" % im_path)
+    print("f_factor", f_factor)
     brightness_factor = f_factor * 255 * factor_coeff
     print("brightness_factor", brightness_factor)
+    if "min" in data_trc:
+        gray_im = gray_im - gray_im.min()
     gamma = (1 / (1 + factor * np.log10(brightness_factor)))
-    gray_im = (gray_im / np.max(gray_im)) ** gamma
+    if "log" in data_trc:
+        gray_im = np.log10((gray_im / np.max(gray_im)) * brightness_factor + 1)
+        gray_im = gray_im / gray_im.max()
+    elif "gamma" in data_trc:
+        gray_im = (gray_im / np.max(gray_im)) ** gamma
     return rgb_img, gray_im, gamma
 
 
@@ -255,7 +262,8 @@ def apply_preprocess_for_hdr(im_path, args):
                                           factor_coeff=args.factor_coeff,
                                           train_reshape=True, gamma_log=args.gamma_log,
                                                         f_factor_path=args.f_factor_path,
-                                                        use_new_f=args.use_new_f)
+                                                        use_new_f=args.use_new_f,
+                                                        data_trc=args.data_trc)
     rgb_img = transforms_.image_transform_no_norm(rgb_img)
     gray_im_log = transforms_.image_transform_no_norm(gray_im_log)
     return rgb_img, gray_im_log, gamma_factor
@@ -346,31 +354,26 @@ def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
 
 
 if __name__ == '__main__':
-    # input_dir = "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size"
-    # output_dir = "/cs/snapless/raananf/yael_vinker/data/open_exr_source"
-    # train_reshape = False
-    # dict_name = "exr_newf.npy"
-    # save_f_factor(input_dir, output_dir, train_reshape, dict_name)
-    # save_exr_f_factors("/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
-    #                    "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy",
-    #                    0, 1.5)
     parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/folders/hdr_data")
+    parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/folders/data")
     parser.add_argument("--output_dir_pref", type=str, default="/Users/yaelvinker/PycharmProjects/lab/data_generator/res_test")
     parser.add_argument("--isLdr", type=int, default=0)
     parser.add_argument("--number_of_images", type=int, default=7)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
-    parser.add_argument("--factor_coeff", type=float, default=1.0)
-    parser.add_argument("--gamma_log", type=int, default=2)
+    parser.add_argument("--factor_coeff", type=float, default=0.5)
+    parser.add_argument("--gamma_log", type=int, default=10)
     parser.add_argument("--f_factor_path", type=str, default="none")
-    parser.add_argument("--use_new_f", type=int, default=0)
+    parser.add_argument("--use_new_f", type=int, default=1)
+    parser.add_argument("--data_trc", type=str, default="gamma_min")
 
     args = parser.parse_args()
     if args.isLdr:
-       pref = "flicker"
+       output_dir_name = "flicker"
     else:
-       pref = "hdrplus"
-    output_dir_name = pref #+ "_new_f_" + str(args.use_new_f)
+       output_dir_name = "hdrplus"
+    if args.use_new_f:
+        output_dir_name += "_new_f_"
+    output_dir_name += args.data_trc + "_factor" + str(args.factor_coeff)
     args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
     if not os.path.exists(args.output_dir):
        os.mkdir(args.output_dir)
