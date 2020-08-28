@@ -12,6 +12,7 @@ import utils.data_loader_util as data_loader_util
 import tranforms
 import models.unet_multi_filters.Unet as Generator
 import data_generator.create_dng_npy_data as create_dng_npy_data
+import re
 import argparse
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
@@ -184,11 +185,11 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
 
 
 def load_g_model(model_params, device, net_path):
-    G_net = get_trained_G_net(model_params["model"], device, 1,
-                              model_params["last_layer"], model_params["filters"],
-                              model_params["con_operator"], model_params["depth"],
-                              add_frame=True, use_pyramid_loss=True, unet_norm=model_params["unet_norm"],
-                              add_clipping=model_params["clip"])
+    G_net = create_G_net(model_params["model"], device, True, 1, model_params["last_layer"],
+                         model_params["filters"], model_params["con_operator"], model_params["depth"],
+                         model_params["add_frame"], model_params["unet_norm"],  model_params["stretch_g"],
+                         "relu", use_xaviar=False, output_dim=1, apply_exp=False,
+                         g_doubleConvTranspose=model_params["g_doubleConvTranspose"])
 
     checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     state_dict = checkpoint['modelG_state_dict']
@@ -199,39 +200,25 @@ def load_g_model(model_params, device, net_path):
         for k, v in state_dict.items():
             name = k[7:]  # remove `module.`
             new_state_dict[name] = v
-    # else:
-    # new_state_dict = state_dict
+    else:
+        new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
     G_net.eval()
     return G_net
 
 
-def get_trained_G_net(model, device_, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                      add_frame, use_pyramid_loss, unet_norm, add_clipping, output_dim=1, activation="relu"):
-    layer_factor = get_layer_factor(con_operator)
-    if model != params.unet_network:
-        assert 0, "Unsupported g model request: {}".format(model)
-    new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
-                             layer_factor=layer_factor,
-                             con_operator=con_operator, filters=filters, bilinear=False, network=model, dilation=0,
-                             to_crop=add_frame, unet_norm=unet_norm,
-                             add_clipping=add_clipping, activation=activation, apply_exp=False).to(device_)
-    if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
-        print("Using [%d] GPUs" % torch.cuda.device_count())
-        new_net = nn.DataParallel(new_net, list(range(torch.cuda.device_count())))
-    return new_net
-
-
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
-                                                                        factor_coeff=1.0,
+                                                                        factor_coeff=model_params["factor_coeff"],
                                                                         train_reshape=False,
                                                                         gamma_log=model_params["gamma_log"],
                                                                         f_factor_path=f_factor_path,
-                                                                        use_new_f=use_new_f, data_trc="gamma")
-    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+                                                                        use_new_f=model_params["use_new_f"],
+                                                                        data_trc=model_params["data_trc"])
 
-    gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    if model_params["add_frame"]:
+        gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
     with torch.no_grad():
@@ -239,31 +226,57 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
 
     original_im_tensor = rgb_img.unsqueeze(0)
-    file_name = im_name + "_no_stretch"
-    color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
-    file_name = im_name + "_gray_no_stretch"
-    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray, output_path, file_name)
-
-    file_name = im_name + "gray_stretch"
+    # file_name = im_name + "_no_stretch"
+    # color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
+    # hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
+    # file_name = im_name + "_gray_no_stretch"
+    # hdr_image_util.save_color_tensor_as_numpy(fake_im_gray, output_path, file_name)
+    #
+    # file_name = im_name + "gray_stretch"
     fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
-    hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
+    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
 
     file_name = im_name + "_stretch"
     color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
     hdr_image_util.save_color_tensor_as_numpy(color_batch_stretch[0], output_path, file_name)
 
+def run_trained_model_from_path(model_name):
+    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/08_27/models/", model_name,
+                            "net_epoch_320.pth")
+    model_params = get_model_params(model_name)
+    f_factor_path = "none"
+    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/08_27/models/", model_name,
+                                      "exr_frame")
+    input_images_path = os.path.join("/Users/yaelvinker/Documents/university/data/exr1")
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    run_model_on_path(model_params, device, net_path, input_images_path,
+                                      output_images_path, "npy", f_factor_path, None, False)
+
 
 # ====== GET PARAMS ======
 def get_model_params(model_name):
-    model_params = {"model_name": model_name, "model": params.unet_network, "filters": 32, "depth": 4,
-                    "last_layer": get_last_layer(model_name), "unet_norm": 'none',
+    model_params = {"model_name": model_name, "model": params.unet_network,
+                    "filters": 32, "depth": 4,
+                    # "add_frame": get_frame(model_name),
+                    "add_frame": True,
+                    "last_layer": get_last_layer(model_name),
+                    "unet_norm": 'none',
+                    "stretch_g": get_stretch_g(model_name),
                     "con_operator": get_con_operator(model_name),
                     "clip": get_clip(model_name),
+                    "g_doubleConvTranspose": get_g_doubleConvTranspose(model_name),
+
+                    "factor_coeff": get_factor_coeff(model_name),
+                    "use_new_f": get_use_new_f(model_name),
+                    "data_trc": get_data_trc(model_name),
                     "factorised_data": True,
                     "input_loader": None,
-                    "gamma_log": get_gamma_log(model_name)}
+                    "gamma_log": 10}
+    print(model_params)
     return model_params
+
+
+
 
 
 def get_f_factor_path(name, data_gamma_log, use_new_f):
@@ -300,6 +313,7 @@ def get_hdr_source_path(name):
 
 
 def get_con_operator(model_name):
+    return "square_and_square_root"
     if params.original_unet in model_name:
         return params.original_unet
     if params.square_and_square_root in model_name:
@@ -307,6 +321,12 @@ def get_con_operator(model_name):
     else:
         return params.original_unet
 
+def get_stretch_g(model_name):
+    if "batchMax" in model_name:
+        return "batchMax"
+    elif "instanceMinMax" in model_name:
+        return "instanceMinMax"
+    return "none"
 
 def get_last_layer(model_name):
     if "msig" in model_name:
@@ -314,10 +334,31 @@ def get_last_layer(model_name):
     else:
         return "sigmoid"
 
+def get_frame(model_name):
+    if "noframe" in model_name:
+        return False
+    return True
 
 def get_clip(model_name):
     return "clip" in model_name
 
+def get_factor_coeff(model_name):
+    items = re.findall("DATA_\w*(\d+\.*\d+)", model_name)
+    return float(items[0])
+
+def get_data_trc(model_name):
+    items = re.findall("DATA_(\w*)_\d+\.*\d+", model_name)
+    return items[0]
+
+def get_use_new_f(model_name):
+    if "new_f" in model_name:
+        return True
+    return False
+
+def get_g_doubleConvTranspose(model_name):
+    if "doubleConvT" in model_name:
+        return True
+    return False
 
 def get_models_names():
     models_names = [
