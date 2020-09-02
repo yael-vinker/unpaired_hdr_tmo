@@ -81,7 +81,9 @@ stretch_g="none"
 g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=1
-data_trc="gamma"
+data_trc="log_min"
+adv_weight_list="1,1,1"
+
 
 result_dir_prefix="/cs/labs/raananf/yael_vinker/Aug/01_18/results_08_18/general_test/"
 echo "========================= 1 ==========================="
@@ -98,4 +100,4 @@ sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
   $epoch_to_save $final_epoch $bilateral_mu $max_stretch $min_stretch $ssim_window_size \
   $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
   $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
-  $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc
+  $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list

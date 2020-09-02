@@ -83,6 +83,7 @@ echo "g_doubleConvTranspose ${65}"
 echo "d_fully_connected ${66}"
 echo "simpleD_maxpool ${67}"
 echo "data_trc ${68}"
+echo "adv_weight_list ${69}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -153,4 +154,5 @@ python3.7 -W ignore -u main_train.py \
   --g_doubleConvTranspose ${65} \
   --d_fully_connected ${66} \
   --simpleD_maxpool ${67} \
-  --data_trc ${68}
+  --data_trc ${68} \
+  --adv_weight_list ${69}
