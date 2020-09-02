@@ -2,11 +2,12 @@ import numpy as np
 from torchvision.datasets import DatasetFolder
 import utils.hdr_image_util as hdr_image_util
 import utils.data_loader_util as data_loader_util
+import torch
 IMG_EXTENSIONS_local = ('.npy')
 
 
 def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stretch,
-               max_stretch):
+               max_stretch, factor_coeff):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
 
@@ -25,6 +26,11 @@ def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stre
     if hdrMode:
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
+        gamma_factor = data[()]["gamma_factor"]
+        brightness_factor = (10 ** (1 / gamma_factor - 1)) * factor_coeff
+        gray_original_im = gray_original_im - gray_original_im.min()
+        a = torch.log10((gray_original_im / gray_original_im.max()) * brightness_factor + 1)
+        input_im = a / a.max()
         if addFrame:
             input_im = data_loader_util.add_frame_to_im(input_im)
         if "gamma_factor" in data[()].keys():
@@ -52,6 +58,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.std_norm_factor = dataset_properties["std_norm_factor"]
         self.max_stretch = dataset_properties["max_stretch"]
         self.min_stretch = dataset_properties["min_stretch"]
+        self.factor_coeff = dataset_properties["factor_coeff"]
 
 
     def __getitem__(self, index):
@@ -67,6 +74,7 @@ class ProcessedDatasetFolder(DatasetFolder):
                                                                             self.normalization,
                                                                             self.std_norm_factor,
                                                                               self.min_stretch,
-                                                                              self.max_stretch)
+                                                                              self.max_stretch,
+                                                                            self.factor_coeff)
         return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm,
                 "original_gray": gray_original, "gamma_factor": gamma_factor}

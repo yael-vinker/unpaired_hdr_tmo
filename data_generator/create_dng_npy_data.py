@@ -202,7 +202,8 @@ def get_mean_and_factor(gamma_log, use_new_f):
 
 def get_f(use_new_f, rgb_img, gray_im, mean_target, factor):
     if use_new_f:
-        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img)
+        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 50
+        # f_factor = 1
     else:
         f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
     return f_factor
@@ -214,6 +215,10 @@ def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_pat
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
     gray_im = hdr_image_util.to_gray(rgb_img)
+    # plt.imshow(gray_im, cmap='gray')
+    #
+    # plt.title("min%f mean%f max%f" % (gray_im.min(), gray_im.mean(), gray_im.max()))
+    # plt.show()
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
     gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
     if f_factor_path != "none":
@@ -360,11 +365,11 @@ if __name__ == '__main__':
     parser.add_argument("--isLdr", type=int, default=0)
     parser.add_argument("--number_of_images", type=int, default=7)
     parser.add_argument("--use_factorise_data", type=int, default=1)  # bool
-    parser.add_argument("--factor_coeff", type=float, default=0.5)
+    parser.add_argument("--factor_coeff", type=float, default=1)
     parser.add_argument("--gamma_log", type=int, default=10)
     parser.add_argument("--f_factor_path", type=str, default="none")
     parser.add_argument("--use_new_f", type=int, default=1)
-    parser.add_argument("--data_trc", type=str, default="gamma_min")
+    parser.add_argument("--data_trc", type=str, default="log_min")
 
     args = parser.parse_args()
     if args.isLdr:
@@ -378,7 +383,7 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_dir):
        os.mkdir(args.output_dir)
     create_data(args)
-    # print_result(args.output_dir)
+    print_result(args.output_dir)
     # save_f_factor(args)
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",

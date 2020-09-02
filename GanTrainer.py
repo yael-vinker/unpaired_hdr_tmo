@@ -83,6 +83,7 @@ class GanTrainer:
         self.G_loss_struct, self.G_loss_d, self.G_loss_intensity = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
         self.apply_intensity_loss = opt.apply_intensity_loss
+        self.adv_weight_list = opt.adv_weight_list
 
         # ====== DATASET ======
         self.train_data_loader_npy, self.train_data_loader_ldr = \
@@ -178,10 +179,10 @@ class GanTrainer:
             output_on_real = self.netD(real_ldr)
         if "multiLayerD" in self.d_model:
             loss = []
-            for input_i in output_on_real:
+            for i, input_i in zip(range(len(output_on_real)), output_on_real):
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
-                loss.append(self.mse_loss(pred, target_tensor))
+                loss.append(self.adv_weight_list[i] * self.mse_loss(pred, target_tensor))
                 self.accDreal_counter += (pred > 0.5).sum().item()
             self.errD_real = torch.sum(torch.stack(loss))
         else:
@@ -218,10 +219,10 @@ class GanTrainer:
 
         if "multiLayerD" in self.d_model:
             loss = []
-            for input_i in output_on_fake:
+            for i, input_i in zip(range(len(output_on_fake)), output_on_fake):
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.fake_label, device=self.device)
-                loss.append(self.mse_loss(pred, target_tensor))
+                loss.append(self.adv_weight_list[i] * self.mse_loss(pred, target_tensor))
                 self.accDfake_counter += (pred <= 0.5).sum().item()
             self.errD_fake = torch.sum(torch.stack(loss))
 
@@ -278,10 +279,10 @@ class GanTrainer:
     def update_g_d_loss(self, output_on_fake):
         if "multiLayerD" in self.d_model:
             loss = []
-            for input_i in output_on_fake:
+            for i, input_i in zip(range(len(output_on_fake)), output_on_fake):
                 pred = input_i[-1]
                 target_tensor = torch.full(pred.shape, self.real_label, device=self.device)
-                loss.append(self.mse_loss(pred, target_tensor))
+                loss.append(self.adv_weight_list[i] * self.mse_loss(pred, target_tensor))
                 self.accG_counter += (pred > 0.5).sum().item()
             self.errG_d = self.loss_g_d_factor * torch.sum(torch.stack(loss))
         else:

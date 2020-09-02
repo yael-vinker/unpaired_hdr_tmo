@@ -34,7 +34,7 @@ def parse_arguments():
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
-    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
+    parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
     parser.add_argument('--num_D', type=int, default=2, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
@@ -47,6 +47,7 @@ def parse_arguments():
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument("--multi_scale_D", type=int, default=0)
+    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,1,1")
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
@@ -82,7 +83,7 @@ def parse_arguments():
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
-    parser.add_argument('--factor_coeff', type=float, default=1)
+    parser.add_argument('--factor_coeff', type=float, default=0.004)
     parser.add_argument('--window_tm_data', type=int, default=0)
     parser.add_argument('--apply_wind_norm', type=int, default=0)
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
@@ -126,6 +127,9 @@ def get_opt():
     opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
     opt.std_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.std_pyramid_weight_list.split(',')]).to(device)
     opt.mu_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.mu_pyramid_weight_list.split(',')]).to(device)
+    opt.adv_weight_list = torch.FloatTensor([float(item) for item in opt.adv_weight_list.split(',')]).to(
+        device)
+
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
     opt.dataset_properties = get_dataset_properties(opt)
     return opt
@@ -188,6 +192,7 @@ def get_D_params(opt):
     result_dir_pref = "D_%s_" % (opt.d_model)
     if "multiLayerD" in opt.d_model:
         result_dir_pref = result_dir_pref + "_num_D" + str(opt.num_D)
+        result_dir_pref += "_" + opt.adv_weight_list + "_"
     result_dir_pref += "ch%d_" % (opt.d_down_dim)
     result_dir_pref += "%slayers_%s_" % (str(opt.d_nlayers), opt.d_last_activation)
     if opt.d_fully_connected:
