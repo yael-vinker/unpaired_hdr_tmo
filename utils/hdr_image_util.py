@@ -95,7 +95,7 @@ def get_brightness_factor(im_hdr, mean_target, factor):
         r = get_bump(im_hdr * f)
 
         im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + factor * np.log10(f * 255)))) * 255)
-
+        # print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
         # if r > 1 and i % 5 == 0:
         #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
         if r > big and np.mean(im_gamma) > mean_target:
@@ -107,11 +107,24 @@ def get_brightness_factor(im_hdr, mean_target, factor):
     return f
 
 
+def print_im_data(J):
+    print("======================")
+    print(np.percentile(J, 50))
+    print(np.percentile(J, 1))
+    print(np.percentile(J, 99))
+    print(np.percentile(J, 100))
+    print(J.min(), J.mean(), J.max())
+    # plt.hist(np.log(J), rwidth=0.9, color='#607c8e', density=True, bins=5)
+    # plt.show()
+
+
 def get_new_brightness_factor(M):
     J = np.mean(M, axis=2)
     J = np.reshape(J, (-1,))
-    # M = M / np.max(J)
+    M = M / np.max(J)
+
     J = J / np.max(J)
+    J = J[J>0]
 
     npix = J.shape[0]
     Cout = 1
@@ -130,12 +143,13 @@ def get_new_brightness_factor(M):
         h = np.histogram(I, bins=5)
         h = h[0]
 
-        rat = np.mean(h[0]) / np.mean(h[1])
-        # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
-        if rat > 0.5:
-            Cout = C * np.sqrt(2)
-        else:
-            print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
+        if np.mean(h[1]) > 0:
+            rat = np.mean(h[0]) / np.mean(h[1])
+            # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
+            if rat > 0.5:
+                Cout = C * np.sqrt(2)
+            else:
+                print("%d: %.2f (%.2f) [%.4f]" % (i, rat, I.shape[0] / npix, Cout))
     return Cout
 
 
@@ -167,6 +181,15 @@ def to_0_1_range(im):
         im = (im - np.min(im)) / (np.max(im) - np.min(im))
     return im
 
+def to_0_1_range_outlier(im):
+    im_max = np.percentile(im,99)
+    im_min = np.percentile(im, 1)
+    if np.max(im) - np.min(im) == 0:
+        im = (im - im_min) / (im_max - im_min + params.epsilon)
+    else:
+        im = (im - im_min) / (im_max - im_min)
+    return np.clip(im,0,1)
+
 
 def to_minus1_1_range(im):
     return 2 * im - 1
@@ -193,17 +216,17 @@ def reshape_image(rgb_im, train_reshape):
         rgb_im = skimage.transform.resize(rgb_im, (params.input_size, params.input_size),
                                           mode='reflect', preserve_range=False,
                                           anti_aliasing=True, order=3).astype("float32")
-    else:
-        if min(h, w) > 3000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
-                                                       int(rgb_im.shape[1] / 4)),
-                                              mode='reflect', preserve_range=False,
-                                              anti_aliasing=True, order=3).astype("float32")
-        elif min(h, w) > 2000:
-            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
-                                                       int(rgb_im.shape[1] / 3)),
-                                              mode='reflect', preserve_range=False,
-                                              anti_aliasing=True, order=3).astype("float32")
+    # else:
+    #     if min(h, w) > 3000:
+    #         rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
+    #                                                    int(rgb_im.shape[1] / 4)),
+    #                                           mode='reflect', preserve_range=False,
+    #                                           anti_aliasing=True, order=3).astype("float32")
+    #     elif min(h, w) > 2000:
+    #         rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+    #                                                    int(rgb_im.shape[1] / 3)),
+    #                                           mode='reflect', preserve_range=False,
+    #                                           anti_aliasing=True, order=3).astype("float32")
     return rgb_im
 
 
@@ -262,7 +285,7 @@ def save_gray_tensor_as_numpy(tensor, output_path, im_name):
 def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
     tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
-    tensor_0_1 = to_0_1_range(tensor_0_1)
+    tensor_0_1 = to_0_1_range_outlier(tensor_0_1)
     im = (tensor_0_1 * 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)

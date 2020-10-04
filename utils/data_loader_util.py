@@ -71,16 +71,10 @@ def crop_input_hdr_batch(input_hdr_batch):
 
 
 def add_frame_to_im(input_im):
-    input_im = torch.squeeze(input_im)
-    first_row = input_im[0].repeat(params.shape_addition, 1)
-    im = torch.cat((first_row, input_im), 0)
-    last_row = input_im[-1].repeat(params.shape_addition, 1)
-    im = torch.cat((im, last_row), 0)
-    left_col = torch.t(im[:, 0].repeat(params.shape_addition, 1))
-    im = torch.cat((left_col, im), 1)
-    right_col = torch.t(im[:, -1].repeat(params.shape_addition, 1))
-    im = torch.cat((im, right_col), 1)
-    im = torch.unsqueeze(im, dim=0)
+    import torch.nn.functional as F
+    im = F.pad(input_im.unsqueeze(dim=0), (params.shape_addition,params.shape_addition,
+                    params.shape_addition,params.shape_addition), mode='replicate')
+    im = torch.squeeze(im, dim=0)
     return im
 
 

@@ -169,9 +169,12 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, input_format,
                       f_factor_path, net_G, use_new_f):
+    import time
+    a = time.time()
     if not net_G:
         net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
+    print("took %.4f seconds to load model" % (time.time() - a))
     for img_name in os.listdir(input_images_path):
         im_path = os.path.join(input_images_path, img_name)
         if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
@@ -182,6 +185,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
                                           output_images_path, model_params, f_factor_path, use_new_f)
         else:
             print("%s in already exists" % (img_name))
+        print("took %.4f seconds to run model" % (time.time() - a))
 
 
 def load_g_model(model_params, device, net_path):
@@ -203,6 +207,7 @@ def load_g_model(model_params, device, net_path):
     else:
         new_state_dict = state_dict
     G_net.load_state_dict(new_state_dict)
+    G_net.to(device)
     G_net.eval()
     return G_net
 
@@ -214,7 +219,8 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         gamma_log=model_params["gamma_log"],
                                                                         f_factor_path=f_factor_path,
                                                                         use_new_f=model_params["use_new_f"],
-                                                                        data_trc=model_params["data_trc"])
+                                                                        data_trc=model_params["data_trc"],
+                                                                        test_mode=True)
 
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     if model_params["add_frame"]:
@@ -226,19 +232,25 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
 
     original_im_tensor = rgb_img.unsqueeze(0)
-    # file_name = im_name + "_no_stretch"
-    # color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    # hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
+    file_name = im_name + "_no_stretch"
+    color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
+    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
+    print("color min[%.4f] mean[%.4f] max[%.4f]" % (
+    color_batch.min(), color_batch.mean(), color_batch.max()))
+    file_name = im_name + "_stretch_color"
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch[0], output_path, file_name)
     # file_name = im_name + "_gray_no_stretch"
-    # hdr_image_util.save_color_tensor_as_numpy(fake_im_gray, output_path, file_name)
-    #
-    # file_name = im_name + "gray_stretch"
+    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, file_name)
     fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
     # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
 
-    file_name = im_name + "_stretch"
+    file_name = im_name + "_stretch_gray"
     color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
     hdr_image_util.save_color_tensor_as_numpy(color_batch_stretch[0], output_path, file_name)
+    # file_name = im_name + "_stretch_gray_and_color"
+    # hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch_stretch[0], output_path, file_name)
+    # print("color min[%.4f] mean[%.4f] max[%.4f]" % (color_batch_stretch.min(), color_batch_stretch.mean(), color_batch_stretch.max()))
+
 
 def run_trained_model_from_path(model_name):
     net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/08_27/models/", model_name,
@@ -257,8 +269,8 @@ def run_trained_model_from_path(model_name):
 def get_model_params(model_name):
     model_params = {"model_name": model_name, "model": params.unet_network,
                     "filters": 32, "depth": 4,
-                    # "add_frame": get_frame(model_name),
-                    "add_frame": True,
+                    "add_frame": get_frame(model_name),
+                    # "add_frame": True,
                     "last_layer": get_last_layer(model_name),
                     "unet_norm": 'none',
                     "stretch_g": get_stretch_g(model_name),
@@ -307,6 +319,7 @@ def get_hdr_source_path(name):
         "new_source": "/Users/yaelvinker/PycharmProjects/lab/utils/temp_data",
         "open_exr_hdr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/open_exr_fixed_size",
         "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size",
+        "open_exr_exr_format_original_size": "/cs/labs/raananf/yael_vinker/data/quality_assesment/from_openEXR_data",
         "hdr_test": "/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr",
         "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_data_fid"}
     return path_dict[name]
@@ -433,7 +446,7 @@ if __name__ == '__main__':
     input_images_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, input_images_path,
-                      output_images_path, "npy", f_factor_path, None, False)
+                      output_images_path, "npy", f_factor_path, None, True)
 
     # 160986.84587859685
 

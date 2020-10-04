@@ -27,6 +27,7 @@ def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stre
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
         gamma_factor = data[()]["gamma_factor"]
+        #TODO(): fix this part
         brightness_factor = (10 ** (1 / gamma_factor - 1)) * factor_coeff
         gray_original_im = gray_original_im - gray_original_im.min()
         a = torch.log10((gray_original_im / gray_original_im.max()) * brightness_factor + 1)
