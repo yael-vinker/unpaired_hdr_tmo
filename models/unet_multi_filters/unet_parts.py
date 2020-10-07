@@ -249,11 +249,11 @@ class up(nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
         if diffX or diffY:
-            print("diffX", diffX, x1.size())
-            print("diffY", diffY, x2.size())
+            # print("diffX", diffX, x1.size())
+            # print("diffY", diffY, x2.size())
             x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
                             diffY // 2, diffY - diffY // 2), mode='constant')
-            print("new size", x1.size())
+            # print("new size", x1.size())
         # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
 
 

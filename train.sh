@@ -84,6 +84,8 @@ echo "d_fully_connected ${66}"
 echo "simpleD_maxpool ${67}"
 echo "data_trc ${68}"
 echo "adv_weight_list ${69}"
+echo "manual_d_training ${70}"
+echo "d_weight_mul_mode ${71}"
 
 
 python3.7 -W ignore -u main_train.py \
@@ -155,4 +157,6 @@ python3.7 -W ignore -u main_train.py \
   --d_fully_connected ${66} \
   --simpleD_maxpool ${67} \
   --data_trc ${68} \
-  --adv_weight_list ${69}
+  --adv_weight_list ${69} \
+  --manual_d_training ${70} \
+  --d_weight_mul_mode ${71}

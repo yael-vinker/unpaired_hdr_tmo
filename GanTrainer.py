@@ -41,6 +41,7 @@ class GanTrainer:
         self.d_pretrain_epochs = opt.d_pretrain_epochs
         self.pre_train_mode = False
         self.enhance_detail = opt.enhance_detail
+        self.manual_d_training = opt.manual_d_training
 
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
@@ -84,6 +85,10 @@ class GanTrainer:
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
         self.apply_intensity_loss = opt.apply_intensity_loss
         self.adv_weight_list = opt.adv_weight_list
+        self.strong_details_D_weights = opt.strong_details_D_weights
+        self.basic_details_D_weights = opt.basic_details_D_weights
+        self.d_weight_mul = 1.0
+        self.d_weight_mul_mode = opt.d_weight_mul_mode
 
         # ====== DATASET ======
         self.train_data_loader_npy, self.train_data_loader_ldr = \
@@ -139,12 +144,18 @@ class GanTrainer:
         for (h, data_hdr), (l, data_ldr) in zip(enumerate(self.train_data_loader_npy, 0),
                                                 enumerate(self.train_data_loader_ldr, 0)):
             self.num_iter += 1
+            if not self.d_weight_mul_mode == "single":
+                self.d_weight_mul = self.num_iter % 2
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
-                hdr_input = data_hdr[params.gray_input_image_key].to(self.device)
+                hdr_input = self.get_hdr_input(data_hdr)
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
                 gamma_factor = data_hdr[params.gamma_factor].to(self.device)
+                if self.manual_d_training:
+                    self.adv_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
+                                           (1 - self.d_weight_mul) * self.basic_details_D_weights
+                    printer.print_D_weights(self.adv_weight_list, self.d_weight_mul)
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 if not self.pre_train_mode:
@@ -271,10 +282,20 @@ class GanTrainer:
                                                      self.bilateral_mu, self.blf_input)
         else:
             r_weights = None
+        if self.manual_d_training:
+            hdr_input = hdr_input[:, :1, :, :]
         self.update_struct_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
         self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray)
         self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
         self.optimizerG.step()
+
+    def get_hdr_input(self, data_hdr):
+        hdr_input = data_hdr[params.gray_input_image_key]
+        if self.manual_d_training and not self.pre_train_mode:
+            weight_channel = torch.full(hdr_input.shape, self.d_weight_mul).type_as(hdr_input)
+            hdr_input = torch.cat([hdr_input, weight_channel], dim=1)
+        return hdr_input.to(self.device)
+
 
     def update_g_d_loss(self, output_on_fake):
         if "multiLayerD" in self.d_model:

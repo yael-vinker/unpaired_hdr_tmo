@@ -38,6 +38,8 @@ class Tester:
         self.apply_wind_norm = args.apply_wind_norm
         self.wind_size = args.ssim_window_size
         self.std_norm_factor = args.std_norm_factor
+        self.manual_d_training = args.manual_d_training
+        self.d_weight_mul_mode = args.d_weight_mul_mode
 
 
     def load_original_test_hdr_images(self, root):
@@ -153,21 +155,26 @@ class Tester:
         test_hdr_batch = next(iter(self.test_data_loader_npy))
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
-        printer.print_g_progress_tensor(test_hdr_batch_image, "from test")
-        fake = self.get_fake_test_images(test_hdr_batch_image, netG)
-        printer.print_g_progress_tensor(fake, "from test res")
-        if add_frame:
-            test_real_batch_frame = data_loader_util.add_frame_to_im_batch(test_real_batch["input_im"])
+        if self.manual_d_training:
+            additional_channel = 1.0
+            weight_channel = torch.full(test_hdr_batch_image.shape, additional_channel).type_as(test_hdr_batch_image)
+            test_hdr_batch_image1 = torch.cat([test_hdr_batch_image, weight_channel], dim=1)
+            fake1 = self.get_fake_test_images(test_hdr_batch_image1, netG)
+            fake0 = fake1
+            if not self.d_weight_mul_mode == "single":
+                additional_channel = 0.0
+                weight_channel = torch.full(test_hdr_batch_image.shape, additional_channel).type_as(
+                    test_hdr_batch_image)
+                test_hdr_batch_image0 = torch.cat([test_hdr_batch_image, weight_channel], dim=1)
+                fake0 = self.get_fake_test_images(test_hdr_batch_image0, netG)
+
         else:
-            test_real_batch_frame = test_real_batch["input_im"]
-        printer.print_g_progress_tensor(test_real_batch_frame, "ldr from test")
-        # fake_ldr = self.get_fake_test_images(test_real_batch_frame.to(self.device), netG)
-        # printer.print_g_progress_tensor(fake_ldr, "fake ldr from test")
-        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake, fake,
+            fake1 = self.get_fake_test_images(test_hdr_batch_image, netG)
+            fake0 = fake1
+
+        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake1, fake0,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
-        # self.update_test_loss(netD, criterion, ssim_loss, test_real_first_b.size(0), num_epochs,
-        #                       test_real_first_b, fake, test_hdr_batch_image, epoch)
 
     def save_images_for_model(self, netG, out_dir, epoch):
         out_dir = os.path.join(out_dir, "model_results", str(epoch))
@@ -178,23 +185,35 @@ class Tester:
             for im_and_q in self.test_original_hdr_images:
                 print(im_and_q["im_name"])
                 im_hdr_original = im_and_q['im_hdr_original']
-                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].to(self.device)
-                printer.print_g_progress(im_log_normalize_tensor, "tester")
-                fake = netG(im_log_normalize_tensor.unsqueeze(0).detach())
-                printer.print_g_progress(fake, "fake")
+                im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].unsqueeze(0).to(self.device)
+                printer.print_g_progress(im_log_normalize_tensor, "input_tester")
+                if self.manual_d_training:
+                    file_name = im_and_q["im_name"] + "_1"
+                    self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                                                      file_name, additional_channel=1.0)
+                    if not self.d_weight_mul_mode == "single":
+                        file_name = im_and_q["im_name"] + "_0"
+                        self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                                                          file_name, additional_channel=0.0)
+                        file_name = im_and_q["im_name"] + "_0.5"
+                        self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                                                          file_name, additional_channel=0.5)
 
-                # file_name = im_and_q["im_name"]
-                # fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0), im_log_normalize_tensor.unsqueeze(0).detach())
-                #hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
+                else:
+                    file_name = im_and_q["im_name"]
+                    self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                                                      file_name, additional_channel=None)
 
-                # file_name = im_and_q["im_name"]
-                #hdr_image_util.save_gray_tensor_as_numpy(fake[0], out_dir, file_name)
+    def run_model_on_im_and_save_res(self, im_log_normalize_tensor, netG, im_hdr_original,
+                                     out_dir, file_name, additional_channel):
+        if additional_channel is not None:
+            weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
+                im_log_normalize_tensor)
+            im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
+        fake = netG(im_log_normalize_tensor.detach())
+        printer.print_g_progress(fake, file_name)
 
-                # file_name = im_and_q["im_name"] + "_stretch"
-                fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-                #hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name)
-
-                file_name = im_and_q["im_name"] + "_stretch"
-                fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
-                                                                   fake_im_gray_stretch.unsqueeze(dim=0))
-                hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
+        fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
+        fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
+                                                           fake_im_gray_stretch.unsqueeze(dim=0))
+        hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)

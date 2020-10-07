@@ -223,17 +223,17 @@ def reshape_image(rgb_im, train_reshape):
         rgb_im = skimage.transform.resize(rgb_im, (params.input_size, params.input_size),
                                           mode='reflect', preserve_range=False,
                                           anti_aliasing=True, order=3).astype("float32")
-    # else:
-    #     if min(h, w) > 3000:
-    #         rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
-    #                                                    int(rgb_im.shape[1] / 4)),
-    #                                           mode='reflect', preserve_range=False,
-    #                                           anti_aliasing=True, order=3).astype("float32")
-    #     elif min(h, w) > 2000:
-    #         rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
-    #                                                    int(rgb_im.shape[1] / 3)),
-    #                                           mode='reflect', preserve_range=False,
-    #                                           anti_aliasing=True, order=3).astype("float32")
+    else:
+        if min(h, w) > 3000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 4),
+                                                       int(rgb_im.shape[1] / 4)),
+                                              mode='reflect', preserve_range=False,
+                                              anti_aliasing=True, order=3).astype("float32")
+        elif min(h, w) > 2000:
+            rgb_im = skimage.transform.resize(rgb_im, (int(rgb_im.shape[0] / 3),
+                                                       int(rgb_im.shape[1] / 3)),
+                                              mode='reflect', preserve_range=False,
+                                              anti_aliasing=True, order=3).astype("float32")
     return rgb_im
 
 

@@ -217,3 +217,6 @@ def print_opt(opt):
     print("LOG FACTOR:", opt.log_factor)
     print("FACTORISED DATA:", opt.use_factorise_data)
     print("=====================\n")
+
+def print_D_weights(weights, mul):
+    print("==== D mul[%.1f] weights [%.4f, %.4f, %.4f] =====" % (mul, weights[0], weights[1], weights[2]))

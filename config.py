@@ -20,6 +20,8 @@ def parse_arguments():
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
     parser.add_argument("--d_pretrain_epochs", type=int, default=5)
+    parser.add_argument("--manual_d_training", type=int, default=0)
+    parser.add_argument("--d_weight_mul_mode", type=str, default="double")
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -30,17 +32,17 @@ def parse_arguments():
     parser.add_argument('--g_activation', type=str, default='relu', help="none/relu/leakyrelu")
     parser.add_argument("--d_down_dim", type=int, default=16)
     parser.add_argument("--d_nlayers", type=int, default=3)
-    parser.add_argument("--d_norm", type=str, default='batch_norm')
+    parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
     parser.add_argument('--custom_sig_factor', type=float, default=3)
     parser.add_argument('--use_xaviar', type=int, default=1)
     parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
-    parser.add_argument('--num_D', type=int, default=2, help="if d_model is multiLayerD then specify numD")
+    parser.add_argument('--num_D', type=int, default=3, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
     parser.add_argument('--stretch_g', type=str, default="none")
     parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
-    parser.add_argument('--d_fully_connected', type=int, default=1)
+    parser.add_argument('--d_fully_connected', type=int, default=0)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
 
     # ====== LOSS ======
@@ -56,7 +58,7 @@ def parse_arguments():
     parser.add_argument('--apply_intensity_loss', type=float, default=0)
     parser.add_argument('--std_method', type=str, default="gamma_factor_loss_bilateral")
     parser.add_argument('--alpha', type=float, default=0.5)
-    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=1)
+    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
     parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
     parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="5,5,1")
 
@@ -95,7 +97,7 @@ def parse_arguments():
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
-    parser.add_argument('--enhance_detail', type=int, default=1)
+    parser.add_argument('--enhance_detail', type=int, default=0)
 
     # ====== POST PROCESS ======
     parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
@@ -130,7 +132,12 @@ def get_opt():
     opt.adv_weight_list = torch.FloatTensor([float(item) for item in opt.adv_weight_list.split(',')]).to(
         device)
 
+    opt.strong_details_D_weights = torch.FloatTensor([1., 1., 1.]).to(device)
+    opt.basic_details_D_weights = torch.FloatTensor([0.5, 0.8, 0]).to(device)
+
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
+    if opt.manual_d_training:
+        opt.input_dim = 2
     opt.dataset_properties = get_dataset_properties(opt)
     return opt
 
@@ -209,6 +216,8 @@ def get_D_params(opt):
 
 def get_training_params(opt):
     result_dir_pref = ""
+    if opt.manual_d_training:
+        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode + "_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
     if opt.d_pretrain_epochs:
@@ -262,7 +271,6 @@ def create_dir(opt):
     result_dir_pref, model_name, con_operator, model_depth, filters, add_frame = opt.result_dir_prefix, opt.model, \
                                                                                  opt.con_operator, opt.unet_depth, \
                                                                                  opt.filters, opt.add_frame
-
     if not opt.train_with_D:
         result_dir_pref = result_dir_pref + "no_D_"
     else:

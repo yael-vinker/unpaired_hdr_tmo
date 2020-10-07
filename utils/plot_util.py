@@ -113,12 +113,12 @@ def display_batch_as_grid(batch, ncols_to_display, normalization, nrow=8, pad_va
     return grid
 
 
-def save_groups_images(test_hdr_batch, test_real_batch, fake, fake_ldr, new_out_dir, batch_size, epoch, image_mean):
+def save_groups_images(test_hdr_batch, test_real_batch, fake1, fake0, new_out_dir, batch_size, epoch, image_mean):
     test_ldr_batch = test_real_batch["input_im"]
     test_hdr_image = test_hdr_batch["input_im"]
     output_len = int(batch_size / 4)
-    display_group = [test_ldr_batch, fake_ldr, test_hdr_image, fake]
-    titles = ["Real (LDR) Images", "G(LDR)", "Input (HDR) Images", "Fake Images"]
+    display_group = [test_ldr_batch, test_hdr_image, fake1, fake0]
+    titles = ["Real (LDR) Images", "Input (HDR) Images", "fake1", "fake0"]
     normalization_string_arr = ["0_1", "0_1", "0_1", "0_1"]
     for i in range(output_len):
         plt.figure(figsize=(15, 15))
