@@ -13,6 +13,7 @@ import tranforms
 import models.unet_multi_filters.Unet as Generator
 import data_generator.create_dng_npy_data as create_dng_npy_data
 import re
+import torch.nn.functional as F
 import argparse
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
@@ -180,7 +181,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
         if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
             print("working on ", img_name)
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
-                    or os.path.splitext(img_name)[1] == ".dng":
+                    or os.path.splitext(img_name)[1] == ".dng" or os.path.splitext(img_name)[1] == ".npy":
                 run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
                                           output_images_path, model_params, f_factor_path, use_new_f)
         else:
@@ -213,6 +214,7 @@ def load_g_model(model_params, device, net_path):
 
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
+    test_mode = True
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         factor_coeff=model_params["factor_coeff"],
                                                                         train_reshape=False,
@@ -220,36 +222,32 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         f_factor_path=f_factor_path,
                                                                         use_new_f=model_params["use_new_f"],
                                                                         data_trc=model_params["data_trc"],
-                                                                        test_mode=True)
+                                                                        test_mode=test_mode)
 
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+    if test_mode:
+        print("original shape",gray_im_log.shape)
+        diffY = hdr_image_util.closest_power(gray_im_log.shape[1]) - gray_im_log.shape[1]
+        diffX = hdr_image_util.closest_power(gray_im_log.shape[2]) - gray_im_log.shape[2]
+
+        gray_im_log = F.pad(gray_im_log.unsqueeze(dim=0), (diffX // 2, diffX - diffX // 2,
+                            diffY // 2, diffY - diffY // 2), mode='replicate')
+        gray_im_log = torch.squeeze(gray_im_log, dim=0)
+        print("new shape",gray_im_log.shape)
+
     if model_params["add_frame"]:
         gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
     with torch.no_grad():
         ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
-    fake_im_gray = torch.squeeze(ours_tone_map_gray, dim=0)
-
     original_im_tensor = rgb_img.unsqueeze(0)
-    file_name = im_name + "_no_stretch"
+    if test_mode:
+        ours_tone_map_gray = ours_tone_map_gray[:,:, diffY // 2:ours_tone_map_gray.shape[2] - (diffY - diffY // 2),
+                  diffX // 2:ours_tone_map_gray.shape[3] - (diffX - diffX // 2)]
     color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    hdr_image_util.save_color_tensor_as_numpy(color_batch[0], output_path, file_name)
-    print("color min[%.4f] mean[%.4f] max[%.4f]" % (
-    color_batch.min(), color_batch.mean(), color_batch.max()))
-    file_name = im_name + "_stretch_color"
+    file_name = im_name + "_stretch"
     hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch[0], output_path, file_name)
-    # file_name = im_name + "_gray_no_stretch"
-    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray, output_path, file_name)
-    fake_im_gray_stretch = (fake_im_gray - fake_im_gray.min()) / (fake_im_gray.max() - fake_im_gray.min())
-    # hdr_image_util.save_gray_tensor_as_numpy(fake_im_gray_stretch, output_path, file_name)
-
-    file_name = im_name + "_stretch_gray"
-    color_batch_stretch = hdr_image_util.back_to_color_batch(original_im_tensor, fake_im_gray_stretch.unsqueeze(dim=0))
-    hdr_image_util.save_color_tensor_as_numpy(color_batch_stretch[0], output_path, file_name)
-    # file_name = im_name + "_stretch_gray_and_color"
-    # hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch_stretch[0], output_path, file_name)
-    # print("color min[%.4f] mean[%.4f] max[%.4f]" % (color_batch_stretch.min(), color_batch_stretch.mean(), color_batch_stretch.max()))
 
 
 def run_trained_model_from_path(model_name):

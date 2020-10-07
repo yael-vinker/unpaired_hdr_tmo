@@ -9,6 +9,7 @@ import torch
 
 import tranforms
 from utils import params
+from math import log, ceil, floor
 
 
 # ====== IMAGE PRINTER ======
@@ -39,6 +40,8 @@ def read_hdr_image(path):
         im = imageio.imread(path_lib_path, format="RAW-FI").astype('float32')
     elif file_extension == ".exr":
         im = imageio.imread(path_lib_path, format="EXR-FI").astype('float32')
+    elif file_extension == ".npy":
+        im = np.load(path, allow_pickle=True)[()]
     else:
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im
@@ -153,6 +156,10 @@ def get_new_brightness_factor(M):
     return Cout
 
 
+def closest_power(x):
+    closest_power_ = max(x + ceil(x * 0.2 / 2.) * 2, 2**(x - 1).bit_length())
+    return 1 if x == 0 else closest_power_ + 12
+
 
 # ====== IMAGE MANIPULATE ======
 def to_gray(im):
@@ -182,8 +189,8 @@ def to_0_1_range(im):
     return im
 
 def to_0_1_range_outlier(im):
-    im_max = np.percentile(im,99)
-    im_min = np.percentile(im, 1)
+    im_max = np.percentile(im, 99.5)
+    im_min = np.percentile(im, 0.5)
     if np.max(im) - np.min(im) == 0:
         im = (im - im_min) / (im_max - im_min + params.epsilon)
     else:
@@ -286,6 +293,15 @@ def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
     tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
     tensor_0_1 = to_0_1_range_outlier(tensor_0_1)
+    im = (tensor_0_1 * 255).astype('uint8')
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+    imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
+
+def save_gray_tensor_as_numpy_stretch_entire_range(tensor, output_path, im_name):
+    tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    tensor_0_1 = np.squeeze(tensor)
+    tensor_0_1 = to_0_1_range(tensor_0_1)
     im = (tensor_0_1 * 255).astype('uint8')
     if not os.path.exists(output_path):
         os.mkdir(output_path)
