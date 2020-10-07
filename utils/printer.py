@@ -195,9 +195,9 @@ def print_best_acc_error(best_errG, epoch):
 def print_net(net_name, net, opt, input_size):
     print("=================  NET %s  ==================" % net_name)
     print(net)
-    if net_name == "D":
-        summary(net, (opt.output_dim, input_size, input_size), device="cpu")
-    elif net_name == "G":
+    # if net_name == "D":
+    #     summary(net, (opt.output_dim, input_size, input_size), device="cpu")
+    if net_name == "G":
         summary(net, (opt.input_dim, input_size, input_size), device="cpu")
     print()
 
