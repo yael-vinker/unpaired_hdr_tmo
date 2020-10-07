@@ -53,7 +53,7 @@ class Tester:
                                                    gamma_log=self.args.gamma_log,
                                                    f_factor_path=self.args.f_factor_path,
                                                    use_new_f=self.args.use_new_f,
-                                                   data_trc=self.data_trc)
+                                                   data_trc=self.data_trc, test_mode=True)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
