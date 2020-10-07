@@ -251,10 +251,12 @@ class up(nn.Module):
         if diffX or diffY:
             print("diffX", diffX, x1.size())
             print("diffY", diffY, x2.size())
+            x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
+                            diffY // 2, diffY - diffY // 2), mode='constant')
+            print("new size", x1.size())
         # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
 
-        x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2), mode='replicate')
+
 
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
