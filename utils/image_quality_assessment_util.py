@@ -517,27 +517,60 @@ def save_dng_data_for_fid(input_path, output_path, other_path):
         if os.path.exists(origin_im_path):
             copyfile(origin_im_path, new_im_path)
 
+def sort_exr_res_by_btmqi():
+    import shutil
+    import csv
+
+    input_dir = "/Users/yaelvinker/Documents/university/lab/Sep/" \
+               "09_02_summary/09_03_crop_test/crop_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__" \
+               "pretrain50_lr_g1e-05_d1e-05_decay50_noframe_stretch_1.05_LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_/exr"
+    new_path = "/Users/yaelvinker/Documents/university/lab/Sep/" \
+               "09_02_summary/09_03_crop_test/crop_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__" \
+               "pretrain50_lr_g1e-05_d1e-05_decay50_noframe_stretch_1.05_LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_/exr_sort_btmqi"
+    if not os.path.exists(new_path):
+        os.mkdir(new_path)
+    with open('/Users/yaelvinker/Documents/MATLAB/CODE_2016TMM2/results/our_111_log01.csv') as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        next(csv_reader)
+        for row in csv_reader:
+            cur_im_name = row[0] + ".png"
+            val = row[1]
+            print(cur_im_name, val)
+            old_im_path = os.path.join(os.path.abspath(input_dir), cur_im_name)
+            new_name = ("%.5s" % val) + "_" + cur_im_name
+            new_im_path = os.path.join(new_path, new_name)
+            shutil.copy(old_im_path, new_im_path)
 
 
 if __name__ == '__main__':
-    rename_files("/Users/yaelvinker/Downloads/image-quality-assessment-master/src/tests/test_images/fattal/")
-    # save_dng_data_for_fid("/cs/labs/raananf/yael_vinker/dng_collection",
-    #                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
-    #                       "/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_other_images_wrap/hdrplus_gamma_log_10_other_images/")
-    # sort_files()
-    #    normalization_test()
-    # sub_test()
-    # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
-    gather_im_by_epoch("/cs/labs/raananf/yael_vinker/Jun/06_24/results_04_07",
-        "/cs/labs/raananf/yael_vinker/Jun/summary_04_07/by_epochs", "OtterPoint")
-
-    epochs = ["120"]
-    im_numbers = ["synagogue", "belgium"]
-    # for epoch in epochs:
-    #   for im_number in im_numbers:
-    #      gather_all_architectures("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
-    #             "/cs/labs/raananf/yael_vinker/05_12/summary_05_12", epoch, "", im_number)
-    # gather_all_architectures_accuracy("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
-    #                                   "/cs/labs/raananf/yael_vinker/05_12/summary_05_12",
-    #                                   "120", "")
-
+    sort_exr_res_by_btmqi()
+    epochs = ["320"]
+    im_numbers = ["OtterPoint", "synagogue", "belgium", "2"]
+    for epoch in epochs:
+      for im_number in im_numbers:
+         gather_all_architectures2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
+                "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/", epoch, "", im_number)
+    gather_all_architectures_accuracy2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
+                                      "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/",
+                                      "320", "")
+    # rename_files("/Users/yaelvinker/Downloads/image-quality-assessment-master/src/tests/test_images/fattal/")
+    # # save_dng_data_for_fid("/cs/labs/raananf/yael_vinker/dng_collection",
+    # #                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
+    # #                       "/cs/snapless/raananf/yael_vinker/data/04_26_new_data/hdrplus_gamma_log_10_other_images_wrap/hdrplus_gamma_log_10_other_images/")
+    # # sort_files()
+    # #    normalization_test()
+    # # sub_test()
+    # # struct_loss_res("/Users/yaelvinker/PycharmProjects/lab/utils/hdr_data/synagogue.hdr")
+    # gather_im_by_epoch("/cs/labs/raananf/yael_vinker/Jun/06_24/results_04_07",
+    #     "/cs/labs/raananf/yael_vinker/Jun/summary_04_07/by_epochs", "OtterPoint")
+    #
+    # epochs = ["120"]
+    # im_numbers = ["synagogue", "belgium"]
+    # # for epoch in epochs:
+    # #   for im_number in im_numbers:
+    # #      gather_all_architectures("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
+    # #             "/cs/labs/raananf/yael_vinker/05_12/summary_05_12", epoch, "", im_number)
+    # # gather_all_architectures_accuracy("/cs/labs/raananf/yael_vinker/05_12/results_05_12",
+    # #                                   "/cs/labs/raananf/yael_vinker/05_12/summary_05_12",
+    # #                                   "120", "")
+    #
