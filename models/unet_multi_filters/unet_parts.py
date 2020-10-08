@@ -243,7 +243,7 @@ class up(nn.Module):
         else:
             self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding)
 
-    def forward(self, x1, x2, con_operator, network):
+    def forward(self, x1, x2, con_operator, network, d_weight_mul):
         x1 = self.up(x1)
         # input is CHW
         diffY = x2.size()[2] - x1.size()[2]
@@ -255,9 +255,6 @@ class up(nn.Module):
                             diffY // 2, diffY - diffY // 2), mode='constant')
             # print("new size", x1.size())
         # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
-
-
-
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
@@ -276,6 +273,11 @@ class up(nn.Module):
         elif con_operator == params.gamma:
             square_root_x = torch.pow(x2 + params.epsilon, 0.02)
             x = torch.cat([x2, x1, square_root_x], dim=1)
+        elif con_operator == params.square_and_square_root_manual_d:
+            square_x = torch.pow(x2, 2)
+            square_root_x = torch.pow(x2 + params.epsilon, 0.5)
+            weight_channel = torch.full((x2.shape[0], 1, x2.shape[2], x2.shape[3]), d_weight_mul).type_as(x2)
+            x = torch.cat([weight_channel, x2, x1, square_x, square_root_x], dim=1)
         else:
             assert 0, "Unsupported con_operator request: {}".format(con_operator)
         x = self.conv(x)

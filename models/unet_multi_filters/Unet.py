@@ -33,15 +33,18 @@ class UNet(nn.Module):
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
+            in_ch = ch * layer_factor
+            if con_operator == params.square_and_square_root_manual_d:
+                in_ch += 1
             if i >= self.depth - 2:
                 self.up_path.append(
-                    up(ch * layer_factor, down_ch, bilinear, layer_factor, network,
+                    up(in_ch, down_ch, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
                        doubleConvTranspose=doubleConvTranspose, padding=padding)
                 )
             else:
                 self.up_path.append(
-                    up(ch * layer_factor, ch // 2, bilinear, layer_factor, network,
+                    up(in_ch, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
                        doubleConvTranspose=doubleConvTranspose, padding=padding)
                 )
@@ -71,6 +74,10 @@ class UNet(nn.Module):
             self.stretch = None
 
     def forward(self, x):
+        d_weight_mul = 1.0
+        if self.con_operator == params.square_and_square_root_manual_d:
+            d_weight_mul = x[0, 1, 0, 0]
+        # print("d_weight_mul", d_weight_mul)
         next_x = self.inc(x)
         x_results = [next_x]
         for i, down_layer in enumerate(self.down_path):
@@ -79,7 +86,7 @@ class UNet(nn.Module):
 
         up_x = x_results[(self.depth)]
         for i, up_layer in enumerate(self.up_path):
-            up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network)
+            up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network, d_weight_mul)
 
         x_out = self.outc(up_x)
         # x_out = torch.cat([x, x_out], dim=1)

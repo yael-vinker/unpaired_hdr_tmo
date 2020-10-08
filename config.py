@@ -20,8 +20,10 @@ def parse_arguments():
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
     parser.add_argument("--d_pretrain_epochs", type=int, default=5)
-    parser.add_argument("--manual_d_training", type=int, default=0)
+    parser.add_argument("--manual_d_training", type=int, default=1)
     parser.add_argument("--d_weight_mul_mode", type=str, default="double")
+    parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
+    parser.add_argument("--basic_details_D_weights", type=str, default="0.8,0.5,0.1")
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -132,8 +134,8 @@ def get_opt():
     opt.adv_weight_list = torch.FloatTensor([float(item) for item in opt.adv_weight_list.split(',')]).to(
         device)
 
-    opt.strong_details_D_weights = torch.FloatTensor([1., 1., 1.]).to(device)
-    opt.basic_details_D_weights = torch.FloatTensor([0.5, 0.8, 0]).to(device)
+    opt.strong_details_D_weights = torch.FloatTensor([float(item) for item in opt.strong_details_D_weights.split(',')]).to(device)
+    opt.basic_details_D_weights = torch.FloatTensor([float(item) for item in opt.basic_details_D_weights.split(',')]).to(device)
 
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
     if opt.manual_d_training:
@@ -217,7 +219,8 @@ def get_D_params(opt):
 def get_training_params(opt):
     result_dir_pref = ""
     if opt.manual_d_training:
-        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode + "_"
+        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode + "_[" \
+                           + opt.strong_details_D_weights + "_" + opt.basic_details_D_weights + "]_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
     if opt.d_pretrain_epochs:

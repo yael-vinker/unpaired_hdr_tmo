@@ -85,20 +85,24 @@ data_trc="min_log"
 
 manual_d_training=0
 d_weight_mul_mode="single"
+strong_details_D_weights="1,1,1"
+basic_details_D_weights="0.8,0.5,0.1"
 
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/09_04_crop_test/norm_crop_"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_07/results_10_07/control_weights/"
 
-manual_d_training_lst=(0 1 1)
-d_weight_mul_mode_lst=("single" "single" "double")
+manual_d_training=1
+d_weight_mul_mode="double"
+strong_details_D_weights_lst=("1,1,1" "1,1,1" "2,2,2" "1,1,1")
+basic_details_D_weights_lst=("0.8,0.5,0.1" "0.8,0.5,0.0" "1,1,1" "0.5,0.5,0.5")
 
-for ((i = 0; i < ${#manual_d_training_lst[@]}; ++i)); do
+for ((i = 0; i < ${#basic_details_D_weights_lst[@]}; ++i)); do
 
-  manual_d_training="${manual_d_training_lst[i]}"
-  d_weight_mul_mode="${d_weight_mul_mode_lst[i]}"
+  basic_details_D_weights="${basic_details_D_weights_lst[i]}"
+  strong_details_D_weights="${strong_details_D_weights_lst[i]}"
 
   echo "======================================================"
-  echo "manual_d_training $manual_d_training"
-  echo "d_weight_mul_mode $d_weight_mul_mode"
+  echo "basic_details_D_weights $basic_details_D_weights"
+  echo "strong_details_D_weights $strong_details_D_weights"
 
   sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
     $change_random_seed $batch_size $num_epochs \
@@ -114,6 +118,6 @@ for ((i = 0; i < ${#manual_d_training_lst[@]}; ++i)); do
     $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
-    $manual_d_training $d_weight_mul_mode
+    $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights
   echo "======================================================"
 done

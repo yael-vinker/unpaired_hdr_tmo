@@ -86,9 +86,13 @@ echo "data_trc ${68}"
 echo "adv_weight_list ${69}"
 echo "manual_d_training ${70}"
 echo "d_weight_mul_mode ${71}"
+echo "strong_details_D_weights ${72}"
+echo "basic_details_D_weights ${73}"
+
 
 
 python3.7 -W ignore -u main_train.py \
+
   --change_random_seed $1 \
   --batch_size $2 \
   --num_epochs $3 \
@@ -159,4 +163,6 @@ python3.7 -W ignore -u main_train.py \
   --data_trc ${68} \
   --adv_weight_list ${69} \
   --manual_d_training ${70} \
-  --d_weight_mul_mode ${71}
+  --d_weight_mul_mode ${71} \
+  --strong_details_D_weights ${72} \
+  --basic_details_D_weights ${73}

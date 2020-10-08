@@ -66,7 +66,7 @@ torus_network = "torus"
 
 layer_factor_2_operators = ["original_unet"]
 layer_factor_3_operators = ["square", "square_root", "gamma"]
-layer_factor_4_operators = ["square_and_square_root"]
+layer_factor_4_operators = ["square_and_square_root", "square_and_square_root_manual_d"]
 
 # con operators
 original_unet = "original_unet"
@@ -74,13 +74,15 @@ square = "square"
 square_root = "square_root"
 square_and_square_root = "square_and_square_root"
 gamma = "gamma"
+square_and_square_root_manual_d = "square_and_square_root_manual_d"
 
 # con operator short
 con_op_short = {"original_unet": "ou",
                 "square": "s",
                 "square_root": "sr",
                 "square_and_square_root": "ssr",
-                "gamma": "g"}
+                "gamma": "g",
+                "square_and_square_root_manual_d": "ssrMD"}
 
 filters = 32
 
