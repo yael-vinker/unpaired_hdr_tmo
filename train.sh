@@ -88,8 +88,9 @@ echo "manual_d_training ${70}"
 echo "d_weight_mul_mode ${71}"
 echo "strong_details_D_weights ${72}"
 echo "basic_details_D_weights ${73}"
-
-
+echo "use_contrast_ratio_f ${74}"
+echo "use_hist_fit ${75}"
+echo "f_factor_path ${76}"
 
 python3.7 -W ignore -u main_train.py \
 
@@ -165,4 +166,7 @@ python3.7 -W ignore -u main_train.py \
   --manual_d_training ${70} \
   --d_weight_mul_mode ${71} \
   --strong_details_D_weights ${72} \
-  --basic_details_D_weights ${73}
+  --basic_details_D_weights ${73} \
+  --use_contrast_ratio_f ${74} \
+  --$use_hist_fit ${75} \
+  --$f_factor_path ${76}

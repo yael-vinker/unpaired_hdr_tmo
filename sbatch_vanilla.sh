@@ -83,26 +83,33 @@ simpleD_maxpool=0
 adv_weight_list="1,1,1"
 data_trc="min_log"
 
-manual_d_training=0
+manual_d_training=1
 d_weight_mul_mode="single"
 strong_details_D_weights="1,1,1"
 basic_details_D_weights="0.8,0.5,0.1"
 
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_07/results_10_07/control_weights/"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_07/results_10_09/unet_concat_rseed/"
+con_operator="square_and_square_root_manual_d"
+use_contrast_ratio_f=0
+f_factor_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy"
+use_hist_fit=1
+f_train_dict_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all.npy"
 
-manual_d_training=1
-d_weight_mul_mode="double"
-strong_details_D_weights_lst=("1,1,1" "1,1,1" "2,2,2" "1,1,1")
-basic_details_D_weights_lst=("0.8,0.5,0.1" "0.8,0.5,0.0" "1,1,1" "0.5,0.5,0.5")
+adv_weight_list_lst=("1,1,1")
+change_random_seed_lst=(0)
 
-for ((i = 0; i < ${#basic_details_D_weights_lst[@]}; ++i)); do
+for ((i = 0; i < ${#adv_weight_list_lst[@]}; ++i)); do
 
-  basic_details_D_weights="${basic_details_D_weights_lst[i]}"
-  strong_details_D_weights="${strong_details_D_weights_lst[i]}"
+  adv_weight_list="${adv_weight_list_lst[i]}"
+  change_random_seed="${change_random_seed_lst[i]}"
 
   echo "======================================================"
-  echo "basic_details_D_weights $basic_details_D_weights"
-  echo "strong_details_D_weights $strong_details_D_weights"
+  echo "adv_weight_list $adv_weight_list"
+  echo "change_random_seed $change_random_seed"
+  echo "con_operator $con_operator"
+  echo "f_train_dict_path $f_train_dict_path"
+  echo "f_factor_path $f_factor_path"
+  echo "use_hist_fit $use_hist_fit"
 
   sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
     $change_random_seed $batch_size $num_epochs \
@@ -118,6 +125,7 @@ for ((i = 0; i < ${#basic_details_D_weights_lst[@]}; ++i)); do
     $use_new_f $blf_input $blf_alpha $std_mul_max $multi_scale_D $g_activation $d_last_activation \
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
-    $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights
+    $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights $use_contrast_ratio_f \
+    $use_hist_fit $f_factor_path
   echo "======================================================"
 done
