@@ -1,13 +1,16 @@
 import numpy as np
-from torchvision.datasets import DatasetFolder
-import utils.hdr_image_util as hdr_image_util
-import utils.data_loader_util as data_loader_util
 import torch
+from torchvision.datasets import DatasetFolder
+
+import utils.data_loader_util as data_loader_util
+import utils.hdr_image_util as hdr_image_util
+import os
+
 IMG_EXTENSIONS_local = ('.npy')
 
 
 def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stretch,
-               max_stretch, factor_coeff):
+               max_stretch, factor_coeff, use_contrast_ratio_f, use_hist_fit, f_dict_path):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
 
@@ -27,8 +30,24 @@ def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stre
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
         gamma_factor = data[()]["gamma_factor"]
-        #TODO(): fix this part
-        brightness_factor = (10 ** (1 / gamma_factor - 1)) * factor_coeff
+        # TODO(): fix this part
+        im_name = os.path.splitext(os.path.basename(path))[0]
+        if use_hist_fit:
+            data = np.load(f_dict_path, allow_pickle=True)
+            if im_name in data[()]:
+                f_factor = data[()][im_name]
+                print("[%s] found in dict [%.4f]" % (im_name, f_factor))
+                brightness_factor = f_factor * 255 * factor_coeff
+        elif use_contrast_ratio_f:
+            im_max = np.percentile(gray_original_im, 99.0)
+            im_min = np.percentile(gray_original_im, 1.0)
+            if im_min == 0:
+                print("min = 0")
+                im_min += 0.0001
+            brightness_factor = im_max / im_min * factor_coeff
+        else:
+            print("================== no factor found for [%s] falls to gamma ==================" % (im_name))
+            brightness_factor = (10 ** (1 / gamma_factor - 1)) * factor_coeff
         gray_original_im = gray_original_im - gray_original_im.min()
         a = torch.log10((gray_original_im / gray_original_im.max()) * brightness_factor + 1)
         input_im = a / a.max()
@@ -60,7 +79,9 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.max_stretch = dataset_properties["max_stretch"]
         self.min_stretch = dataset_properties["min_stretch"]
         self.factor_coeff = dataset_properties["factor_coeff"]
-
+        self.use_contrast_ratio_f = dataset_properties["use_contrast_ratio_f"]
+        self.use_hist_fit = dataset_properties["use_hist_fit"]
+        self.f_train_dict_path = dataset_properties["f_train_dict_path"]
 
     def __getitem__(self, index):
         """
@@ -71,11 +92,15 @@ class ProcessedDatasetFolder(DatasetFolder):
             sample: {'hdr_image': im, 'binary_wind_image': binary_im}
         """
         path, target = self.samples[index]
-        input_im, color_im, gray_original_norm, gray_original, gamma_factor = self.loader(path, self.addFrame, self.hdrMode,
-                                                                            self.normalization,
-                                                                            self.std_norm_factor,
-                                                                              self.min_stretch,
-                                                                              self.max_stretch,
-                                                                            self.factor_coeff)
+        input_im, color_im, gray_original_norm, gray_original, \
+        gamma_factor = self.loader(path, self.addFrame, self.hdrMode,
+                                   self.normalization,
+                                   self.std_norm_factor,
+                                   self.min_stretch,
+                                   self.max_stretch,
+                                   self.factor_coeff,
+                                   self.use_contrast_ratio_f,
+                                   self.use_hist_fit,
+                                   self.f_train_dict_path)
         return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm,
                 "original_gray": gray_original, "gamma_factor": gamma_factor}

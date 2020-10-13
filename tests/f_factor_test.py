@@ -1,4 +1,10 @@
 import os
+import sys
+import inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+import os
 import pathlib
 from math import exp
 import time
@@ -464,36 +470,6 @@ def raanan_f_test(im_path):
     plt.subplot(3, 1, 3)
     plt.imshow(a, cmap='gray')
     plt.show()
-
-
-def f_test_trained_model(model_path, model_name, input_images_path):
-    from utils import model_save_util
-    start0 = time.time()
-    net_path = os.path.join(model_path, model_name, "models", "net_epoch_320.pth")
-    model_params = model_save_util.get_model_params(model_name)
-    # model_params["factor_coeff"] = 0.5
-    print("===============================================")
-    print(model_name)
-    print(model_params)
-    # f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
-    f_factor_path = "none"
-    # output_images_path = os.path.join(model_path, model_name, "res", "fix_factor_mean20.1")
-    output_images_path = "/Users/yaelvinker/Downloads/input_images/our_orion"
-    if not os.path.exists(output_images_path):
-        os.makedirs(output_images_path)
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    model_save_util.run_model_on_path(model_params, device, net_path, input_images_path,
-                      output_images_path, "npy", f_factor_path, None, True)
-    print(time.time()-start0)
-
-def run_model_on_folder(models_path):
-    input_images_path = os.path.join("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr")
-    for model_name in os.listdir(models_path):
-        f_test_trained_model(models_path, model_name, input_images_path)
-
-
-
-
 def c_log_test():
     pass
 
@@ -546,29 +522,6 @@ def get_f_from_book(gray_im_input):
     plt.show()
     return (im_max/im_min)
 
-
-def save_exr_means(input_images_path):
-    import csv
-
-    with open('/Users/yaelvinker/Documents/MATLAB/CODE_2016TMM2/results/exr_mean.csv', 'w', newline='') as file:
-        fieldnames = ['file_name', 'mean']
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-
-        writer.writeheader()
-        for img_name in os.listdir(input_images_path):
-            im_path = os.path.join(input_images_path, img_name)
-            rgb_img = hdr_image_util.read_hdr_image(im_path)
-            if np.min(rgb_img) < 0:
-                rgb_img = rgb_img + np.abs(np.min(rgb_img))
-            gray_im = hdr_image_util.to_gray(rgb_img)
-            rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
-            gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=False)
-            f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * 0.1
-            new_gray_im = gray_im - gray_im.min()
-            new_gray_im = np.log10((new_gray_im / np.max(new_gray_im)) * f_factor + 1)
-            new_gray_im = new_gray_im / new_gray_im.max()
-            print(os.path.splitext(img_name)[0], new_gray_im.mean())
-            writer.writerow({'file_name': os.path.splitext(img_name)[0], 'mean': new_gray_im.mean()})
 
 def f_factor_test(input_images_path):
     import csv
@@ -642,18 +595,101 @@ def f_factor_test(input_images_path):
 
         # writer.writerow({'file_name': os.path.splitext(img_name)[0], 'mean': m})
 
+def save_exr_means(input_images_path):
+    import csv
+
+    with open('/Users/yaelvinker/Documents/MATLAB/CODE_2016TMM2/results/exr_mean.csv', 'w', newline='') as file:
+        fieldnames = ['file_name', 'mean']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for img_name in os.listdir(input_images_path):
+            im_path = os.path.join(input_images_path, img_name)
+            rgb_img = hdr_image_util.read_hdr_image(im_path)
+            if np.min(rgb_img) < 0:
+                rgb_img = rgb_img + np.abs(np.min(rgb_img))
+            gray_im = hdr_image_util.to_gray(rgb_img)
+            rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
+            gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=False)
+            f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * 0.1
+            new_gray_im = gray_im - gray_im.min()
+            new_gray_im = np.log10((new_gray_im / np.max(new_gray_im)) * f_factor + 1)
+            new_gray_im = new_gray_im / new_gray_im.max()
+            print(os.path.splitext(img_name)[0], new_gray_im.mean())
+            writer.writerow({'file_name': os.path.splitext(img_name)[0], 'mean': new_gray_im.mean()})
+
+def f_test_trained_model(model_path, model_name, input_images_path):
+    from utils import model_save_util
+    start0 = time.time()
+    net_path = os.path.join(model_path, model_name, "models", "net_epoch_320.pth")
+    model_params = model_save_util.get_model_params(model_name)
+    # model_params["factor_coeff"] = 0.5
+    print("===============================================")
+    print(model_name)
+    print(model_params)
+    # f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
+    f_factor_path = "none"
+    output_images_path = os.path.join(model_path, model_name, "color_STRETCH_2_avg")
+    # output_images_path = "/Users/yaelvinker/Downloads/input_images/our_orion"
+    if not os.path.exists(output_images_path):
+        os.makedirs(output_images_path)
+    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
+    model_save_util.run_model_on_path(model_params, device, net_path, input_images_path,
+                      output_images_path, "npy", f_factor_path, None, True)
+    print(time.time()-start0)
+
+def run_model_on_folder(models_path):
+    input_images_path = os.path.join("/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr")
+    for model_name in os.listdir(models_path):
+        f_test_trained_model(models_path, model_name, input_images_path)
+
+
+
 
 if __name__ == '__main__':
+    # import argparse
+    #
+    # parser = argparse.ArgumentParser(description="Parser for gan network")
+    # parser.add_argument("--model_name", type=str)
+    # parser.add_argument("--input_path", type=str)
+    # args = parser.parse_args()
+    # model_name = args.model_name
+    models_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_11"
+    #    input_path = os.path.join("/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size")
+    # input_path = args.input_path
+    input_path="/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
+    #    input_path=os.path.join("/cs/labs/raananf/yael_vinker/data/quality_assesment/jass_cab")
+    #   input_path=os.path.join("/cs/labs/raananf/yael_vinker/data/quality_assesment/exr_hdr_format_pfstool")
+    #    input_path = os.path.join("/cs/labs/raananf/yael_vinker/data/quality_assesment/from_openEXR_data")
+
+    #    run_model_on_folder(models_path)
+    model_name = "D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
+    f_test_trained_model(models_path, model_name, input_path)
+    # regex_test()
+
     # # import argparse
     # # save_exr_means("/Users/yaelvinker/Documents/university/lab/open_exr_fixed_size/exr_format_fixed_size/")
     # # f_factor_test("/Users/yaelvinker/Documents/university/lab/open_exr_fixed_size/exr_format_fixed_size/")
     # # f_factor_test("/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data/")
-    model_path = "/Users/yaelvinker/Documents/university/lab/Sep/09_02_summary/09_03_crop_test/"
-    model_name = "crop_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe_stretch_1.05_LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
+    # model_path = "/Users/yaelvinker/Documents/university/lab/Sep/09_02_summary/09_03_crop_test/"
+    # model_name = "crop_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe_stretch_1.05_LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
     # model_name = "crop_D_multiLayerD_simpleD__num_D3_0.8,0.5,0_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe_stretch_1.05_LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
-    input_images_path = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
-    f_test_trained_model(model_path, model_name, input_images_path)
 
+    # model_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_08_summary/single_random_seed/good/rseed_[1,1,1_0.8,0.5,0]"
+    # model_name = "D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_10.0contrast_ratio_f_"
+    # input_images_path = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
+    # f_test_trained_model(model_path, model_name, input_images_path)
+
+    # model_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_08_summary/single_random_seed/good/single_rseed"
+    # model_name = "1_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT___manualD_single_[1,1,1_0.5,0.5,0.5]__rseed_Truepretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
+    # input_images_path = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
+    # f_test_trained_model(model_path, model_name, input_images_path)
+
+    #
+    # model_path="/Users/yaelvinker/Documents/university/lab/Oct/10_08_summary/unet_concat/good/[1,1,1_1,1,0.1]/"
+    # model_name="D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssrMD_relu_doubleConvT___manualD_double_[1,1,1_1,1,0.1]_pretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
+    # input_images_path = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
+    # f_test_trained_model(model_path, model_name, input_images_path)
 
 
 

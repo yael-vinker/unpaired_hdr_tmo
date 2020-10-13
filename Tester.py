@@ -31,6 +31,7 @@ class Tester:
         self.test_num_iter = 0
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.log_factor = log_factor_
+        self.use_contrast_ratio_f = args.use_contrast_ratio_f
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
@@ -40,7 +41,6 @@ class Tester:
         self.std_norm_factor = args.std_norm_factor
         self.manual_d_training = args.manual_d_training
         self.d_weight_mul_mode = args.d_weight_mul_mode
-
 
     def load_original_test_hdr_images(self, root):
         print("using input loader number ", self.args.wind_norm_option)
@@ -55,7 +55,8 @@ class Tester:
                                                    gamma_log=self.args.gamma_log,
                                                    f_factor_path=self.args.f_factor_path,
                                                    use_new_f=self.args.use_new_f,
-                                                   data_trc=self.data_trc, test_mode=True)
+                                                   data_trc=self.data_trc, test_mode=False,
+                                                   use_contrast_ratio_f=self.use_contrast_ratio_f)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             if self.to_crop:
                 gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
@@ -210,7 +211,8 @@ class Tester:
             weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
                 im_log_normalize_tensor)
             im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
-        fake = netG(im_log_normalize_tensor.detach())
+        with torch.no_grad():
+            fake = netG(im_log_normalize_tensor.detach())
         printer.print_g_progress(fake, file_name)
 
         fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())

@@ -122,6 +122,7 @@ def print_im_data(J):
 
 
 def get_new_brightness_factor(M):
+    # from PIL import Image
     J = np.mean(M, axis=2)
     J = np.reshape(J, (-1,))
     M = M / np.max(J)
@@ -141,6 +142,7 @@ def get_new_brightness_factor(M):
 
         if I.shape[0] / npix < 0.1:
             # Cout = C * np.sqrt(2)
+
             break
 
         h = np.histogram(I, bins=5)
@@ -148,9 +150,11 @@ def get_new_brightness_factor(M):
 
         if np.mean(h[1]) > 0:
             rat = np.mean(h[0]) / np.mean(h[1])
+
             # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
             if rat > 0.5:
                 Cout = C * np.sqrt(2)
+
             else:
                 print("%d: %.2f (%.2f) [%.4f]" % (i, rat, I.shape[0] / npix, Cout))
     return Cout

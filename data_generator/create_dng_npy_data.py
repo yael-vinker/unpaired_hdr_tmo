@@ -212,12 +212,29 @@ def get_mean_and_factor(gamma_log, use_new_f):
     return mean_target, factor
 
 
-def get_f(use_new_f, rgb_img, gray_im, mean_target, factor):
-    if use_new_f:
-        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img)
-        # f_factor = 1
+def get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f, factor_coeff, f_factor_path, im_name):
+    if f_factor_path != "none":
+        data = np.load(f_factor_path, allow_pickle=True)
+        if im_name in data[()]:
+            f_factor = data[()][im_name]
+            print("[%s] found in dict [%.4f]" % (im_name, f_factor))
+            return f_factor * 255 * factor_coeff
+    elif use_contrast_ratio_f:
+        print("===============")
+        print(np.percentile(gray_im, 99.0), np.percentile(gray_im, 99.9), gray_im.max())
+        print(np.percentile(rgb_img, 99.0), np.percentile(rgb_img, 99.9), rgb_img.max())
+        print(np.percentile(gray_im, 1.0), np.percentile(gray_im, 0.1), gray_im.min())
+        im_max = np.percentile(gray_im, 100)
+        im_min = np.percentile(gray_im, 1.0)
+        if im_min == 0:
+            im_min += 0.0001
+        f_factor = im_max / im_min * factor_coeff
+        return f_factor
+    elif use_new_f:
+        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * factor_coeff
+        return f_factor
     else:
-        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
+        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor) * 255 * factor_coeff
     return f_factor
 
 
@@ -235,26 +252,23 @@ def fix_im_avg(gray_im, f_factor, brightness_factor):
     return new_gray_im
 
 
-def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f, data_trc, test_mode=False):
+def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f, data_trc,
+                   test_mode=False, use_contrast_ratio_f=False):
     mean_target, factor = get_mean_and_factor(gamma_log, use_new_f)
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    # print(rgb_img.max(), rgb_img.min(), rgb_img.mean())
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
     gray_im = hdr_image_util.to_gray(rgb_img)
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
     gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
-    if f_factor_path != "none":
-        data = np.load(f_factor_path, allow_pickle=True)
-        if os.path.basename(im_path) in data[()]:
-            f_factor = data[()][os.path.basename(im_path)]
-        else:
-            f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
-    else:
-        f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
+    im_name = os.path.splitext(os.path.basename(im_path))[0]
+    f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f,
+                     factor_coeff, f_factor_path, im_name)
     if f_factor < 1:
         print("==== %s ===== buggy im" % im_path)
-    print("f_factor", f_factor)
-    brightness_factor = f_factor * 255 * factor_coeff
+    # print("f_factor", f_factor)
+    brightness_factor = f_factor
     print("brightness_factor", brightness_factor)
     if "min" in data_trc:
         gray_im = gray_im - gray_im.min()

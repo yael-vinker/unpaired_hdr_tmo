@@ -190,7 +190,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
 
 
 def load_g_model(model_params, device, net_path):
-    G_net = create_G_net(model_params["model"], device, True, 1, model_params["last_layer"],
+    G_net = create_G_net(model_params["model"], device, True, model_params["input_dim"], model_params["last_layer"],
                          model_params["filters"], model_params["con_operator"], model_params["depth"],
                          model_params["add_frame"], model_params["unet_norm"],  model_params["stretch_g"],
                          "relu", use_xaviar=False, output_dim=1, apply_exp=False,
@@ -214,7 +214,8 @@ def load_g_model(model_params, device, net_path):
 
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
-    test_mode = True
+    test_mode_f_factor = True
+    test_mode_frame = False
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         factor_coeff=model_params["factor_coeff"],
                                                                         train_reshape=False,
@@ -222,14 +223,15 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         f_factor_path=f_factor_path,
                                                                         use_new_f=model_params["use_new_f"],
                                                                         data_trc=model_params["data_trc"],
-                                                                        test_mode=test_mode)
+                                                                        test_mode=test_mode_f_factor,
+                                                                        use_contrast_ratio_f=model_params["use_contrast_ratio_f"])
 
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-    if test_mode:
+    diffY, diffX = 0, 0
+    if test_mode_frame:
         print("original shape",gray_im_log.shape)
         diffY = hdr_image_util.closest_power(gray_im_log.shape[1]) - gray_im_log.shape[1]
         diffX = hdr_image_util.closest_power(gray_im_log.shape[2]) - gray_im_log.shape[2]
-
         gray_im_log = F.pad(gray_im_log.unsqueeze(dim=0), (diffX // 2, diffX - diffX // 2,
                             diffY // 2, diffY - diffY // 2), mode='replicate')
         gray_im_log = torch.squeeze(gray_im_log, dim=0)
@@ -239,15 +241,58 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
         gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
+    if model_params["manualD"] == "double":
+        interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1, 1.2, 1.5]
+        # interp_params = [1]
+        for a in interp_params:
+            file_name = im_name + "_" + str(a)
+            run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
+                                     file_name, test_mode_frame, diffY, diffX, additional_channel=a)
+    elif model_params["manualD"] == "single":
+        file_name = im_name + "_1"
+        run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
+                                     file_name, test_mode_frame, diffY, diffX, additional_channel=1.0)
+    elif model_params["manualD"] == "none":
+        file_name = im_name
+        run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
+                                     file_name, test_mode_frame, diffY, diffX, additional_channel=None)
+    # with torch.no_grad():
+    #     ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
+    # original_im_tensor = rgb_img.unsqueeze(0)
+    # if test_mode:
+    #     ours_tone_map_gray = ours_tone_map_gray[:,:, diffY // 2:ours_tone_map_gray.shape[2] - (diffY - diffY // 2),
+    #               diffX // 2:ours_tone_map_gray.shape[3] - (diffX - diffX // 2)]
+    # color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
+    # file_name = im_name + "_stretch"
+    # hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch[0], output_path, file_name)
+
+
+def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, rgb_img, out_dir, file_name,
+                                 test_mode, diffY, diffX, additional_channel):
+    if additional_channel is not None:
+        weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
+            im_log_normalize_tensor)
+        im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
     with torch.no_grad():
-        ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
+        print(im_log_normalize_tensor.max(), im_log_normalize_tensor.mean(), im_log_normalize_tensor.min())
+        fake = netG(im_log_normalize_tensor.detach())
+        print(fake.max(), fake.mean(), fake.min())
     original_im_tensor = rgb_img.unsqueeze(0)
     if test_mode:
-        ours_tone_map_gray = ours_tone_map_gray[:,:, diffY // 2:ours_tone_map_gray.shape[2] - (diffY - diffY // 2),
-                  diffX // 2:ours_tone_map_gray.shape[3] - (diffX - diffX // 2)]
-    color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    file_name = im_name + "_stretch"
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch[0], output_path, file_name)
+        fake = fake[:, :, diffY // 2:fake.shape[2] - (diffY - diffY // 2),
+                             diffX // 2:fake.shape[3] - (diffX - diffX // 2)]
+
+    # fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
+
+    fake_im_gray_stretch = fake[0]
+    file_name_gray = file_name + "_gray"
+    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
+
+    fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
+                                                       fake_im_gray_stretch.unsqueeze(dim=0))
+    # hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
+    # file_name = file_name + "_color_stretch"
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, file_name)
 
 
 def run_trained_model_from_path(model_name):
@@ -275,13 +320,17 @@ def get_model_params(model_name):
                     "con_operator": get_con_operator(model_name),
                     "clip": get_clip(model_name),
                     "g_doubleConvTranspose": get_g_doubleConvTranspose(model_name),
-
                     "factor_coeff": get_factor_coeff(model_name),
                     "use_new_f": get_use_new_f(model_name),
                     "data_trc": get_data_trc(model_name),
                     "factorised_data": True,
                     "input_loader": None,
-                    "gamma_log": 10}
+                    "gamma_log": 10,
+                    "manualD": get_manualD(model_name),
+                    "input_dim": 1,
+                    "use_contrast_ratio_f": get_use_contrast_ratio_f(model_name)}
+    if model_params["manualD"] != "none":
+        model_params["input_dim"] = 2
     print(model_params)
     return model_params
 
@@ -324,13 +373,26 @@ def get_hdr_source_path(name):
 
 
 def get_con_operator(model_name):
-    return "square_and_square_root"
-    if params.original_unet in model_name:
-        return params.original_unet
-    if params.square_and_square_root in model_name:
-        return params.square_and_square_root
-    else:
-        return params.original_unet
+    # con_op_short = {"original_unet": "ou",
+    #                 "square": "s",
+    #                 "square_root": "sr",
+    #                 "square_and_square_root": "ssr",
+    #                 "gamma": "g",
+    #                 "square_and_square_root_manual_d": "ssrMD"}
+    # return "square_and_square_root"
+    if params.con_op_short["square_and_square_root_manual_d"] in model_name:
+        return "square_and_square_root_manual_d"
+    if params.con_op_short["square_and_square_root"] in model_name:
+        return "square_and_square_root"
+    if params.con_op_short["square_root"] in model_name:
+        return "square_root"
+    if params.con_op_short["original_unet"] in model_name:
+        return "original_unet"
+    if params.con_op_short["square"] in model_name:
+        return "square"
+
+
+
 
 def get_stretch_g(model_name):
     if "batchMax" in model_name:
@@ -354,15 +416,27 @@ def get_clip(model_name):
     return "clip" in model_name
 
 def get_factor_coeff(model_name):
-    items = re.findall("DATA_\w*(\d+\.*\d+)", model_name)
+    items = re.findall("DATA_\D*(\d+\.*\d+)", model_name)
     return float(items[0])
 
 def get_data_trc(model_name):
     items = re.findall("DATA_(\w*)_\d+\.*\d+", model_name)
     return items[0]
 
+def get_manualD(model_name):
+    if "manualD_single" in model_name:
+        return "single"
+    if "manualD_double" in model_name:
+        return "double"
+    return "none"
+
 def get_use_new_f(model_name):
     if "new_f" in model_name:
+        return True
+    return False
+
+def get_use_contrast_ratio_f(model_name):
+    if "contrast_ratio_f_" in model_name:
         return True
     return False
 

@@ -10,6 +10,7 @@ test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/folder
 apply_windows_loss = False
 
 f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"
+f_factor_path_hist="/Users/yaelvinker/PycharmProjects/lab/tests/train_hdr_20_bins.npy"
 image_key = "hdr_image"
 window_image_key = "binary_windows"
 gray_input_image_key = "input_im"

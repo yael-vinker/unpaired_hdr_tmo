@@ -152,10 +152,10 @@ class GanTrainer:
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
                 gamma_factor = data_hdr[params.gamma_factor].to(self.device)
-                if self.manual_d_training:
+                if self.manual_d_training and not self.d_weight_mul_mode == "single":
                     self.adv_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
                                            (1 - self.d_weight_mul) * self.basic_details_D_weights
-                    printer.print_D_weights(self.adv_weight_list, self.d_weight_mul)
+                # printer.print_D_weights(self.adv_weight_list, self.d_weight_mul)
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 if not self.pre_train_mode:

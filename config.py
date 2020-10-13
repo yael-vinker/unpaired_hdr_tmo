@@ -20,8 +20,8 @@ def parse_arguments():
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
     parser.add_argument("--d_pretrain_epochs", type=int, default=5)
-    parser.add_argument("--manual_d_training", type=int, default=1)
-    parser.add_argument("--d_weight_mul_mode", type=str, default="double")
+    parser.add_argument("--manual_d_training", type=int, default=0)
+    parser.add_argument("--d_weight_mul_mode", type=str, default="single")
     parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
     parser.add_argument("--basic_details_D_weights", type=str, default="0.8,0.5,0.1")
 
@@ -51,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument("--multi_scale_D", type=int, default=0)
-    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,1,1")
+    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="0.1,2,1")
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
@@ -87,15 +87,18 @@ def parse_arguments():
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
-    parser.add_argument('--factor_coeff', type=float, default=0.004)
+    parser.add_argument('--factor_coeff', type=float, default=0.1)
     parser.add_argument('--window_tm_data', type=int, default=0)
     parser.add_argument('--apply_wind_norm', type=int, default=0)
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
-    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path) #52180538.8149
-    # parser.add_argument('--f_factor_path', type=str, default="none")  # 52180538.8149
-    parser.add_argument('--use_new_f', type=int, default=1)
+    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist) #52180538.8149
+    parser.add_argument('--use_new_f', type=int, default=0)
+    parser.add_argument('--use_contrast_ratio_f', type=int, default=0)
+    parser.add_argument('--use_hist_fit', type=int, default=1)
+    parser.add_argument('--f_train_dict_path', type=str, default=params.f_factor_path_hist)
+
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
@@ -175,7 +178,10 @@ def get_dataset_properties(opt):
                           "wind_norm_option": opt.wind_norm_option,
                           "max_stretch": opt.max_stretch,
                           "min_stretch": opt.min_stretch,
-                          "data_trc": opt.data_trc}
+                          "data_trc": opt.data_trc,
+                          "use_contrast_ratio_f": opt.use_contrast_ratio_f,
+                          "use_hist_fit": opt.use_hist_fit,
+                          "f_train_dict_path": opt.f_train_dict_path}
     return dataset_properties
 
 
@@ -219,8 +225,9 @@ def get_D_params(opt):
 def get_training_params(opt):
     result_dir_pref = ""
     if opt.manual_d_training:
-        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode + "_[" \
-                           + opt.strong_details_D_weights + "_" + opt.basic_details_D_weights + "]_"
+        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode
+        if opt.d_weight_mul_mode == "double":
+            result_dir_pref += "_[" + opt.strong_details_D_weights + "_" + opt.basic_details_D_weights + "]_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
     if opt.d_pretrain_epochs:
@@ -240,6 +247,10 @@ def get_data_params(opt):
     result_dir_pref += opt.data_trc + "_" + str(opt.factor_coeff)
     if opt.use_new_f:
         result_dir_pref = result_dir_pref + "new_f_"
+    elif opt.use_contrast_ratio_f:
+        result_dir_pref = result_dir_pref + "contrast_ratio_f_"
+    elif opt.use_hist_fit:
+        result_dir_pref = result_dir_pref + "hist_fit_"
     else:
         result_dir_pref = result_dir_pref + "data" + str(opt.gamma_log) + "_"
     return result_dir_pref

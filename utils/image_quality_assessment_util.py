@@ -1,5 +1,11 @@
-import operator
+import sys
+import inspect
 import os
+
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+import operator
 
 import cv2
 import imageio
@@ -370,6 +376,26 @@ def rename_files(input_path):
             print(new_im_name)
             os.rename(os.path.join(input_path, img_name), os.path.join(input_path, new_im_name))
 
+def rename_our_files(input_path_, file_name):
+    import re
+    input_path = input_path_ + "/" + file_name#+ "_color_stretch"
+    for img_name in os.listdir(input_path):
+
+        im_name = os.path.splitext(img_name)[0]
+        file_extension = os.path.splitext(img_name)[1]
+        if file_extension == '.png':
+            items = re.findall("manualD.*\[.*\]", img_name)[0]
+            rseed = ""
+            if "rseed" in img_name:
+                rseed = "rseed"
+            im_number = im_name[-2:]
+            new_im_name = "%s_%s_%s_%s_%s.png" % (file_name, im_name[:3], items, rseed, im_number)
+            # print(im_name)
+            # new_im_name = file_name + "_" + im_name[28:38] + im_name[88:129] + im_name[-3:] + '.png'
+            # # new_im_name =
+            print(new_im_name)
+            os.rename(os.path.join(input_path, img_name), os.path.join(input_path, new_im_name))
+
 
 def sort_files():
     import shutil
@@ -543,16 +569,17 @@ def sort_exr_res_by_btmqi():
 
 
 if __name__ == '__main__':
-    sort_exr_res_by_btmqi()
-    epochs = ["320"]
-    im_numbers = ["OtterPoint", "synagogue", "belgium", "2"]
-    for epoch in epochs:
-      for im_number in im_numbers:
-         gather_all_architectures2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
-                "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/", epoch, "", im_number)
-    gather_all_architectures_accuracy2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
-                                      "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/",
-                                      "320", "")
+    rename_our_files("/Users/yaelvinker/Documents/university/lab/Oct/10_08_summary/unet_concat/320/", "OtterPoint")
+    # sort_exr_res_by_btmqi()
+    # epochs = ["320"]
+    # im_numbers = ["OtterPoint", "synagogue", "belgium", "2"]
+    # for epoch in epochs:
+    #   for im_number in im_numbers:
+    #      gather_all_architectures2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
+    #             "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/", epoch, "", im_number)
+    # gather_all_architectures_accuracy2("/cs/labs/raananf/yael_vinker/Sep/09_02/results_09_04/",
+    #                                   "/cs/labs/raananf/yael_vinker/Sep/09_02/09_04_summary/",
+    #                                   "320", "")
     # rename_files("/Users/yaelvinker/Downloads/image-quality-assessment-master/src/tests/test_images/fattal/")
     # # save_dng_data_for_fid("/cs/labs/raananf/yael_vinker/dng_collection",
     # #                       "/cs/snapless/raananf/yael_vinker/data/dng_data_fid",
