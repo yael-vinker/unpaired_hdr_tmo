@@ -161,15 +161,15 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
                 if not os.path.exists(cur_output_path):
                     os.mkdir(cur_output_path)
                 run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
-                                  input_format, f_factor_path, net_G=None, use_new_f=False)
+                                  f_factor_path, net_G=None)
             else:
                 print("model %s does not exists: " % cur_net_path)
         else:
             print("model %s does not exists" % cur_model_path)
 
 
-def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path, input_format,
-                      f_factor_path, net_G, use_new_f):
+def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path,
+                      f_factor_path, net_G):
     import time
     a = time.time()
     if not net_G:
@@ -183,7 +183,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
                     or os.path.splitext(img_name)[1] == ".dng" or os.path.splitext(img_name)[1] == ".npy":
                 run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                          output_images_path, model_params, f_factor_path, use_new_f)
+                                          output_images_path, model_params, f_factor_path)
         else:
             print("%s in already exists" % (img_name))
         print("took %.4f seconds to run model" % (time.time() - a))
@@ -213,9 +213,9 @@ def load_g_model(model_params, device, net_path):
     return G_net
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
-    test_mode_f_factor = False
-    test_mode_frame = False
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
+    test_mode_f_factor = model_params["test_mode_f_factor"]
+    test_mode_frame = model_params["test_mode_frame"]
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         factor_coeff=model_params["factor_coeff"],
                                                                         train_reshape=False,
@@ -242,8 +242,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
     if model_params["manualD"] == "double":
-        interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1, 1.2, 1.5]
-        # interp_params = [1]
+        interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1]
         for a in interp_params:
             file_name = im_name + "_" + str(a)
             run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
@@ -256,15 +255,6 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
         file_name = im_name
         run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
                                      file_name, test_mode_frame, diffY, diffX, additional_channel=None)
-    # with torch.no_grad():
-    #     ours_tone_map_gray = G_net(preprocessed_im_batch.detach())
-    # original_im_tensor = rgb_img.unsqueeze(0)
-    # if test_mode:
-    #     ours_tone_map_gray = ours_tone_map_gray[:,:, diffY // 2:ours_tone_map_gray.shape[2] - (diffY - diffY // 2),
-    #               diffX // 2:ours_tone_map_gray.shape[3] - (diffX - diffX // 2)]
-    # color_batch = hdr_image_util.back_to_color_batch(original_im_tensor, ours_tone_map_gray)
-    # file_name = im_name + "_stretch"
-    # hdr_image_util.save_gray_tensor_as_numpy_stretch(color_batch[0], output_path, file_name)
 
 
 def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, rgb_img, out_dir, file_name,
@@ -305,7 +295,7 @@ def run_trained_model_from_path(model_name):
     input_images_path = os.path.join("/Users/yaelvinker/Documents/university/data/exr1")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, input_images_path,
-                                      output_images_path, "npy", f_factor_path, None, False)
+                                      output_images_path, f_factor_path, None)
 
 
 # ====== GET PARAMS ======
@@ -505,37 +495,3 @@ def is_factorised_data(model_name):
         return True
     else:
         assert 0, "Unsupported factorised def"
-
-
-if __name__ == '__main__':
-    output_dir = "d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid"
-    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/summary_08_04/d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid/net_epoch_320.pth")
-    model_params = get_model_params(output_dir)
-    # f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
-    f_factor_path = "none"
-    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/summary_08_04/"
-                                      "d32_no_frame_g1e-05_d1e-05_decay50.0_stretch_1.05data10_d5.0_gamma_ssim1.0_2,4,4__unet_square_and_square_root_act_relu_d_original_nlayers4_sigmoid/output_f_play/")
-    input_images_path = os.path.join("/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data")
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    run_model_on_path(model_params, device, net_path, input_images_path,
-                      output_images_path, "npy", f_factor_path, None, True)
-
-    # 160986.84587859685
-
-    # parser = argparse.ArgumentParser(description="Parser for gan network")
-    # parser.add_argument("--input_format", type=str, default="npy")
-    # parser.add_argument("--images_source", type=str, default="npy_pth")
-    # parser.add_argument("--arch_dir", type=str, default="/cs/labs/raananf/yael_vinker/04_26/results_09_24")
-    # parser.add_argument("--models_epoch", type=int, default=320)
-    # parser.add_argument("--output_dir_name", type=str, default="exr_320")
-    # args = parser.parse_args()
-    # device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    # models_names = [
-    #     "data_10_gamma_ssim_1.0_pyramid_2,2,6gamma_factor_loss_bilateral__b_sigma_r_0.071.0_eps_1e-05_6,4,1_alpha_1.0_mu_loss_1.0_1,1,3_unet_square_and_square_root_d_model_patchD"]
-    # #    /cs/labs/raananf/yael_vinker/04_26/results_29_04/expdata_log_10std_5.0_eps_0.001_2,4,6_mu_loss_3.0_1,1,1_struct_factor_1.0_2,4,6_unet_square_and_square_root_d_model_patchD/
-    #
-    # apply_models_from_arch_dir(args.input_format, device, args.images_source, args.arch_dir,
-    #                            models_names, args.models_epoch, args.output_dir_name)
-    # hdr_path = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data/hdr_data/3.hdr"
-    # im_hdr_original = hdr_image_util.read_hdr_image(hdr_path)
-    # load_model(im_hdr_original)
