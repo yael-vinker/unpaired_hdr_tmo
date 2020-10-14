@@ -15,6 +15,8 @@ import skimage
 import shutil
 import utils.hdr_image_util as hdr_image_util
 from utils import model_save_util
+from PIL import Image
+import matplotlib.pyplot as plt
 
 
 def create_hdr_dataset_from_dng(dng_path, output_hdr_path):
@@ -106,7 +108,6 @@ def rename_our_files(input_path_, file_name):
 
 
 def sort_files():
-    import shutil
     import csv
     im_to_save = "_stretch"
     images = ["OtterPoint", "synagogue", "belgium"]
@@ -287,6 +288,7 @@ def run_trained_model(args):
     output_name = args.output_name
     input_images_path = args.input_path
     f_factor_path = args.f_factor_path
+    input_images_names_path = args.input_images_names_path
 
     start0 = time.time()
     net_path = os.path.join(model_path, model_name, "models", "net_epoch_320.pth")
@@ -301,8 +303,41 @@ def run_trained_model(args):
         os.makedirs(output_images_path)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     model_save_util.run_model_on_path(model_params, device, net_path, input_images_path,
-                                      output_images_path, f_factor_path, None)
+                                      output_images_path, f_factor_path, None, input_images_names_path)
     print(time.time()-start0)
+
+
+def read_txt_file_with_bad_fid_images():
+    input_fid_images_path = "/cs/labs/raananf/yael_vinker/Oct/10_13/results_10_13/hist_fit_test/1_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT___rseed_Truepretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d1.0_gamma_ssim1.0_1,1,1__DATA_min_log_0.1hist_fit_/fid_color_stretch_fix/"
+    output_path = "/cs/labs/raananf/yael_vinker/Oct/10_13/results_10_13/hist_fit_test/1_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT___rseed_Truepretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d1.0_gamma_ssim1.0_1,1,1__DATA_min_log_0.1hist_fit_/bad_fid_images/"
+    with open('bad_images_fid.txt') as f:
+        lines = [line.rstrip() for line in f]
+    for im in lines:
+        if im in os.listdir(input_fid_images_path):
+            shutil.move(input_fid_images_path + im, output_path + im)
+            print(im)
+        else:
+            print(im, " not in dir")
+
+def im_crop_test(filename):
+    im = Image.open(filename)
+
+    plt.figure()
+    plt.imshow(im)
+
+    width, height = im.size
+    left = 10
+    top = 10
+    right = width - 10
+    bottom = height - 10
+    im = im.crop((left, top, right, bottom))
+    plt.figure()
+    plt.imshow(im)
+
+    im = im.resize((299,299), Image.BICUBIC)
+    im = np.asarray(im)[..., :3]
+    plt.figure()
+    plt.imshow(im)
 
 
 if __name__ == '__main__':
@@ -315,6 +350,7 @@ if __name__ == '__main__':
     parser.add_argument("--f_factor_path", type=str)
     parser.add_argument("--test_mode_f_factor", type=int, default=0)
     parser.add_argument("--test_mode_frame", type=int, default=0)
+    parser.add_argument("--input_images_names_path", type=str)
     parser.add_argument("--results_path", type=str)
     parser.add_argument("--summary_path", type=str)
 

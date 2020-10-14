@@ -446,4 +446,4 @@ class GanTrainer:
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, f_factor_path, self.netG)
+                                          output_images_path, f_factor_path, self.netG, input_images_path)

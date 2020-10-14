@@ -161,7 +161,7 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
                 if not os.path.exists(cur_output_path):
                     os.mkdir(cur_output_path)
                 run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
-                                  f_factor_path, net_G=None)
+                                  f_factor_path, None, input_images_path)
             else:
                 print("model %s does not exists: " % cur_net_path)
         else:
@@ -169,15 +169,17 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
 
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path,
-                      f_factor_path, net_G):
+                      f_factor_path, net_G, names_path):
     import time
     a = time.time()
     if not net_G:
         net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
     print("took %.4f seconds to load model" % (time.time() - a))
-    for img_name in os.listdir(input_images_path):
-        im_path = os.path.join(input_images_path, img_name)
+    names = os.listdir(names_path)
+    ext = os.path.splitext(os.listdir(input_images_path)[0])[1]
+    for img_name in names:
+        im_path = os.path.join(input_images_path, os.path.splitext(img_name)[0] + ext)
         if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
             print("working on ", img_name)
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
@@ -295,7 +297,7 @@ def run_trained_model_from_path(model_name):
     input_images_path = os.path.join("/Users/yaelvinker/Documents/university/data/exr1")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, input_images_path,
-                                      output_images_path, f_factor_path, None)
+                                      output_images_path, f_factor_path, None, input_images_path)
 
 
 # ====== GET PARAMS ======

@@ -11,12 +11,13 @@ model_path="/Users/yaelvinker/Documents/university/lab/Oct/10_13/10_13_summary"
 f_factor_path="/Users/yaelvinker/PycharmProjects/lab/data_generator/hist_fit/temp_data_test20_bins.npy"
 test_mode_f_factor=0
 test_mode_frame=0
+input_images_names_path=""
 
 for ((i = 0; i < ${#sub_dirs[@]}; ++i)); do
 	cur_sub="${sub_dirs[i]}"
 	input_path="$dir/$cur_sub/"
 	echo "$input_path"
 	sbatch --mem=4000m -c1 --gres=gpu:1 --time=2-0 run_trained_model.sh $func_to_run $model_name \
-  $input_path $output_name $model_path \
-  $f_factor_path $test_mode_f_factor $test_mode_frame
+    $input_path $output_name $model_path \
+    $f_factor_path $test_mode_f_factor $test_mode_frame $input_images_names_path
 done
