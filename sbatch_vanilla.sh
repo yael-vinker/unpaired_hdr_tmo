@@ -126,6 +126,6 @@ for ((i = 0; i < ${#adv_weight_list_lst[@]}; ++i)); do
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
     $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights $use_contrast_ratio_f \
-    $use_hist_fit $f_factor_path
+    $use_hist_fit $f_train_dict_path
   echo "======================================================"
 done

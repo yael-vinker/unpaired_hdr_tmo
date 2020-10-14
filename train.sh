@@ -92,9 +92,7 @@ echo "use_contrast_ratio_f ${74}"
 echo "use_hist_fit ${75}"
 echo "f_factor_path ${76}"
 
-python3.7 -W ignore -u main_train.py \
-
-  --change_random_seed $1 \
+python3.7 -W ignore -u main_train.py --change_random_seed $1 \
   --batch_size $2 \
   --num_epochs $3 \
   --G_lr $4 \
@@ -168,5 +166,5 @@ python3.7 -W ignore -u main_train.py \
   --strong_details_D_weights ${72} \
   --basic_details_D_weights ${73} \
   --use_contrast_ratio_f ${74} \
-  --$use_hist_fit ${75} \
-  --$f_factor_path ${76}
+  --use_hist_fit ${75} \
+  --f_train_dict_path ${76}

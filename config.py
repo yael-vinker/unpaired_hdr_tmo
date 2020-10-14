@@ -229,7 +229,7 @@ def get_training_params(opt):
         if opt.d_weight_mul_mode == "double":
             result_dir_pref += "_[" + opt.strong_details_D_weights + "_" + opt.basic_details_D_weights + "]_"
     if opt.change_random_seed:
-        result_dir_pref = result_dir_pref + "_rseed_" + str(bool(opt.change_random_seed))
+        result_dir_pref = result_dir_pref + "_rseed_" + str(opt.manual_seed)
     if opt.d_pretrain_epochs:
         result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
     result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)

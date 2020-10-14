@@ -214,7 +214,7 @@ def load_g_model(model_params, device, net_path):
 
 
 def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, use_new_f):
-    test_mode_f_factor = True
+    test_mode_f_factor = False
     test_mode_frame = False
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
                                                                         factor_coeff=model_params["factor_coeff"],
