@@ -37,7 +37,7 @@ class StructLoss(torch.nn.Module):
         self.struct_loss = self.struct_methods[struct_method]
         self.std_norm_factor = std_norm_factor
 
-    def forward(self, fake, hdr_input_original_gray_norm, hdr_input, r_weights=None):
+    def forward(self, fake, hdr_input_original_gray_norm, hdr_input, r_weights, pyramid_weight_list):
         (_, channel, _, _) = fake.size()
         if channel == self.channel and self.window.data.type() == fake.data.type():
             window = self.window
@@ -54,7 +54,7 @@ class StructLoss(torch.nn.Module):
             if self.crop_input:
                 hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input)
             return our_custom_ssim_pyramid(fake, hdr_input, window, self.window_size, channel,
-                                           self.pyramid_weight_list,
+                                           pyramid_weight_list,
                                            self.mse_loss, self.use_c3,
                                            self.apply_sig_mu_ssim, r_weights)
         elif self.struct_method == "hdr_ssim":
