@@ -151,12 +151,11 @@ def save_images_from_existing_path(existing_samples_path, input_path, output_pat
                 copyfile(im_path, output_im_path)
 
 
-def split_train_test_data(input_path, train_path, test_path, num_train_images=1, num_test_images=1):
+def split_train_test_data(input_path, train_path, test_path, test_fid_test):
     data = os.listdir(input_path)
-    # import random
-    # random.shuffle(data)
     train_data = data[:896]
     test_data = data[896: 896 + 12]
+    test_fid_data = data[896 + 12:]
 
     for img_name in train_data:
         im_path = os.path.join(input_path, img_name)
@@ -166,6 +165,11 @@ def split_train_test_data(input_path, train_path, test_path, num_train_images=1,
     for img_name in test_data:
         im_path = os.path.join(input_path, img_name)
         output_im_path = os.path.join(test_path, img_name)
+        copyfile(im_path, output_im_path)
+
+    for img_name in test_fid_data:
+        im_path = os.path.join(input_path, img_name)
+        output_im_path = os.path.join(test_fid_test, img_name)
         copyfile(im_path, output_im_path)
 
 
@@ -286,19 +290,15 @@ def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_pat
 
 def hdr_preprocess_crop_data(im_path, factor_coeff, train_reshape, gamma_log, f_factor_path, use_new_f, data_trc):
     mean_target, factor = get_mean_and_factor(gamma_log, use_new_f)
+    use_contrast_ratio_f = False
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     if np.min(rgb_img) < 0:
         rgb_img = rgb_img + np.abs(np.min(rgb_img))
     gray_im = hdr_image_util.to_gray(rgb_img)
 
-    if f_factor_path != "none":
-        data = np.load(f_factor_path, allow_pickle=True)
-        if os.path.basename(im_path) in data[()]:
-            f_factor = data[()][os.path.basename(im_path)]
-        else:
-            f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
-    else:
-        f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor)
+    im_name = os.path.splitext(os.path.basename(im_path))[0]
+    f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f,
+                     factor_coeff, f_factor_path, im_name)
     if f_factor < 1:
         print("==== %s ===== buggy im" % im_path)
     h, w = gray_im.shape[0], gray_im.shape[1]
@@ -461,21 +461,21 @@ if __name__ == '__main__':
     parser.add_argument("--data_trc", type=str, default="log_min")
     parser.add_argument("--crop_data", type=int, default=1)
 
-    args = parser.parse_args()
-    if args.isLdr:
-       output_dir_name = "flicker"
-    else:
-       output_dir_name = "hdrplus"
-    if args.use_new_f:
-        output_dir_name += "_new_f_"
-    output_dir_name += args.data_trc + "_factor" + str(args.factor_coeff)
-    if args.crop_data:
-        output_dir_name += "_crop"
-    args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
-    if not os.path.exists(args.output_dir):
-       os.mkdir(args.output_dir)
-    create_data(args)
-    print_result(args.output_dir)
+    # args = parser.parse_args()
+    # if args.isLdr:
+    #    output_dir_name = "flicker"
+    # else:
+    #    output_dir_name = "hdrplus"
+    # if args.use_new_f:
+    #     output_dir_name += "_new_f_"
+    # output_dir_name += args.data_trc + "_factor" + str(args.factor_coeff)
+    # if args.crop_data:
+    #     output_dir_name += "_crop"
+    # args.output_dir = os.path.join(args.output_dir_pref, output_dir_name)
+    # if not os.path.exists(args.output_dir):
+    #    os.mkdir(args.output_dir)
+    # create_data(args)
+    print_result("/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/test_crop/")
     # save_f_factor(args)
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
     #                       "/cs/snapless/raananf/yael_vinker/data/new_data/train/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",

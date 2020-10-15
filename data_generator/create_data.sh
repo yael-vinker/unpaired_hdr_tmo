@@ -1,6 +1,6 @@
 #!/bin/csh
 
-source /cs/labs/raananf/yael_vinker/my_venv/bin/activate.csh
+source /cs/labs/raananf/yael_vinker/python7-venv/bin/activate.csh
 
 echo "input_dir $1"
 echo "output_dir_pref $2"
