@@ -3,13 +3,13 @@ import os
 import torch
 from utils import params
 import random
-
+import numpy as np
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
     # ====== GENERAL SETTINGS ======
     parser.add_argument("--checkpoint", type=int, default=0)
-    parser.add_argument("--change_random_seed", type=int, default=0)
+    parser.add_argument("--change_random_seed", type=int, default=10)
 
     # ====== TRAINING ======
     parser.add_argument("--batch_size", type=int, default=2)
@@ -21,7 +21,7 @@ def parse_arguments():
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
     parser.add_argument("--d_pretrain_epochs", type=int, default=5)
     parser.add_argument("--manual_d_training", type=int, default=0)
-    parser.add_argument("--d_weight_mul_mode", type=str, default="single")
+    parser.add_argument("--d_weight_mul_mode", type=str, default="double")
     parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
     parser.add_argument("--basic_details_D_weights", type=str, default="0.8,0.5,0.1")
 
@@ -93,11 +93,11 @@ def parse_arguments():
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
-    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist) #52180538.8149
-    parser.add_argument('--use_new_f', type=int, default=0)
+    parser.add_argument('--f_factor_path', type=str, default="none")#params.f_factor_path_hist) #52180538.8149
+    parser.add_argument('--use_new_f', type=int, default=1)
     parser.add_argument('--use_contrast_ratio_f', type=int, default=0)
-    parser.add_argument('--use_hist_fit', type=int, default=1)
-    parser.add_argument('--f_train_dict_path', type=str, default=params.f_factor_path_hist)
+    parser.add_argument('--use_hist_fit', type=int, default=0)
+    parser.add_argument('--f_train_dict_path', type=str, default="none")#params.f_factor_path_hist)
 
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
@@ -122,7 +122,9 @@ def parse_arguments():
 
 def get_opt():
     opt = parse_arguments()
-    if opt.change_random_seed:
+    if opt.change_random_seed > 1:
+        manualSeed = opt.change_random_seed
+    elif opt.change_random_seed == 1:
         manualSeed = random.randint(1, 10000)
     else:
         manualSeed = params.manualSeed
@@ -144,6 +146,7 @@ def get_opt():
     if opt.manual_d_training:
         opt.input_dim = 2
     opt.dataset_properties = get_dataset_properties(opt)
+    np.save(os.path.join(opt.output_dir, "run_settings.npy"), vars(opt))
     return opt
 
 
@@ -186,12 +189,12 @@ def get_dataset_properties(opt):
 
 
 def get_G_params(opt):
-    result_dir_pref = "G_"
-    result_dir_pref += opt.model + "_" + params.con_op_short[opt.con_operator] + "_" + opt.g_activation
-    if not opt.g_doubleConvTranspose:
-        result_dir_pref += "_doubleConv_"
-    else:
-        result_dir_pref += "_doubleConvT_"
+    result_dir_pref = "G_%s" % params.con_op_short[opt.con_operator]
+    # result_dir_pref += opt.model + "_" + params.con_op_short[opt.con_operator] + "_" + opt.g_activation
+    # if not opt.g_doubleConvTranspose:
+    #     result_dir_pref += "_doubleConv_"
+    # else:
+    #     result_dir_pref += "_doubleConvT_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
     if opt.add_clipping:
@@ -204,12 +207,13 @@ def get_G_params(opt):
 
 
 def get_D_params(opt):
-    result_dir_pref = "D_%s_" % (opt.d_model)
+    result_dir_pref = "D"
+    # result_dir_pref = "D_%s_" % (opt.d_model)
     if "multiLayerD" in opt.d_model:
-        result_dir_pref = result_dir_pref + "_num_D" + str(opt.num_D)
-        result_dir_pref += "_" + opt.adv_weight_list + "_"
-    result_dir_pref += "ch%d_" % (opt.d_down_dim)
-    result_dir_pref += "%slayers_%s_" % (str(opt.d_nlayers), opt.d_last_activation)
+        # result_dir_pref = result_dir_pref + "_num_D" + str(opt.num_D)
+        result_dir_pref += "_[%s]_" % (opt.adv_weight_list)
+    # result_dir_pref += "ch%d_" % (opt.d_down_dim)
+    # result_dir_pref += "%slayers_%s_" % (str(opt.d_nlayers), opt.d_last_activation)
     if opt.d_fully_connected:
         result_dir_pref += "fullyCon_"
     if "simpleD" in opt.d_model:
@@ -224,17 +228,13 @@ def get_D_params(opt):
 
 def get_training_params(opt):
     result_dir_pref = ""
-    if opt.manual_d_training:
-        result_dir_pref += "_manualD_" + opt.d_weight_mul_mode
-        if opt.d_weight_mul_mode == "double":
-            result_dir_pref += "_[" + opt.strong_details_D_weights + "_" + opt.basic_details_D_weights + "]_"
     if opt.change_random_seed:
-        result_dir_pref = result_dir_pref + "_rseed_" + str(opt.manual_seed)
-    if opt.d_pretrain_epochs:
-        result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
-    result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)
+        result_dir_pref = result_dir_pref + "rseed" + str(opt.manual_seed)
+    # if opt.d_pretrain_epochs:
+    #     result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
+    # result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)
     if not opt.add_frame:
-        result_dir_pref = result_dir_pref + "noframe_"
+        result_dir_pref = result_dir_pref + "_noframe_"
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
     if opt.enhance_detail:
@@ -243,8 +243,8 @@ def get_training_params(opt):
 
 
 def get_data_params(opt):
-    result_dir_pref = "DATA_"
-    result_dir_pref += opt.data_trc + "_" + str(opt.factor_coeff)
+    # result_dir_pref = "DATA_"
+    result_dir_pref = opt.data_trc + "_" + str(opt.factor_coeff)
     if opt.use_new_f:
         result_dir_pref = result_dir_pref + "new_f_"
     elif opt.use_contrast_ratio_f:
@@ -257,12 +257,26 @@ def get_data_params(opt):
 
 
 def get_losses_params(opt):
-    result_dir_pref = "LOSS_"
-    if opt.apply_wind_norm:
-        result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
+    # result_dir_pref = "LOSS_"
+    result_dir_pref = ""
     result_dir_pref = result_dir_pref + "d" + str(opt.loss_g_d_factor)
+
+    #     result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
+
     if opt.ssim_loss_factor:
-        result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
+        struct_loss = opt.struct_method
+        if opt.struct_method == "gamma_ssim":
+            struct_loss = "struct"
+        if opt.manual_d_training:
+            result_dir_pref += "_interp_" + opt.d_weight_mul_mode
+            if opt.d_weight_mul_mode == "double":
+                result_dir_pref += "_[(" + opt.strong_details_D_weights + ")_(" + opt.basic_details_D_weights + ")]_"
+            else:
+                result_dir_pref += "_%s_%s[%s]_" % (struct_loss, str(opt.ssim_loss_factor), opt.pyramid_weight_list)
+        # if opt.apply_wind_norm:
+        else:
+            result_dir_pref += "_%s_%s[%s]_" % (struct_loss, str(opt.ssim_loss_factor), opt.pyramid_weight_list)
+        # result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
     if opt.apply_intensity_loss:
         s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + \
             str(opt.ssim_window_size) + "_"
@@ -289,7 +303,7 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "no_D_"
     else:
         result_dir_pref += get_D_params(opt)
-    result_dir_pref += "_" + get_G_params(opt) + "_" + get_training_params(opt) + "_" + get_losses_params(opt) \
+    result_dir_pref += "_" + get_G_params(opt) + "_" + get_losses_params(opt) + "_" + get_training_params(opt)\
                        + "_" + get_data_params(opt)
     output_dir = result_dir_pref
     print(output_dir)
