@@ -11,6 +11,7 @@ import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
 import utils.plot_util as plot_util
 import data_generator.create_dng_npy_data as create_dng_npy_data
+import torch.nn.functional as F
 
 
 class Tester:
@@ -42,6 +43,7 @@ class Tester:
         self.manual_d_training = args.manual_d_training
         self.d_weight_mul_mode = args.d_weight_mul_mode
 
+
     def load_original_test_hdr_images(self, root):
         print("using input loader number ", self.args.wind_norm_option)
         original_hdr_images = []
@@ -58,12 +60,20 @@ class Tester:
                                                    data_trc=self.data_trc, test_mode=False,
                                                    use_contrast_ratio_f=self.use_contrast_ratio_f)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
+            diffY, diffX = 0, 0
             if self.to_crop:
-                gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+                print("original shape", gray_im_log.shape)
+                diffY = hdr_image_util.closest_power(gray_im_log.shape[1]) - gray_im_log.shape[1]
+                diffX = hdr_image_util.closest_power(gray_im_log.shape[2]) - gray_im_log.shape[2]
+                gray_im_log = F.pad(gray_im_log.unsqueeze(dim=0), (diffX // 2, diffX - diffX // 2,
+                                                                   diffY // 2, diffY - diffY // 2), mode='replicate')
+                gray_im_log = torch.squeeze(gray_im_log, dim=0)
+                print("new shape", gray_im_log.shape)
+                # gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
             original_hdr_images.append({'im_name': os.path.splitext(img_name)[0],
                                         'im_hdr_original': rgb_img,
                                         'im_log_normalize_tensor': gray_im_log,
-                                        'epoch': 0})
+                                        'epoch': 0, 'diffX': diffX, 'diffY': diffY})
             counter += 1
         return original_hdr_images
 
@@ -191,31 +201,39 @@ class Tester:
                 if self.manual_d_training:
                     file_name = im_and_q["im_name"] + "_1"
                     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                      file_name, additional_channel=1.0)
+                                                      file_name, 1.0, im_and_q['diffX'], im_and_q['diffY'])
                     if not self.d_weight_mul_mode == "single":
                         file_name = im_and_q["im_name"] + "_0"
                         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                          file_name, additional_channel=0.0)
+                                                          file_name, 0.0, im_and_q['diffX'], im_and_q['diffY'])
                         file_name = im_and_q["im_name"] + "_0.5"
                         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                          file_name, additional_channel=0.5)
+                                                          file_name, 0.5, im_and_q['diffX'], im_and_q['diffY'])
 
                 else:
                     file_name = im_and_q["im_name"]
                     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                      file_name, additional_channel=None)
+                                                      file_name, None, im_and_q['diffX'], im_and_q['diffY'])
 
     def run_model_on_im_and_save_res(self, im_log_normalize_tensor, netG, im_hdr_original,
-                                     out_dir, file_name, additional_channel):
+                                     out_dir, file_name, additional_channel, diffX, diffY):
         if additional_channel is not None:
             weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
                 im_log_normalize_tensor)
             im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
         with torch.no_grad():
-            fake = netG(im_log_normalize_tensor.detach())
+            print(im_log_normalize_tensor.shape)
+            fake = netG(im_log_normalize_tensor.detach(), apply_crop=False)
+            print(fake.shape)
+            if self.to_crop:
+                fake = fake[:, :, diffY // 2:fake.shape[2] - (diffY - diffY // 2),
+                       diffX // 2:fake.shape[3] - (diffX - diffX // 2)]
+                print(fake.shape)
         printer.print_g_progress(fake, file_name)
 
         fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
+        print(im_hdr_original.shape)
+        print(fake_im_gray_stretch.shape)
         fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
                                                            fake_im_gray_stretch.unsqueeze(dim=0))
         hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)

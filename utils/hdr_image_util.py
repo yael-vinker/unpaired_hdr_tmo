@@ -161,7 +161,8 @@ def get_new_brightness_factor(M):
 
 
 def closest_power(x):
-    closest_power_ = max(x + ceil(x * 0.2 / 2.) * 2, 2**(x - 1).bit_length())
+    # closest_power_ = max(x + ceil(x * 0.2 / 2.) * 2, 2**(x - 1).bit_length())
+    closest_power_ = (2 ** (x - 1).bit_length())
     return 1 if x == 0 else closest_power_ + 12
 
 

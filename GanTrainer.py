@@ -223,6 +223,9 @@ class GanTrainer:
             fake = self.netG(hdr_input)
         else:
             fake = hdr_input
+            if self.to_crop:
+                fake = data_loader_util.crop_input_hdr_batch(hdr_input)
+
         # Classify all fake batch with D
         if self.enhance_detail:
             output_on_fake = self.netD(ssim.enhance_details(fake.detach(), self.wind_size).detach())

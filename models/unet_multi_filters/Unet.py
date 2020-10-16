@@ -73,7 +73,7 @@ class UNet(nn.Module):
         else:
             self.stretch = None
 
-    def forward(self, x):
+    def forward(self, x, apply_crop=True):
         d_weight_mul = 1.0
         if self.con_operator == params.square_and_square_root_manual_d:
             d_weight_mul = x[0, 1, 0, 0]
@@ -90,7 +90,7 @@ class UNet(nn.Module):
 
         x_out = self.outc(up_x)
         # x_out = torch.cat([x, x_out], dim=1)
-        if self.to_crop:
+        if self.to_crop and apply_crop:
             b, c, h, w = x_out.shape
             th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
             i = int(round((h - th) / 2.))
@@ -99,10 +99,10 @@ class UNet(nn.Module):
             x_out = x_out[:, :, i: i + h, j:j + w]
         if self.last_sig is not None:
             x_out = self.last_sig(x_out)
-        if self.exp:
-            x_out = self.exp(x_out)
-        # if self.clip:
-        #     x_out = self.clip(x_out)
-        if self.stretch:
-            x_out = self.stretch(x_out)
+        # if self.exp:
+        #     x_out = self.exp(x_out)
+        # # if self.clip:
+        # #     x_out = self.clip(x_out)
+        # if self.stretch:
+        #     x_out = self.stretch(x_out)
         return x_out
