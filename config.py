@@ -105,7 +105,7 @@ def parse_arguments():
     parser.add_argument('--enhance_detail', type=int, default=0)
 
     # ====== POST PROCESS ======
-    parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
+    parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
     parser.add_argument("--add_clipping", type=int, default=0)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
@@ -128,9 +128,14 @@ def get_opt():
         manualSeed = random.randint(1, 10000)
     else:
         manualSeed = params.manualSeed
-    torch.manual_seed(manualSeed)
     opt.manual_seed = manualSeed
+    torch.manual_seed(manualSeed)
     opt = define_dirs(opt)
+    if opt.manual_d_training:
+        opt.input_dim = 2
+    opt.dataset_properties = get_dataset_properties(opt)
+    np.save(os.path.join(opt.output_dir, "run_settings.npy"), vars(opt))
+
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     opt.device = device
     opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
@@ -143,10 +148,7 @@ def get_opt():
     opt.basic_details_D_weights = torch.FloatTensor([float(item) for item in opt.basic_details_D_weights.split(',')]).to(device)
 
     opt.milestones = [int(item) for item in opt.milestones.split(',')]
-    if opt.manual_d_training:
-        opt.input_dim = 2
-    opt.dataset_properties = get_dataset_properties(opt)
-    np.save(os.path.join(opt.output_dir, "run_settings.npy"), vars(opt))
+
     return opt
 
 
@@ -235,6 +237,8 @@ def get_training_params(opt):
     # result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)
     if not opt.add_frame:
         result_dir_pref = result_dir_pref + "_noframe_"
+    else:
+        result_dir_pref = result_dir_pref + "_frame_"
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
     if opt.enhance_detail:

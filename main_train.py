@@ -19,8 +19,8 @@ if __name__ == '__main__':
                                          opt.num_D, opt.d_fully_connected, opt.simpleD_maxpool)
 
     input_size = 256 + params.shape_addition * 2
-    # printer.print_net("G", net_G, opt, input_size=input_size)
-    printer.print_net("G", net_G, opt, input_size=256)
+    printer.print_net("G", net_G, opt, input_size=input_size)
+    # printer.print_net("G", net_G, opt, input_size=256)
     printer.print_net("D", net_D, opt, input_size=256)
 
     # Setup Adam optimizers for both G and D

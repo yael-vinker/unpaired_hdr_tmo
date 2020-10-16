@@ -292,7 +292,11 @@ def run_trained_model(args):
 
     start0 = time.time()
     net_path = os.path.join(model_path, model_name, "models", "net_epoch_320.pth")
-    model_params = model_save_util.get_model_params(model_name)
+    train_settings_path = os.path.join(model_path + "/" + model_name, "run_settings.npy")
+    print("train_settings_path",train_settings_path)
+    print("model_path", model_path)
+    print("net_path", net_path)
+    model_params = model_save_util.get_model_params(model_name, train_settings_path)
     model_params["test_mode_f_factor"] = args.test_mode_f_factor
     model_params["test_mode_frame"] = args.test_mode_frame
     print("===============================================")
