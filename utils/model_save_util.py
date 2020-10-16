@@ -177,6 +177,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
     print("model " + model_params["model"] + " was loaded successfully")
     print("took %.4f seconds to load model" % (time.time() - a))
     names = os.listdir(names_path)
+    # print(names)
     ext = os.path.splitext(os.listdir(input_images_path)[0])[1]
     for img_name in names:
         im_path = os.path.join(input_images_path, os.path.splitext(img_name)[0] + ext)
@@ -243,17 +244,18 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
         gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
-    if model_params["d_weight_mul_mode"] == "double":
-        interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1]
-        for a in interp_params:
-            file_name = im_name + "_" + str(a)
+    if model_params["manual_d_training"]:
+        if model_params["d_weight_mul_mode"] == "double":
+            interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1]
+            for a in interp_params:
+                file_name = im_name + "_" + str(a)
+                run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
+                                         file_name, test_mode_frame, diffY, diffX, additional_channel=a)
+        elif model_params["d_weight_mul_mode"] == "single":
+            file_name = im_name + "_1"
             run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                     file_name, test_mode_frame, diffY, diffX, additional_channel=a)
-    elif model_params["d_weight_mul_mode"] == "single":
-        file_name = im_name + "_1"
-        run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                     file_name, test_mode_frame, diffY, diffX, additional_channel=1.0)
-    elif model_params["d_weight_mul_mode"] == "none":
+                                         file_name, test_mode_frame, diffY, diffX, additional_channel=1.0)
+    else:
         file_name = im_name
         run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
                                      file_name, test_mode_frame, diffY, diffX, additional_channel=None)
@@ -317,16 +319,20 @@ def get_model_params(model_name, train_settings_path="none"):
                     "use_new_f": get_use_new_f,
                     "data_trc": get_data_trc,
                     "d_weight_mul_mode": get_manualD,
+                    "manual_d_training": get_manual_d_training,
                     "use_contrast_ratio_f": get_use_contrast_ratio_f}
+    print(train_settings_path)
     if os.path.exists(train_settings_path):
         train_settings = np.load(train_settings_path, allow_pickle=True)[()]
         for param in params_dict.keys():
             model_params[param] = train_settings[param]
+            print(param,model_params[param])
+
     # else:
     #     for param in params_dict.keys():
     #         model_params[param] = params_dict[param](model_name)
 
-    if model_params["d_weight_mul_mode"] != "none":
+    if model_params["manual_d_training"]:
         model_params["input_dim"] = 2
     print(model_params)
     return model_params
@@ -426,6 +432,11 @@ def get_manualD(model_name):
     if "manualD_double" in model_name:
         return "double"
     return "none"
+
+def get_manual_d_training(model_name):
+    if "manualD" in model_name:
+        return True
+    return False
 
 def get_use_new_f(model_name):
     if "new_f" in model_name:

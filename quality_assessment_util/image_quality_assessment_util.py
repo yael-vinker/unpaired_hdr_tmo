@@ -299,6 +299,7 @@ def run_trained_model(args):
     model_params = model_save_util.get_model_params(model_name, train_settings_path)
     model_params["test_mode_f_factor"] = args.test_mode_f_factor
     model_params["test_mode_frame"] = args.test_mode_frame
+    # model_params["factor_coeff"] = 0.5
     print("===============================================")
     print(model_params)
 
