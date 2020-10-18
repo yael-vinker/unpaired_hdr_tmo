@@ -42,8 +42,8 @@ def read_hdr_image(path):
         im = imageio.imread(path_lib_path, format="EXR-FI").astype('float32')
     elif file_extension == ".npy":
         im = np.load(path, allow_pickle=True)[()]
-        # print(im.keys())
-        # im = im["display_image"].permute(1, 2, 0).detach().cpu().numpy()
+        print(im.keys())
+        im = im["display_image"].permute(1, 2, 0).detach().cpu().numpy()
     else:
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im

@@ -176,11 +176,11 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
         net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
     print("took %.4f seconds to load model" % (time.time() - a))
-    names = os.listdir(names_path)
+    names = os.listdir(input_images_path)
     # print(names)
-    ext = os.path.splitext(os.listdir(input_images_path)[0])[1]
+    # ext = os.path.splitext(os.listdir(input_images_path)[0])[1]
     for img_name in names:
-        im_path = os.path.join(input_images_path, os.path.splitext(img_name)[0] + ext)
+        im_path = os.path.join(input_images_path, img_name)
         if not os.path.exists(os.path.join(output_images_path, os.path.splitext(img_name)[0] + ".png")):
             print("working on ", img_name)
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
@@ -279,14 +279,20 @@ def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, rgb_img, out_dir
     # fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
 
     fake_im_gray_stretch = fake[0]
-    file_name_gray = file_name + "_gray"
-    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
+    file_name_gray = file_name + "_color_stretch"
+    # hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
 
     fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
                                                        fake_im_gray_stretch.unsqueeze(dim=0))
     # hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
     # file_name = file_name + "_color_stretch"
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, file_name)
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir + "/color_stretch", file_name_gray)
+
+    file_name = file_name + "_gray_stretch"
+    fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
+    fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
+                                                       fake_im_gray_stretch.unsqueeze(dim=0))
+    hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir + "/gray_stretch", file_name)
 
 
 def run_trained_model_from_path(model_name):
@@ -327,7 +333,7 @@ def get_model_params(model_name, train_settings_path="none"):
         for param in params_dict.keys():
             model_params[param] = train_settings[param]
             print(param,model_params[param])
-
+    params_dict["factor_coeff"] = get_factor_coeff(model_name)
     # else:
     #     for param in params_dict.keys():
     #         model_params[param] = params_dict[param](model_name)
@@ -338,10 +344,7 @@ def get_model_params(model_name, train_settings_path="none"):
     return model_params
 
 
-
-
-
-def get_f_factor_path(name, data_gamma_log, use_new_f):
+def get_f_factor_path(name, data_gamma_log, use_new_f, use_hist_fit):
     path_dict_prev_f = {
         "test_source": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
         "open_exr_exr_format": {1: "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_factors_mean150.npy",
@@ -356,6 +359,12 @@ def get_f_factor_path(name, data_gamma_log, use_new_f):
                     "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_newf.npy",
                     "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
                     "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_fid_newf.npy"}
+    path_dict_hist_fit = {"test_source": "/Users/yaelvinker/Documents/university/lab/lum_hist_re/valid_hist_dict_20_bins.npy",
+                    "open_exr_exr_format": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/exr_hist_dict_20_bins.npy",
+                    "hdr_test": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy",
+                    "npy_pth": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all_fix.npy"}
+    if use_hist_fit:
+        return path_dict_hist_fit[name]
     if use_new_f:
         return path_dict_new[name]
     if not data_gamma_log and name == "npy_pth":
@@ -419,7 +428,10 @@ def get_clip(model_name):
     return "clip" in model_name
 
 def get_factor_coeff(model_name):
-    items = re.findall("DATA_\D*(\d+\.*\d+)", model_name)
+    # items = re.findall("DATA_\D*(\d+\.*\d+)", model_name)
+
+    items = re.findall("min_log_(\d+\.*\d+)", model_name)
+
     return float(items[0])
 
 def get_data_trc(model_name):

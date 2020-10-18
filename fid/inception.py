@@ -25,6 +25,7 @@ class InceptionV3(nn.Module):
         64: 0,   # First max pooling features
         192: 1,  # Second max pooling featurs
         768: 2,  # Pre-aux classifier features
+        1280: 3,
         2048: 3  # Final average pooling features
     }
 

@@ -197,8 +197,8 @@ def print_net(net_name, net, opt, input_size):
     print(net)
     # if net_name == "D":
     #     summary(net, (opt.output_dim, input_size, input_size), device="cpu")
-    if net_name == "G":
-        summary(net, (opt.input_dim, input_size, input_size), device="cpu")
+    # if net_name == "G":
+    #     summary(net, (opt.input_dim, input_size, input_size), device="cpu")
     print()
 
 

@@ -5,6 +5,7 @@ import time
 import matplotlib.pyplot as plt
 import torch.utils.data
 from torch import autograd
+import numpy as np
 
 import Tester
 import matplotlib
@@ -16,6 +17,7 @@ import utils.data_loader_util as data_loader_util
 import utils.model_save_util as model_save_util
 import utils.plot_util as plot_util
 import torch.nn.functional as F
+from fid import fid_score
 
 
 class GanTrainer:
@@ -99,6 +101,7 @@ class GanTrainer:
         self.use_factorise_gamma_data = opt.use_factorise_gamma_data
         self.gamma_log = opt.gamma_log
         self.use_new_f = opt.use_new_f
+        self.use_hist_fit = opt.use_hist_fit
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
@@ -112,6 +115,8 @@ class GanTrainer:
         self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.struct_loss_factor,
                                     self.log_factor, opt)
         self.final_epoch = opt.final_epoch
+        self.fid_real_path = opt.fid_real_path
+        self.fid_res_path = opt.fid_res_path
 
     def train(self):
         printer.print_cuda_details(self.device.type)
@@ -429,7 +434,7 @@ class GanTrainer:
         if epoch == self.final_epoch:
             model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
                                        self.netD, self.optimizerD)
-        #     self.save_data_for_assessment()
+            self.save_data_for_assessment()
 
     def save_gradient_flow(self, epoch):
         new_out_dir = os.path.join(self.output_dir, "gradient_flow")
@@ -437,16 +442,39 @@ class GanTrainer:
         plt.close()
 
     def save_data_for_assessment(self):
-        model_params = model_save_util.get_model_params(self.output_dir)
+        model_params = model_save_util.get_model_params(self.output_dir,
+                                                        train_settings_path=os.path.join(self.output_dir,
+                                                                                         "run_settings.npy"))
+        model_params["test_mode_f_factor"] = False
+        model_params["test_mode_frame"] = True
         net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
-        self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
-        self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+        # self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
+        # self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+        self.run_model_on_path("test_source", "exr", model_params, net_path)
+
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):
         input_images_path = model_save_util.get_hdr_source_path(data_source)
-        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log, self.use_new_f)
+        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log, self.use_new_f, self.use_hist_fit)
         output_images_path = os.path.join(self.output_dir, data_format + "_" + str(self.final_epoch))
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
+        output_images_path_color_stretch = os.path.join(output_images_path, "color_stretch")
+        output_images_path_gray_stretch = os.path.join(output_images_path, "gray_stretch")
+        if not os.path.exists(output_images_path_color_stretch):
+            os.mkdir(output_images_path_color_stretch)
+        if not os.path.exists(output_images_path_gray_stretch):
+            os.mkdir(output_images_path_gray_stretch)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
                                           output_images_path, f_factor_path, self.netG, input_images_path)
+        fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],
+                                            batch_size=20, cuda=False, dims=768)
+        fid_res_gray_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_gray_stretch],
+                                            batch_size=20, cuda=False, dims=768)
+        if os.path.exists(self.fid_res_path):
+            data = np.load(self.fid_res_path, allow_pickle=True)[()]
+            data[model_params["model_name"]] = {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}
+            np.save(self.fid_res_path, data)
+        else:
+            my_res = {model_params["model_name"]: {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}}
+            np.save(self.fid_res_path, my_res)

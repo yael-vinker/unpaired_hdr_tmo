@@ -14,11 +14,11 @@ echo "input_images_names_path $9"
 
 python3.7 -W ignore -u image_quality_assessment_util.py \
   --func_to_run $1 \
-  --model_name $2 \
-  --input_path $3 \
+  --model_name "$2" \
+  --input_path "$3" \
   --output_name $4 \
-  --model_path $5 \
-  --f_factor_path $6 \
+  --model_path "$5" \
+  --f_factor_path "$6" \
   --test_mode_f_factor $7 \
   --test_mode_frame $8 \
-  --input_images_names_path $9
+  --input_images_names_path "$9"

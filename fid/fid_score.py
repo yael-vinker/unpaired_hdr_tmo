@@ -34,6 +34,15 @@ limitations under the License.
 """
 import os
 import pathlib
+import os
+import sys
+import inspect
+import os.path as path
+two_up = path.abspath(path.join(__file__ ,"../.."))
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = two_up
+print(parent_dir)
+sys.path.insert(0, parent_dir)
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import numpy as np
@@ -50,7 +59,7 @@ except ImportError:
     # If not tqdm is not available, provide a mock version of it
     def tqdm(x): return x
 
-from inception import InceptionV3
+from fid.inception import InceptionV3
 
 def imread(filename):
     """
@@ -58,17 +67,25 @@ def imread(filename):
     """
     im = Image.open(filename)
 
-    width, height = im.size
-    left = 10
-    top = 10
-    right = width - 10
-    bottom = height - 10
-    im = im.crop((left, top, right, bottom))
+    #width, height = im.size
+    #left = 20
+    #top = 20
+    #right = width - 20
+    #bottom = height - 20
+    #im = im.crop((left, top, right, bottom))
 
     im = im.resize((299,299), Image.BICUBIC)
     im = np.asarray(im)[..., :3]
+#    im = im ** (1/1.1)
     return im
     # return np.asarray(Image.open(filename).resize((299,299), Image.BICUBIC), dtype=np.uint8)[..., :3]
+
+
+def imread2(filename):
+    """
+    Loads an image file into a (height, width, 3) uint8 ndarray.
+    """
+    return np.asarray(Image.open(filename).resize((299,299), Image.BICUBIC), dtype=np.uint8)[..., :3]
 
 
 def get_activations_for_small_dataset(files, model, batch_size=50, dims=2048,
@@ -114,9 +131,9 @@ def get_activations_for_small_dataset(files, model, batch_size=50, dims=2048,
         images = np.zeros([batch_size, 299, 299, 3])
         for f,i in zip(files[start_files:end_files], range(batch_size)):
             im = imread(str(f)).astype(np.float32)
-            if is_real:
-                im = ((im - im.min()) / im.max())*1.05 - 0.025
-                im = np.clip(im, 0, 1) * 255
+            #if is_real:
+            #    im = ((im - im.min()) / im.max())*1.05 - 0.025
+            #    im = np.clip(im, 0, 1) * 255
             images[i] = im
 
         images = images.transpose((0, 3, 1, 2))
@@ -209,7 +226,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
-    #print("diff dit  = ",diff.dot(diff), "trace s1 = ", np.trace(sigma1), "trace s2 = ", np.trace(sigma2), "2*tr = ", 2*tr_covmean)
+    #print("diff dit  = ",diff.dot(diff), "trace s1 = ", np.trace(sigma1), "trace s2 = ", np.trace(sigma2), "2*tr = ", 2*tr_covmean) 
     return (diff.dot(diff) + np.trace(sigma1) +
             np.trace(sigma2) - 2 * tr_covmean)
 
@@ -251,8 +268,7 @@ def _compute_statistics_of_path(path, model, batch_size, dims, cuda, is_real=Fal
             files = list(path.glob('*.png'))
         print(path,len(files))
         files = files[:900]
-        print(path)
-        print(len(files))
+        print(path, len(files))
         m, s = calculate_activation_statistics(files, model, batch_size,
                                                dims, cuda, is_real)
 
@@ -277,7 +293,7 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
     # paths[0] should be the real images
     print("no stretch")
     m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
-                                          dims, cuda, is_real=True)
+                                          dims, cuda, is_real=False)
     # paths[1] should be the fake images (smaller data that will be multiple by 64)
     m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
                                          dims, cuda, is_real=False)
@@ -317,3 +333,4 @@ if __name__ == '__main__':
     else:
         my_res = {args.model_name: fid_value}
         np.save(args.path_to_save, my_res)
+

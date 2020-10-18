@@ -93,11 +93,11 @@ def parse_arguments():
     parser.add_argument('--std_norm_factor', type=float, default=0.8)
     parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
-    parser.add_argument('--f_factor_path', type=str, default="none")#params.f_factor_path_hist) #52180538.8149
-    parser.add_argument('--use_new_f', type=int, default=1)
+    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist) #52180538.8149
+    parser.add_argument('--use_new_f', type=int, default=0)
     parser.add_argument('--use_contrast_ratio_f', type=int, default=0)
-    parser.add_argument('--use_hist_fit', type=int, default=0)
-    parser.add_argument('--f_train_dict_path', type=str, default="none")#params.f_factor_path_hist)
+    parser.add_argument('--use_hist_fit', type=int, default=1)
+    parser.add_argument('--f_train_dict_path', type=str, default=params.f_factor_path_hist)
 
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
@@ -114,7 +114,10 @@ def parse_arguments():
     # ====== SAVE RESULTS ======
     parser.add_argument("--epoch_to_save", type=int, default=2)
     parser.add_argument("--result_dir_prefix", type=str, default="")
-    parser.add_argument("--final_epoch", type=int, default=0)
+    parser.add_argument("--final_epoch", type=int, default=1)
+    parser.add_argument("--fid_real_path", type=str, default="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2") #default="/Users/yaelvinker/PycharmProjects/lab/fid/fake_jpg")#
+    parser.add_argument("--fid_res_path", type=str,
+                        default="/Users/yaelvinker/PycharmProjects/lab/results/")
 
     args = parser.parse_args()
     return args
@@ -319,6 +322,9 @@ def create_dir(opt):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
+    if not os.path.exists(opt.fid_res_path):
+        os.makedirs(opt.fid_res_path)
+    opt.fid_res_path = os.path.join(opt.fid_res_path, "fid_results.npy")
 
     models_images = os.path.join(output_dir, params.models_images)
     model_path = os.path.join(output_dir, model_path)

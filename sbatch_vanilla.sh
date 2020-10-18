@@ -1,4 +1,5 @@
 #!/bin/bash
+
 change_random_seed=0
 batch_size=16
 num_epochs=325
@@ -13,14 +14,15 @@ g_activation="relu"
 d_pretrain_epochs=50
 
 # ====== DATASET ======
-data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_new_f_min_log_factor1.0_crop"
+#data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data_oct/train/hdrplus_new_f_min_log_factor1.0_crop"
+data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/train/"
 data_root_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/train_half2"
-test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data/test/hdrplus_new_f_min_log_factor1.0_crop"
-test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/tmqi_test_hdr"
+test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/test"
+test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/new_test_hdr"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
 f_factor_path="none"
 gamma_log=10
-use_new_f=1
+use_new_f=0
 factor_coeff=0.1
 
 add_frame=0
@@ -50,14 +52,14 @@ std_method="gamma_factor_loss_bilateral"
 intensity_epsilon=0.00001
 apply_intensity_loss_laplacian_weights=0
 
-loss_g_d_factor=5
+loss_g_d_factor=1
 train_with_D=1
 multi_scale_D=0
 
 ssim_window_size=5
 struct_method="gamma_ssim"
 ssim_loss_factor=1
-pyramid_weight_list="2,4,4"
+pyramid_weight_list="1,1,1"
 
 alpha=0.5
 bilateral_sigma_r=0.07
@@ -80,38 +82,45 @@ g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=0
 
-adv_weight_list="1,1,1"
+adv_weight_list="1,1,0.1"
 data_trc="min_log"
 
-manual_d_training=1
-d_weight_mul_mode="single"
-strong_details_D_weights="1,1,1"
-basic_details_D_weights="0.8,0.5,0.1"
+manual_d_training=0
+d_weight_mul_mode="double"
+strong_details_D_weights="4,4,4"
+basic_details_D_weights="0.5,0.5,0.5"
 
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_07/results_10_09/unet_concat_rseed/"
-con_operator="square_and_square_root_manual_d"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_15/results_10_16/fix_train_dataset/"
 use_contrast_ratio_f=0
 f_factor_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy"
 use_hist_fit=1
-f_train_dict_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all.npy"
+f_train_dict_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all_fix.npy"
 
-adv_weight_list_lst=("1,1,1")
-change_random_seed_lst=(0)
+pyramid_weight_list_lst=("0.4,0.8,0.8" "0.4,0.8,0.8" "0.4,0.8,0.8" "0.4,0.8,0.8")
+change_random_seed_lst=(1 1 1 1)
+adv_weight_list_lst=("0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0")
+factor_coeff_lst=(0.5 0.5 0.5 0.5)
 
-for ((i = 0; i < ${#adv_weight_list_lst[@]}; ++i)); do
+fid_res_path=""
+
+for ((i = 0; i < ${#change_random_seed_lst[@]}; ++i)); do
 
   adv_weight_list="${adv_weight_list_lst[i]}"
   change_random_seed="${change_random_seed_lst[i]}"
+  pyramid_weight_list="${pyramid_weight_list_lst[i]}"
+  #strong_details_D_weights="${strong_details_D_weights_lst[i]}"
+  #basic_details_D_weights="${basic_details_D_weights_lst[i]}"
+  factor_coeff="${factor_coeff_lst[i]}"
 
   echo "======================================================"
-  echo "adv_weight_list $adv_weight_list"
+  echo "pyramid_weight_list $pyramid_weight_list"
   echo "change_random_seed $change_random_seed"
-  echo "con_operator $con_operator"
-  echo "f_train_dict_path $f_train_dict_path"
-  echo "f_factor_path $f_factor_path"
-  echo "use_hist_fit $use_hist_fit"
+  #echo "con_operator $con_operator"
+  #echo "f_train_dict_path $f_train_dict_path"
+  #echo "f_factor_path $f_factor_path"
+  #echo "use_hist_fit $use_hist_fit"
 
-  sbatch --mem=8000m -c2 --gres=gpu:2 --time=2-0 train.sh \
+  sbatch --mem=8000m -c2 --gres=gpu:1 --time=2-0 train.sh \
     $change_random_seed $batch_size $num_epochs \
     $G_lr $D_lr $model $con_operator $use_xaviar \
     $loss_g_d_factor $train_with_D $ssim_loss_factor $pyramid_weight_list $apply_intensity_loss \

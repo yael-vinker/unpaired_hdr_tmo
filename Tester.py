@@ -222,18 +222,22 @@ class Tester:
                 im_log_normalize_tensor)
             im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
         with torch.no_grad():
-            print(im_log_normalize_tensor.shape)
+            # print(im_log_normalize_tensor.shape)
             fake = netG(im_log_normalize_tensor.detach(), apply_crop=False)
-            print(fake.shape)
+            # print(fake.shape)
             if self.to_crop:
                 fake = fake[:, :, diffY // 2:fake.shape[2] - (diffY - diffY // 2),
                        diffX // 2:fake.shape[3] - (diffX - diffX // 2)]
                 print(fake.shape)
         printer.print_g_progress(fake, file_name)
+        filne_name_c = file_name + "_color_stretch"
+        fake_im_gray_stretch = fake[0]
+        fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
+                                                           fake_im_gray_stretch.unsqueeze(dim=0))
+        hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, filne_name_c)
 
+        file_name = file_name + "_gray_stretch"
         fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-        print(im_hdr_original.shape)
-        print(fake_im_gray_stretch.shape)
         fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original.unsqueeze(0),
                                                            fake_im_gray_stretch.unsqueeze(dim=0))
         hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
