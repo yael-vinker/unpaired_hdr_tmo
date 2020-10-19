@@ -467,14 +467,15 @@ class GanTrainer:
             os.mkdir(output_images_path_gray_stretch)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
                                           output_images_path, f_factor_path, self.netG, input_images_path)
-        fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],
-                                            batch_size=20, cuda=False, dims=768)
-        fid_res_gray_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_gray_stretch],
-                                            batch_size=20, cuda=False, dims=768)
-        if os.path.exists(self.fid_res_path):
-            data = np.load(self.fid_res_path, allow_pickle=True)[()]
-            data[model_params["model_name"]] = {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}
-            np.save(self.fid_res_path, data)
-        else:
-            my_res = {model_params["model_name"]: {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}}
-            np.save(self.fid_res_path, my_res)
+        if data_format == "npy":
+            fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],
+                                                batch_size=20, cuda=False, dims=768)
+            fid_res_gray_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_gray_stretch],
+                                                batch_size=20, cuda=False, dims=768)
+            if os.path.exists(self.fid_res_path):
+                data = np.load(self.fid_res_path, allow_pickle=True)[()]
+                data[model_params["model_name"]] = {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}
+                np.save(self.fid_res_path, data)
+            else:
+                my_res = {model_params["model_name"]: {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}}
+                np.save(self.fid_res_path, my_res)

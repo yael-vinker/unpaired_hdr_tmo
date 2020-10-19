@@ -46,12 +46,13 @@ def parse_arguments():
     parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
     parser.add_argument('--d_fully_connected', type=int, default=0)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
+    parser.add_argument('--bilinear', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument("--multi_scale_D", type=int, default=0)
-    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="0.1,2,1")
+    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,2,1")
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
@@ -105,7 +106,7 @@ def parse_arguments():
     parser.add_argument('--enhance_detail', type=int, default=0)
 
     # ====== POST PROCESS ======
-    parser.add_argument("--add_frame", type=int, default=1)  # int(False) = 0
+    parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
     parser.add_argument("--add_clipping", type=int, default=0)  # int(False) = 0
     parser.add_argument('--use_normalization', type=int, default=0)
     parser.add_argument("--log_factor", type=float, default=1000)
@@ -233,6 +234,8 @@ def get_D_params(opt):
 
 def get_training_params(opt):
     result_dir_pref = ""
+    if opt.bilinear:
+        result_dir_pref += "bilinear_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "rseed" + str(opt.manual_seed)
     # if opt.d_pretrain_epochs:

@@ -65,13 +65,13 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
                  add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim, apply_exp,
-                 g_doubleConvTranspose):
+                 g_doubleConvTranspose, bilinear):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
     new_net = Generator.UNet(input_dim_, output_dim, last_layer, depth=unet_depth_,
                              layer_factor=layer_factor, con_operator=con_operator, filters=filters,
-                             bilinear=False, network=model, dilation=0, to_crop=add_frame,
+                             bilinear=bilinear, network=model, dilation=0, to_crop=add_frame,
                              unet_norm=unet_norm, stretch_g=stretch_g,
                              activation=activation, apply_exp=apply_exp,
                              doubleConvTranspose=g_doubleConvTranspose).to(device_)
@@ -279,9 +279,9 @@ def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, rgb_img, out_dir
     # fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
 
     fake_im_gray_stretch = fake[0]
+    file_name_gray = file_name + "_gray"
+    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
     file_name_gray = file_name + "_color_stretch"
-    # hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
-
     fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
                                                        fake_im_gray_stretch.unsqueeze(dim=0))
     # hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)

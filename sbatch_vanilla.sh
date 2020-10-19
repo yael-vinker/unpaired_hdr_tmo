@@ -101,6 +101,7 @@ change_random_seed_lst=(1 1 1 1)
 adv_weight_list_lst=("0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0")
 factor_coeff_lst=(0.5 0.5 0.5 0.5)
 
+bilinear=0
 fid_res_path=""
 
 for ((i = 0; i < ${#change_random_seed_lst[@]}; ++i)); do
@@ -135,6 +136,6 @@ for ((i = 0; i < ${#change_random_seed_lst[@]}; ++i)); do
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
     $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights $use_contrast_ratio_f \
-    $use_hist_fit $f_train_dict_path
+    $use_hist_fit $f_train_dict_path $fid_res_path $bilinear
   echo "======================================================"
 done
