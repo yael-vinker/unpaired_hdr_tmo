@@ -90,36 +90,46 @@ d_weight_mul_mode="double"
 strong_details_D_weights="4,4,4"
 basic_details_D_weights="0.5,0.5,0.5"
 
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_15/results_10_16/fix_train_dataset/"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_20/results_10_20/padding_test/"
 use_contrast_ratio_f=0
 f_factor_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy"
 use_hist_fit=1
 f_train_dict_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all_fix.npy"
 
-pyramid_weight_list_lst=("0.4,0.8,0.8" "0.4,0.8,0.8" "0.4,0.8,0.8" "0.4,0.8,0.8")
-change_random_seed_lst=(1 1 1 1)
-adv_weight_list_lst=("0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0" "0.8,0.5,0")
-factor_coeff_lst=(0.5 0.5 0.5 0.5)
+pyramid_weight_list_lst=("0.2,0.4,0.8")
+pyramid_weight_list="0.2,0.4,0.8"
 
-bilinear=0
-fid_res_path=""
+change_random_seed_lst=(0)
+change_random_seed=0
 
-for ((i = 0; i < ${#change_random_seed_lst[@]}; ++i)); do
+adv_weight_list_lst=("2,2,1")
+adv_weight_list="2,2,1"
 
-  adv_weight_list="${adv_weight_list_lst[i]}"
-  change_random_seed="${change_random_seed_lst[i]}"
-  pyramid_weight_list="${pyramid_weight_list_lst[i]}"
-  #strong_details_D_weights="${strong_details_D_weights_lst[i]}"
-  #basic_details_D_weights="${basic_details_D_weights_lst[i]}"
-  factor_coeff="${factor_coeff_lst[i]}"
+factor_coeff_lst=(0.1)
+factor_coeff=0.1
+
+fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_20/fid_res/"
+
+bilinear_lst=(0 0 0 0 1)
+d_padding_lst=(0 1 1 1 1)
+g_doubleConvTranspose_lst=(1 1 1 0 0)
+g_padding_lst=("constant" "replicate" "reflect" "replicate" "replicate")
+test_names=("d_no_padding" "g_replicate" "g_reflect" "no_doubleconvTranspose_and_convTrans" "no_doubleconvTranspose_and_bilinear")
+
+for ((i = 0; i < ${#bilinear_lst[@]}; ++i)); do
+
+  bilinear="${bilinear_lst[i]}"
+  d_padding="${d_padding_lst[i]}"
+  padding="${g_doubleConvTranspose_lst[i]}"
+  g_doubleConvTranspose="${g_padding_lst[i]}"
+  test_name="${test_names[i]}"
 
   echo "======================================================"
-  echo "pyramid_weight_list $pyramid_weight_list"
-  echo "change_random_seed $change_random_seed"
-  #echo "con_operator $con_operator"
-  #echo "f_train_dict_path $f_train_dict_path"
-  #echo "f_factor_path $f_factor_path"
-  #echo "use_hist_fit $use_hist_fit"
+  echo "tests_name $test_name"
+  echo "bilinear $bilinear"
+  echo "d_padding $d_padding"
+  echo "padding $padding"
+  echo "g_doubleConvTranspose $g_doubleConvTranspose"
 
   sbatch --mem=8000m -c2 --gres=gpu:1 --time=2-0 train.sh \
     $change_random_seed $batch_size $num_epochs \
@@ -136,6 +146,6 @@ for ((i = 0; i < ${#change_random_seed_lst[@]}; ++i)); do
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
     $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights $use_contrast_ratio_f \
-    $use_hist_fit $f_train_dict_path $fid_res_path $bilinear
+    $use_hist_fit $f_train_dict_path $fid_res_path $bilinear $d_padding $padding
   echo "======================================================"
 done

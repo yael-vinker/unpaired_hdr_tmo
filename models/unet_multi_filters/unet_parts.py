@@ -10,9 +10,10 @@ from utils import params
 class double_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
-    def __init__(self, in_ch, out_ch, unet_norm, activation, padding):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode):
         super(double_conv, self).__init__()
         self.padding = padding
+        self.padding_mode = padding_mode
         self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0)
         if unet_norm == 'batch_norm':
             self.norm = nn.BatchNorm2d(out_ch)
@@ -55,7 +56,7 @@ class double_conv(nn.Module):
         if self.padding:
             expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
                                 (self.padding + 1) // 2, self.padding // 2)
-            x = F.pad(x, expanded_padding, mode='replicate')
+            x = F.pad(x, expanded_padding, mode=self.padding_mode)
             # print("x",x.shape)
         x = self.conv(x)
         # print("x", x.shape)
@@ -65,7 +66,7 @@ class double_conv(nn.Module):
         if self.padding:
             expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
                                 (self.padding + 1) // 2, self.padding // 2)
-            x = F.pad(x, expanded_padding, mode='replicate')
+            x = F.pad(x, expanded_padding, mode=self.padding_mode)
             # print("x", x.shape)
         x = self.conv1(x)
         # print("x", x.shape)
@@ -174,9 +175,9 @@ class double_conv_traspose(nn.Module):
 
 
 class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch, unet_norm, activation, padding):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode):
         super(inconv, self).__init__()
-        self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding)
+        self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode)
 
     def forward(self, x):
         x = self.conv(x)
@@ -184,17 +185,18 @@ class inconv(nn.Module):
 
 
 class down(nn.Module):
-    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none', activation='relu', padding=0):
+    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none', activation='relu', padding=0,
+                 padding_mode='constant'):
         super(down, self).__init__()
         if network == params.unet_network:
             self.mpconv = nn.Sequential(
                 nn.MaxPool2d(2),
-                double_conv(in_ch, out_ch, unet_norm, activation, padding)
+                double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode)
             )
         elif network == params.torus_network:  # for torus
             self.mpconv = nn.Sequential(
                 nn.Conv2d(in_ch, in_ch, 3, stride=1, padding=0, dilation=dilation),
-                double_conv(in_ch, out_ch, unet_norm, activation, padding)
+                double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode)
             )
         else:
             assert 0, "Unsupported network request: {}".format(self.network)
@@ -220,8 +222,9 @@ class last_down(nn.Module):
 
 class up(nn.Module):
     def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation, unet_norm, activation,
-                 doubleConvTranspose, padding=0):
+                 doubleConvTranspose, padding=0, padding_mode='constant'):
         super(up, self).__init__()
+        self.padding_mode = padding_mode
         # print("padding",padding)
         # if not doubleConvTranspose:
         #     padding = 1
@@ -229,7 +232,7 @@ class up(nn.Module):
         #  but my machine do not have enough memory to handle all those weights
         if network == params.unet_network:
             if bilinear:
-                self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+                self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
             else:
                 self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
 
@@ -241,7 +244,7 @@ class up(nn.Module):
         if doubleConvTranspose:
             self.conv = double_conv_traspose(in_ch, out_ch, unet_norm, activation)
         else:
-            self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding)
+            self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode)
 
     def forward(self, x1, x2, con_operator, network, d_weight_mul):
         x1 = self.up(x1)
@@ -249,12 +252,12 @@ class up(nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
         if diffX or diffY:
-            # print("diffX", diffX, x1.size())
-            # print("diffY", diffY, x2.size())
+            print("diffX", diffX, x1.size())
+            print("diffY", diffY, x2.size())
             x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
-                            diffY // 2, diffY - diffY // 2), mode='constant')
+                            diffY // 2, diffY - diffY // 2), mode=self.padding_mode)
             # print("new size", x1.size())
-        # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
+            # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd

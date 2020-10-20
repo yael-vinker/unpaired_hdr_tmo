@@ -48,17 +48,23 @@ class Flatten(nn.Module):
 
 
 class SimpleDiscriminator(nn.Module):
-    def __init__(self, input_size, input_dim, dim, norm, last_activation, simpleD_maxpool):
+    def __init__(self, input_size, input_dim, dim, norm, last_activation, simpleD_maxpool, padding):
         super(SimpleDiscriminator, self).__init__()
+        if padding:
+            sub = 0
+        else:
+            sub = 2
         self.model = []
-        self.model += [nn.Conv2d(input_dim, dim, 4, 2, 1, bias=True),
+        self.model += [nn.Conv2d(input_dim, dim, 4, 2, padding=padding, bias=True),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(dim, dim * 2, 4, 2, 1, bias=True)]
+            nn.Conv2d(dim, dim * 2, 4, 2, padding=padding, bias=True)]
         if simpleD_maxpool:
             last_dim = dim * 2
             self.model += [nn.AdaptiveMaxPool2d((1))]
         else:
-            last_dim = (int(input_size / 4) ** 2)
+
+            last_dim = ((int(input_size / 4) - sub) ** 2)
+            print("last_dim",last_dim, padding)
             self.model += [nn.LeakyReLU(0.2, inplace=True),
                            nn.Conv2d(dim * 2, 1, kernel_size=1, stride=1, padding=0, bias=True)]
         self.model += [Flatten(),
@@ -115,7 +121,7 @@ class NLayerDiscriminator(nn.Module):
 class MultiscaleDiscriminator(nn.Module):
     def __init__(self, input_size, d_model, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm",
                  last_activation="none", num_D=3, getIntermFeat=False, d_fully_connected=False,
-                 simpleD_maxpool=True):
+                 simpleD_maxpool=True, padding=1):
         super(MultiscaleDiscriminator, self).__init__()
         self.num_D = num_D
         self.n_layers = n_layers
@@ -128,7 +134,7 @@ class MultiscaleDiscriminator(nn.Module):
                 netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, last_activation)
             elif "simpleD" in d_model:
                 netD = SimpleDiscriminator(input_size, input_nc,
-                                            ndf, norm_layer, last_activation, simpleD_maxpool)
+                                            ndf, norm_layer, last_activation, simpleD_maxpool, padding)
                 input_size = input_size // 2
             if getIntermFeat:
                 for j in range(n_layers + 2):

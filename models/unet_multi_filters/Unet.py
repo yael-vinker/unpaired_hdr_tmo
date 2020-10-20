@@ -6,7 +6,8 @@ import utils.printer
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, unet_norm, stretch_g, activation, apply_exp, doubleConvTranspose):
+                 network, dilation, to_crop, unet_norm, stretch_g, activation, apply_exp, doubleConvTranspose,
+                 padding_mode):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
@@ -16,12 +17,13 @@ class UNet(nn.Module):
         padding = 2
         if doubleConvTranspose:
             padding = 0
-        self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding)
+        self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding, padding_mode)
         ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
-                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation, padding=padding)
+                down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
+                     padding=padding, padding_mode=padding_mode)
             )
             ch = ch * 2
             if network == params.torus_network:
@@ -29,7 +31,8 @@ class UNet(nn.Module):
         if doubleConvTranspose:
             self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
         else:
-            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation, padding=padding))
+            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
+                                       padding=padding, padding_mode=padding_mode))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
@@ -40,13 +43,13 @@ class UNet(nn.Module):
                 self.up_path.append(
                     up(in_ch, down_ch, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose, padding=padding)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode)
                 )
             else:
                 self.up_path.append(
                     up(in_ch, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose, padding=padding)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode)
                 )
             ch = ch // 2
             if network == params.torus_network:

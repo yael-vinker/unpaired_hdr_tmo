@@ -450,7 +450,7 @@ class GanTrainer:
         net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
         # self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
         # self.run_model_on_path("npy_pth", "npy", model_params, net_path)
-        self.run_model_on_path("test_source", "exr", model_params, net_path)
+        # self.run_model_on_path("test_source", "exr", model_params, net_path)
 
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):

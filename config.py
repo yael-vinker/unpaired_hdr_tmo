@@ -46,7 +46,9 @@ def parse_arguments():
     parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
     parser.add_argument('--d_fully_connected', type=int, default=0)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
-    parser.add_argument('--bilinear', type=int, default=0)
+    parser.add_argument('--bilinear', type=int, default=1)
+    parser.add_argument('--padding', type=str, default="replicate")
+    parser.add_argument('--d_padding', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -197,10 +199,10 @@ def get_dataset_properties(opt):
 def get_G_params(opt):
     result_dir_pref = "G_%s" % params.con_op_short[opt.con_operator]
     # result_dir_pref += opt.model + "_" + params.con_op_short[opt.con_operator] + "_" + opt.g_activation
-    # if not opt.g_doubleConvTranspose:
-    #     result_dir_pref += "_doubleConv_"
-    # else:
-    #     result_dir_pref += "_doubleConvT_"
+    if not opt.g_doubleConvTranspose:
+        result_dir_pref += "_doubleConv_"
+    else:
+        result_dir_pref += "_doubleConvT_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
     if opt.add_clipping:
@@ -229,6 +231,8 @@ def get_D_params(opt):
         result_dir_pref += opt.d_norm + "_"
     if opt.multi_scale_D:
         result_dir_pref += "2scale_"
+    # if opt.d_padding:
+    result_dir_pref += "pad_" + str(opt.d_padding)
     return result_dir_pref
 
 
@@ -236,6 +240,7 @@ def get_training_params(opt):
     result_dir_pref = ""
     if opt.bilinear:
         result_dir_pref += "bilinear_"
+    result_dir_pref += opt.padding + "_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "rseed" + str(opt.manual_seed)
     # if opt.d_pretrain_epochs:
