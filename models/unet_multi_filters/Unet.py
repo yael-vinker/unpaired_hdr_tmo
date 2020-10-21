@@ -3,18 +3,19 @@
 from .unet_parts import *
 from models import Blocks
 import utils.printer
+from utils import data_loader_util
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
                  network, dilation, to_crop, unet_norm, stretch_g, activation, apply_exp, doubleConvTranspose,
-                 padding_mode):
+                 padding_mode, convtranspose_kernel):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
         self.network = network
         down_ch = filters
         self.depth = depth
-        padding = 2
+        padding = 1
         if doubleConvTranspose:
             padding = 0
         self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding, padding_mode)
@@ -28,11 +29,12 @@ class UNet(nn.Module):
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        if doubleConvTranspose:
-            self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation))
-        else:
-            self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
-                                       padding=padding, padding_mode=padding_mode))
+        # if doubleConvTranspose:
+        self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm,
+                                        activation=activation, padding=padding, padding_mode=padding_mode))
+        # else:
+        #     self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
+        #                                padding=padding, padding_mode=padding_mode))
 
         self.up_path = nn.ModuleList()
         for i in range(self.depth):
@@ -43,13 +45,15 @@ class UNet(nn.Module):
                 self.up_path.append(
                     up(in_ch, down_ch, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode,
+                       convtranspose_kernel=convtranspose_kernel)
                 )
             else:
                 self.up_path.append(
                     up(in_ch, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
-                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode)
+                       doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode,
+                       convtranspose_kernel=convtranspose_kernel)
                 )
             ch = ch // 2
             if network == params.torus_network:
@@ -76,7 +80,7 @@ class UNet(nn.Module):
         else:
             self.stretch = None
 
-    def forward(self, x, apply_crop=True):
+    def forward(self, x, apply_crop=True, diffY=0, diffX=0):
         d_weight_mul = 1.0
         if self.con_operator == params.square_and_square_root_manual_d:
             d_weight_mul = x[0, 1, 0, 0]
@@ -92,20 +96,8 @@ class UNet(nn.Module):
             up_x = up_layer(up_x, x_results[(self.depth - (i + 1))], self.con_operator, self.network, d_weight_mul)
 
         x_out = self.outc(up_x)
-        # x_out = torch.cat([x, x_out], dim=1)
-        if self.to_crop and apply_crop:
-            b, c, h, w = x_out.shape
-            th, tw = h - 2 * params.shape_addition, w - 2 * params.shape_addition
-            i = int(round((h - th) / 2.))
-            j = int(round((w - tw) / 2.))
-            i, j, h, w = i, j, th, tw
-            x_out = x_out[:, :, i: i + h, j:j + w]
         if self.last_sig is not None:
             x_out = self.last_sig(x_out)
-        # if self.exp:
-        #     x_out = self.exp(x_out)
-        # # if self.clip:
-        # #     x_out = self.clip(x_out)
-        # if self.stretch:
-        #     x_out = self.stretch(x_out)
+        if apply_crop and self.to_crop:
+            x_out = data_loader_util.crop_input_hdr_batch(x_out, diffY=diffY, diffX=diffX)
         return x_out

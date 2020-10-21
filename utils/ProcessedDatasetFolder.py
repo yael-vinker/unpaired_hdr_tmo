@@ -43,7 +43,8 @@ def get_f(use_hist_fit, f_dict_path, im_name, factor_coeff, use_contrast_ratio_f
 
 
 def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stretch,
-               max_stretch, factor_coeff, use_contrast_ratio_f, use_hist_fit, f_dict_path):
+               max_stretch, factor_coeff, use_contrast_ratio_f, use_hist_fit, f_dict_path,
+               final_shape_addition):
     """
     load npy files that contain the loaded HDR file, and binary image of windows centers.
 
@@ -66,7 +67,7 @@ def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stre
         a = torch.log10((gray_original_im / gray_original_im.max()) * brightness_factor + 1)
         input_im = a / a.max()
         if addFrame:
-            input_im = data_loader_util.add_frame_to_im(input_im)
+            input_im = data_loader_util.add_frame_to_im(input_im, final_shape_addition, final_shape_addition)
         return input_im, color_im, gray_original_im_norm, gray_original_im, data[()]["gamma_factor"]
 
 
@@ -93,6 +94,7 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.use_contrast_ratio_f = dataset_properties["use_contrast_ratio_f"]
         self.use_hist_fit = dataset_properties["use_hist_fit"]
         self.f_train_dict_path = dataset_properties["f_train_dict_path"]
+        self.final_shape_addition = dataset_properties["final_shape_addition"]
 
     def __getitem__(self, index):
         """
@@ -112,6 +114,7 @@ class ProcessedDatasetFolder(DatasetFolder):
                                                                                           self.factor_coeff,
                                                                                           self.use_contrast_ratio_f,
                                                                                           self.use_hist_fit,
-                                                                                          self.f_train_dict_path)
+                                                                                          self.f_train_dict_path,
+                                                                                          self.final_shape_addition)
         return {"input_im": input_im, "color_im": color_im, "original_gray_norm": gray_original_norm,
                 "original_gray": gray_original, "gamma_factor": gamma_factor}

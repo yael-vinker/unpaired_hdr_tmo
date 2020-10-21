@@ -195,10 +195,11 @@ def print_best_acc_error(best_errG, epoch):
 def print_net(net_name, net, opt, input_size):
     print("=================  NET %s  ==================" % net_name)
     print(net)
+    dev = "cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu"
     if net_name == "D":
-        summary(net, (opt.output_dim, input_size, input_size), device="cpu")
+        summary(net, (opt.output_dim, input_size, input_size), device=dev)
     if net_name == "G":
-        summary(net, (opt.input_dim, input_size, input_size), device="cpu")
+        summary(net, (opt.input_dim, input_size[0], input_size[1]), device=dev)
     print()
 
 

@@ -43,12 +43,14 @@ def parse_arguments():
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--apply_exp', type=int, default=0)
     parser.add_argument('--stretch_g', type=str, default="none")
-    parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
+    parser.add_argument('--g_doubleConvTranspose', type=int, default=0)
     parser.add_argument('--d_fully_connected', type=int, default=0)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
-    parser.add_argument('--bilinear', type=int, default=1)
+    parser.add_argument('--bilinear', type=int, default=0)
     parser.add_argument('--padding', type=str, default="replicate")
     parser.add_argument('--d_padding', type=int, default=0)
+    parser.add_argument('--convtranspose_kernel', type=int, default=2)
+    parser.add_argument('--final_shape_addition', type=int, default=64)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -192,7 +194,8 @@ def get_dataset_properties(opt):
                           "data_trc": opt.data_trc,
                           "use_contrast_ratio_f": opt.use_contrast_ratio_f,
                           "use_hist_fit": opt.use_hist_fit,
-                          "f_train_dict_path": opt.f_train_dict_path}
+                          "f_train_dict_path": opt.f_train_dict_path,
+                          "final_shape_addition": opt.final_shape_addition}
     return dataset_properties
 
 
@@ -240,6 +243,8 @@ def get_training_params(opt):
     result_dir_pref = ""
     if opt.bilinear:
         result_dir_pref += "bilinear_"
+    else:
+        result_dir_pref += "trans" + str(opt.convtranspose_kernel) + "_"
     result_dir_pref += opt.padding + "_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "rseed" + str(opt.manual_seed)
@@ -249,7 +254,7 @@ def get_training_params(opt):
     if not opt.add_frame:
         result_dir_pref = result_dir_pref + "_noframe_"
     else:
-        result_dir_pref = result_dir_pref + "_frame_"
+        result_dir_pref = result_dir_pref + "_frame_" + str(opt.final_shape_addition)
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
     if opt.enhance_detail:

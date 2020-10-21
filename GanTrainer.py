@@ -55,12 +55,13 @@ class GanTrainer:
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
             self.struct_loss = ssim.StructLoss(window_size=opt.ssim_window_size,
-                                                  pyramid_weight_list=opt.pyramid_weight_list,
-                                                  pyramid_pow=False, use_c3=False,
-                                                  apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
-                                                  struct_method=opt.struct_method,
-                                                  std_norm_factor=opt.std_norm_factor,
-                                                  crop_input=opt.add_frame)
+                                                pyramid_weight_list=opt.pyramid_weight_list,
+                                                pyramid_pow=False, use_c3=False,
+                                                apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
+                                                struct_method=opt.struct_method,
+                                                std_norm_factor=opt.std_norm_factor,
+                                                crop_input=opt.add_frame,
+                                                final_shape_addition=opt.final_shape_addition)
 
         self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
         self.bilateral_sigma_r = opt.bilateral_sigma_r
@@ -102,6 +103,7 @@ class GanTrainer:
         self.gamma_log = opt.gamma_log
         self.use_new_f = opt.use_new_f
         self.use_hist_fit = opt.use_hist_fit
+        self.final_shape_addition = opt.final_shape_addition
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
@@ -225,11 +227,12 @@ class GanTrainer:
         # Train with all-fake batch
         # Generate fake image batch with G
         if not self.pre_train_mode:
-            fake = self.netG(hdr_input)
+            fake = self.netG(hdr_input, diffY=self.final_shape_addition, diffX=self.final_shape_addition)
         else:
             fake = hdr_input
             if self.to_crop:
-                fake = data_loader_util.crop_input_hdr_batch(hdr_input)
+                fake = data_loader_util.crop_input_hdr_batch(hdr_input, self.final_shape_addition,
+                                                             self.final_shape_addition)
 
         # Classify all fake batch with D
         if self.enhance_detail:
@@ -274,7 +277,7 @@ class GanTrainer:
         self.netG.zero_grad()
         # Since we just updated D, perform another forward pass of all-fake batch through D
         printer.print_g_progress(hdr_input, "hdr_inp")
-        fake = self.netG(hdr_input)
+        fake = self.netG(hdr_input, diffY=self.final_shape_addition, diffX=self.final_shape_addition)
         printer.print_g_progress(fake, "output")
         if self.train_with_D:
             if self.enhance_detail:

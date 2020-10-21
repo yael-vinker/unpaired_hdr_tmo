@@ -14,7 +14,7 @@ class double_conv(nn.Module):
         super(double_conv, self).__init__()
         self.padding = padding
         self.padding_mode = padding_mode
-        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0)
+        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=padding, padding_mode=padding_mode)
         if unet_norm == 'batch_norm':
             self.norm = nn.BatchNorm2d(out_ch)
         elif unet_norm == 'instance_norm':
@@ -28,7 +28,7 @@ class double_conv(nn.Module):
         else:
             assert 0, "Unsupported activation: {%s}" % (activation)
 
-        self.conv1 = nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(out_ch, out_ch, 3, stride=1, padding=padding, padding_mode=padding_mode)
         if unet_norm == 'batch_norm':
             self.norm1 = nn.BatchNorm2d(out_ch)
         elif unet_norm == 'instance_norm':
@@ -53,20 +53,21 @@ class double_conv(nn.Module):
         # )
 
     def forward(self, x):
-        if self.padding:
-            expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
-                                (self.padding + 1) // 2, self.padding // 2)
-            x = F.pad(x, expanded_padding, mode=self.padding_mode)
-            # print("x",x.shape)
+        # print(x.shape)
+        # if self.padding:
+        #     expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
+        #                         (self.padding + 1) // 2, self.padding // 2)
+        #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
+        #     # print("x",x.shape)
         x = self.conv(x)
         # print("x", x.shape)
         if self.norm:
             x = self.norm(x)
         x = self.activation(x)
-        if self.padding:
-            expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
-                                (self.padding + 1) // 2, self.padding // 2)
-            x = F.pad(x, expanded_padding, mode=self.padding_mode)
+        # if self.padding:
+        #     expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
+        #                         (self.padding + 1) // 2, self.padding // 2)
+        #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
             # print("x", x.shape)
         x = self.conv1(x)
         # print("x", x.shape)
@@ -78,10 +79,11 @@ class double_conv(nn.Module):
 
 class double_last_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
-
-    def __init__(self, in_ch, out_ch, unet_norm, activation):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode):
         super(double_last_conv, self).__init__()
-        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=0)
+        self.padding_mode = padding_mode
+        self.padding = padding
+        self.conv = nn.Conv2d(in_ch, out_ch, 3, stride=1, padding=padding, padding_mode=padding_mode)
         if unet_norm == 'batch_norm':
             self.norm = nn.BatchNorm2d(out_ch)
         elif unet_norm == 'instance_norm':
@@ -95,7 +97,7 @@ class double_last_conv(nn.Module):
         else:
             assert 0, "Unsupported activation: {%s}" % (activation)
 
-        self.conv1 = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=0)
+        self.conv1 = nn.ConvTranspose2d(in_ch, out_ch, kernel_size=3, stride=1, padding=padding, padding_mode=padding_mode)
         if unet_norm == 'batch_norm':
             self.norm1 = nn.BatchNorm2d(out_ch)
         elif unet_norm == 'instance_norm':
@@ -111,14 +113,18 @@ class double_last_conv(nn.Module):
             assert 0, "Unsupported activation: {%s}" % (activation)
 
     def forward(self, x):
+        # if self.padding:
+        #     expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
+        #                         (self.padding + 1) // 2, self.padding // 2)
+        #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
         x = self.conv(x)
         if self.norm:
             x = self.norm(x)
         x = self.activation(x)
-        x = self.conv1(x)
-        if self.norm1:
-            x = self.norm1(x)
-        x = self.activation1(x)
+        # x = self.conv1(x)
+        # if self.norm1:
+        #     x = self.norm1(x)
+        # x = self.activation1(x)
         return x
 
 
@@ -206,12 +212,13 @@ class down(nn.Module):
         return x
 
 class last_down(nn.Module):
-    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none', activation='relu'):
+    def __init__(self, in_ch, out_ch, network, dilation=0, unet_norm='none', activation='relu',
+                 padding=0, padding_mode="constant"):
         super(last_down, self).__init__()
         if network == params.unet_network:
             self.mpconv = nn.Sequential(
                 nn.MaxPool2d(2),
-                double_last_conv(in_ch, out_ch, unet_norm, activation)
+                double_last_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode)
             )
         else:
             assert 0, "Unsupported network request: {}".format(self.network)
@@ -222,7 +229,7 @@ class last_down(nn.Module):
 
 class up(nn.Module):
     def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation, unet_norm, activation,
-                 doubleConvTranspose, padding=0, padding_mode='constant'):
+                 doubleConvTranspose, padding=0, padding_mode='constant', convtranspose_kernel=2):
         super(up, self).__init__()
         self.padding_mode = padding_mode
         # print("padding",padding)
@@ -232,9 +239,14 @@ class up(nn.Module):
         #  but my machine do not have enough memory to handle all those weights
         if network == params.unet_network:
             if bilinear:
-                self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
+                self.up = nn.Sequential(nn.Upsample(scale_factor=2, mode='nearest', align_corners=False),
+                nn.Conv2d(in_ch // layer_factor, in_ch // layer_factor, kernel_size=1))
             else:
-                self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 2, stride=2)
+                # self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=2, padding=1, output_padding=1)
+                # cur_padding=0
+                # if convtranspose_kernel > 2:
+                #     cur_padding=1
+                self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, convtranspose_kernel, stride=2)
 
         elif network == params.torus_network:  # for torus
             self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0,
@@ -254,10 +266,17 @@ class up(nn.Module):
         if diffX or diffY:
             print("diffX", diffX, x1.size())
             print("diffY", diffY, x2.size())
-            x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
-                            diffY // 2, diffY - diffY // 2), mode=self.padding_mode)
+            # x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
+            #                 diffY // 2, diffY - diffY // 2), mode=self.padding_mode)
             # print("new size", x1.size())
-            # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
+            if diffY < 0 or diffX < 0:
+                diffY = abs(diffY)
+                diffX = abs(diffX)
+                x1 = x1[:, :, diffY // 2:x1.shape[2] - (diffY - diffY // 2),
+                     diffX // 2:x1.shape[3] - (diffX - diffX // 2)]
+                print("new size", x1.size())
+            else:
+                x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd

@@ -65,7 +65,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
                  add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim, apply_exp,
-                 g_doubleConvTranspose, bilinear, padding):
+                 g_doubleConvTranspose, bilinear, padding, convtranspose_kernel):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
@@ -74,7 +74,8 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                              bilinear=bilinear, network=model, dilation=0, to_crop=add_frame,
                              unet_norm=unet_norm, stretch_g=stretch_g,
                              activation=activation, apply_exp=apply_exp,
-                             doubleConvTranspose=g_doubleConvTranspose, padding_mode=padding).to(device_)
+                             doubleConvTranspose=g_doubleConvTranspose, padding_mode=padding,
+                             convtranspose_kernel=convtranspose_kernel).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
@@ -169,7 +170,7 @@ def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
 
 
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path,
-                      f_factor_path, net_G, names_path):
+                      f_factor_path, net_G, names_path, final_shape_addition):
     import time
     a = time.time()
     if not net_G:
@@ -186,7 +187,7 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
                     or os.path.splitext(img_name)[1] == ".dng" or os.path.splitext(img_name)[1] == ".npy":
                 run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                          output_images_path, model_params, f_factor_path)
+                                          output_images_path, model_params, f_factor_path, final_shape_addition)
         else:
             print("%s in already exists" % (img_name))
         print("took %.4f seconds to run model" % (time.time() - a))
@@ -216,7 +217,7 @@ def load_g_model(model_params, device, net_path):
     return G_net
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path):
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, final_shape_addition):
     test_mode_f_factor = model_params["test_mode_f_factor"]
     test_mode_frame = model_params["test_mode_frame"]
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
@@ -233,8 +234,8 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
     diffY, diffX = 0, 0
     if test_mode_frame:
         print("original shape",gray_im_log.shape)
-        diffY = hdr_image_util.closest_power(gray_im_log.shape[1]) - gray_im_log.shape[1]
-        diffX = hdr_image_util.closest_power(gray_im_log.shape[2]) - gray_im_log.shape[2]
+        diffY = hdr_image_util.closest_power(gray_im_log.shape[1], final_shape_addition) - gray_im_log.shape[1]
+        diffX = hdr_image_util.closest_power(gray_im_log.shape[2], final_shape_addition) - gray_im_log.shape[2]
         gray_im_log = F.pad(gray_im_log.unsqueeze(dim=0), (diffX // 2, diffX - diffX // 2,
                             diffY // 2, diffY - diffY // 2), mode='replicate')
         gray_im_log = torch.squeeze(gray_im_log, dim=0)

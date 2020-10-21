@@ -14,15 +14,16 @@ if __name__ == '__main__':
                                          opt.filters, opt.con_operator, opt.unet_depth, opt.add_frame,
                                          opt.unet_norm, opt.stretch_g, opt.g_activation, opt.use_xaviar,
                                          opt.output_dim, opt.apply_exp, opt.g_doubleConvTranspose, opt.bilinear,
-                                         opt.padding)
+                                         opt.padding, opt.convtranspose_kernel)
     net_D = model_save_util.create_D_net(opt.output_dim, opt.d_down_dim, opt.device, opt.checkpoint, opt.d_norm,
                                          opt.use_xaviar, opt.d_model, opt.d_nlayers, opt.d_last_activation,
                                          opt.num_D, opt.d_fully_connected, opt.simpleD_maxpool, opt.d_padding)
 
-    input_size = 256 + params.shape_addition * 2
-    # printer.print_net("G", net_G, opt, input_size=input_size)
-    printer.print_net("G", net_G, opt, input_size=256)
-    printer.print_net("D", net_D, opt, input_size=256)
+    input_size = 256
+    printer.print_net("D", net_D, opt, input_size=input_size)
+    if opt.add_frame:
+        input_size = 256 + opt.final_shape_addition
+    printer.print_net("G", net_G, opt, input_size=(input_size, input_size))
 
     # Setup Adam optimizers for both G and D
     optimizer_D = optim.Adam(net_D.parameters(), lr=opt.D_lr, betas=(params.beta1, 0.999))
@@ -34,3 +35,5 @@ if __name__ == '__main__':
 
     gan_trainer = GanTrainer.GanTrainer(opt, net_G, net_D, optimizer_G, optimizer_D, lr_scheduler_G, lr_scheduler_D)
     gan_trainer.train()
+
+

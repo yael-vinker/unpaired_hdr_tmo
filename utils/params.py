@@ -28,7 +28,8 @@ gradient_flow_path = os.path.join("gradient_flow")
 models_images = os.path.join("model_results")
 
 # shape_addition = 45
-shape_addition = 6
+# shape_addition = 32 #78
+# final_shape_addition = 32 * 2
 input_size = 256
 n_downsample = 1
 n_downsamples_d = 3
