@@ -101,14 +101,10 @@ def add_frame_to_im(input_im, diffX, diffY):
     return im
 
 
-def add_frame_to_im_batch(images_batch):
-    b_size = images_batch.shape[0]
-    output = []
-    for i in range(b_size):
-        im_hdr = images_batch[i].detach()
-        im_hdr_frame = add_frame_to_im(im_hdr)
-        output.append(im_hdr_frame)
-    return torch.stack(output)
+def add_frame_to_im_batch(images_batch, diffX, diffY):
+    images_batch = F.pad(images_batch, (diffX // 2, diffX - diffX // 2,
+                                           diffY // 2, diffY - diffY // 2), mode='replicate')
+    return images_batch
 
 
 if __name__ == '__main__':

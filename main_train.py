@@ -14,7 +14,7 @@ if __name__ == '__main__':
                                          opt.filters, opt.con_operator, opt.unet_depth, opt.add_frame,
                                          opt.unet_norm, opt.stretch_g, opt.g_activation, opt.use_xaviar,
                                          opt.output_dim, opt.apply_exp, opt.g_doubleConvTranspose, opt.bilinear,
-                                         opt.padding, opt.convtranspose_kernel)
+                                         opt.padding, opt.convtranspose_kernel, opt.up_mode)
     net_D = model_save_util.create_D_net(opt.output_dim, opt.d_down_dim, opt.device, opt.checkpoint, opt.d_norm,
                                          opt.use_xaviar, opt.d_model, opt.d_nlayers, opt.d_last_activation,
                                          opt.num_D, opt.d_fully_connected, opt.simpleD_maxpool, opt.d_padding)

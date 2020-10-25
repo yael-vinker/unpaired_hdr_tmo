@@ -113,19 +113,23 @@ fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_20/fid_res/"
 bilinear_lst=(0 0 0 0 1)
 d_padding_lst=(0 1 1 1 1)
 g_doubleConvTranspose_lst=(1 1 1 0 0)
-g_padding_lst=("constant" "replicate" "reflect" "replicate" "replicate")
+
 test_names=("d_no_padding" "g_replicate" "g_reflect" "no_doubleconvTranspose_and_convTrans" \
             "no_doubleconvTranspose_and_bilinear")
 convtranspose_kernel=2
-final_shape_addition=0
+final_shape_addition_lst=(128 128 32)
+g_padding_lst=("replicate" "constant" "constant")
+up_mode=1
 
-for ((i = 0; i < ${#bilinear_lst[@]}; ++i)); do
-
+for ((i = 0; i < ${#final_shape_addition_lst[@]}; ++i)); do
+  final_shape_addition="${final_shape_addition_lst[i]}"
   bilinear="${bilinear_lst[i]}"
   d_padding="${d_padding_lst[i]}"
   padding="${g_padding_lst[i]}"
   g_doubleConvTranspose="${g_doubleConvTranspose_lst[i]}"
   test_name="${test_names[i]}"
+  adv_weight_list="${adv_weight_list_lst[i]}"
+  pyramid_weight_list="${pyramid_weight_list_lst[i]}"
 
   echo "======================================================"
   echo "tests_name $test_name"
@@ -149,6 +153,7 @@ for ((i = 0; i < ${#bilinear_lst[@]}; ++i)); do
     $lr_decay_step $d_nlayers $d_pretrain_epochs $num_D $unet_norm $enhance_detail \
     $stretch_g $g_doubleConvTranspose $d_fully_connected $simpleD_maxpool $data_trc $adv_weight_list \
     $manual_d_training $d_weight_mul_mode $strong_details_D_weights $basic_details_D_weights $use_contrast_ratio_f \
-    $use_hist_fit $f_train_dict_path $fid_res_path $bilinear $d_padding $padding $convtranspose_kernel $final_shape_addition
+    $use_hist_fit $f_train_dict_path $fid_res_path $bilinear $d_padding $padding $convtranspose_kernel \
+    $final_shape_addition $up_mode
   echo "======================================================"
 done

@@ -97,6 +97,7 @@ echo "d_padding ${79}"
 echo "padding ${80}"
 echo "convtranspose_kernel ${81}"
 echo "final_shape_addition ${82}"
+echo "up_mode ${83}"
 
 python3.7 -W ignore -u main_train.py --change_random_seed $1 \
   --batch_size $2 \
@@ -179,4 +180,5 @@ python3.7 -W ignore -u main_train.py --change_random_seed $1 \
   --d_padding ${79} \
   --padding ${80} \
   --convtranspose_kernel ${81} \
-  --final_shape_addition ${82}
+  --final_shape_addition ${82} \
+  --up_mode ${83}

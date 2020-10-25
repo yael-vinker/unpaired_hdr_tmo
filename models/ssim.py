@@ -206,21 +206,15 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
     :param cur_weights:
     :return:
     """
-    # import matplotlib.pyplot as plt
-    # plt.subplot(2,1,1)
-    # plt.imshow(img1[0,0].detach().numpy(), cmap='gray')
-    # plt.subplot(2, 1, 2)
-    # plt.imshow(img2[0, 0].detach().numpy(), cmap='gray')
-    # plt.show()
     window = window / window.sum()
-    mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
-    mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+    mu1 = F.conv2d(img1, window, groups=channel)
+    mu2 = F.conv2d(img2, window,  groups=channel)
 
     mu1_sq = mu1.pow(2)
     mu2_sq = mu2.pow(2)
 
-    sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=1) - mu1_sq
-    sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=1) - mu2_sq
+    sigma1_sq = F.conv2d(img1 * img1, window, groups=1) - mu1_sq
+    sigma2_sq = F.conv2d(img2 * img2, window, groups=1) - mu2_sq
 
     std1 = torch.pow(torch.max(sigma1_sq, torch.zeros_like(sigma1_sq)) + params.epsilon2, 0.5)
     std2 = torch.pow(torch.max(sigma2_sq, torch.zeros_like(sigma2_sq)) + params.epsilon2, 0.5)
@@ -230,13 +224,12 @@ def our_custom_ssim(img1, img2, window, window_size, channel, mse_loss, use_c3, 
 
     std1 = std1.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
     std2 = std2.unsqueeze(dim=4).expand(-1, -1, -1, -1, window_size * window_size)
-
     img1 = get_im_as_windows(img1, window_size)
     img2 = get_im_as_windows(img2, window_size)
     img1 = (img1 - mu1)
     img1 = img1 / (std1 + params.epsilon2)
     img2 = (img2 - mu2)
-    img2 = (img2) / (std2 + params.epsilon2)
+    img2 = img2 / (std2 + params.epsilon2)
     return mse_loss(img1, img2)
 
 
@@ -967,8 +960,6 @@ def get_window_and_set_device(wind_size, a, b):
 
 
 def get_im_as_windows(a, wind_size):
-    m = nn.ZeroPad2d(wind_size // 2)
-    a = m(a)
     windows = a.unfold(dimension=2, size=wind_size, step=1)
     windows = windows.unfold(dimension=3, size=wind_size, step=1)
     windows = windows.reshape(windows.shape[0], windows.shape[1],

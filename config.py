@@ -19,7 +19,7 @@ def parse_arguments():
     parser.add_argument("--lr_decay_step", type=float, default=30)
     parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
     parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
-    parser.add_argument("--d_pretrain_epochs", type=int, default=5)
+    parser.add_argument("--d_pretrain_epochs", type=int, default=0)
     parser.add_argument("--manual_d_training", type=int, default=0)
     parser.add_argument("--d_weight_mul_mode", type=str, default="double")
     parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
@@ -51,6 +51,7 @@ def parse_arguments():
     parser.add_argument('--d_padding', type=int, default=0)
     parser.add_argument('--convtranspose_kernel', type=int, default=2)
     parser.add_argument('--final_shape_addition', type=int, default=64)
+    parser.add_argument('--up_mode', type=int, default=0)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -206,6 +207,8 @@ def get_G_params(opt):
         result_dir_pref += "_doubleConv_"
     else:
         result_dir_pref += "_doubleConvT_"
+    if opt.up_mode:
+        result_dir_pref += "_up_mode_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
     if opt.add_clipping:

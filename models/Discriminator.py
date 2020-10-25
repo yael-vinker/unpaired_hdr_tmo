@@ -136,11 +136,7 @@ class MultiscaleDiscriminator(nn.Module):
                 netD = SimpleDiscriminator(input_size, input_nc,
                                             ndf, norm_layer, last_activation, simpleD_maxpool, padding)
                 input_size = input_size // 2
-            if getIntermFeat:
-                for j in range(n_layers + 2):
-                    setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))
-            else:
-                setattr(self, 'layer' + str(i), netD.model)
+            setattr(self, 'layer' + str(i), netD.model)
 
         self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
 

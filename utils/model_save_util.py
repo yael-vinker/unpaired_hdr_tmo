@@ -65,7 +65,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
                  add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim, apply_exp,
-                 g_doubleConvTranspose, bilinear, padding, convtranspose_kernel):
+                 g_doubleConvTranspose, bilinear, padding, convtranspose_kernel, up_mode):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
         assert 0, "Unsupported g model request: {}".format(model)
@@ -75,7 +75,7 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                              unet_norm=unet_norm, stretch_g=stretch_g,
                              activation=activation, apply_exp=apply_exp,
                              doubleConvTranspose=g_doubleConvTranspose, padding_mode=padding,
-                             convtranspose_kernel=convtranspose_kernel).to(device_)
+                             convtranspose_kernel=convtranspose_kernel, up_mode=up_mode).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
 
 
@@ -194,11 +194,15 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
 
 
 def load_g_model(model_params, device, net_path):
-    G_net = create_G_net(model_params["model"], device, True, model_params["input_dim"], model_params["last_layer"],
+    G_net = create_G_net(model_params["model"], device, True, model_params["input_dim"],
+                         model_params["last_layer"],
                          model_params["filters"], model_params["con_operator"], model_params["depth"],
                          model_params["add_frame"], model_params["unet_norm"],  model_params["stretch_g"],
                          "relu", use_xaviar=False, output_dim=1, apply_exp=False,
-                         g_doubleConvTranspose=model_params["g_doubleConvTranspose"])
+                         g_doubleConvTranspose=model_params["g_doubleConvTranspose"],
+                         bilinear=model_params["bilinear"],
+                         padding=model_params["padding"],
+                         convtranspose_kernel=model_params["convtranspose_kernel"])
 
     checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     state_dict = checkpoint['modelG_state_dict']
@@ -231,18 +235,8 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         use_contrast_ratio_f=model_params["use_contrast_ratio_f"])
 
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-    diffY, diffX = 0, 0
-    if test_mode_frame:
-        print("original shape",gray_im_log.shape)
-        diffY = hdr_image_util.closest_power(gray_im_log.shape[1], final_shape_addition) - gray_im_log.shape[1]
-        diffX = hdr_image_util.closest_power(gray_im_log.shape[2], final_shape_addition) - gray_im_log.shape[2]
-        gray_im_log = F.pad(gray_im_log.unsqueeze(dim=0), (diffX // 2, diffX - diffX // 2,
-                            diffY // 2, diffY - diffY // 2), mode='replicate')
-        gray_im_log = torch.squeeze(gray_im_log, dim=0)
-        print("new shape",gray_im_log.shape)
-
-    if model_params["add_frame"]:
-        gray_im_log = data_loader_util.add_frame_to_im(gray_im_log)
+    rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
+    gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
     gray_im_log = gray_im_log.to(device)
     preprocessed_im_batch = gray_im_log.unsqueeze(0)
     if model_params["manual_d_training"]:
@@ -251,49 +245,39 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
             for a in interp_params:
                 file_name = im_name + "_" + str(a)
                 run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                         file_name, test_mode_frame, diffY, diffX, additional_channel=a)
+                                         file_name, model_params["add_frame"], diffY, diffX, additional_channel=a)
         elif model_params["d_weight_mul_mode"] == "single":
             file_name = im_name + "_1"
             run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                         file_name, test_mode_frame, diffY, diffX, additional_channel=1.0)
+                                         file_name, model_params["add_frame"], diffY, diffX, additional_channel=1.0)
     else:
         file_name = im_name
         run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                     file_name, test_mode_frame, diffY, diffX, additional_channel=None)
+                                     file_name, model_params["add_frame"], diffY, diffX, additional_channel=None)
 
 
-def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, rgb_img, out_dir, file_name,
-                                 test_mode, diffY, diffX, additional_channel):
+def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
+                                 out_dir, file_name, add_frame, diffY, diffX, additional_channel):
     if additional_channel is not None:
         weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
             im_log_normalize_tensor)
         im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
     with torch.no_grad():
-        print(im_log_normalize_tensor.max(), im_log_normalize_tensor.mean(), im_log_normalize_tensor.min())
-        fake = netG(im_log_normalize_tensor.detach())
-        print(fake.max(), fake.mean(), fake.min())
-    original_im_tensor = rgb_img.unsqueeze(0)
-    if test_mode:
-        fake = fake[:, :, diffY // 2:fake.shape[2] - (diffY - diffY // 2),
-                             diffX // 2:fake.shape[3] - (diffX - diffX // 2)]
-
-    # fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-
+        fake = netG(im_log_normalize_tensor.detach(), apply_crop=add_frame, diffY=diffY, diffX=diffX)
+    im_hdr_original = im_hdr_original.unsqueeze(dim=0)
+    if add_frame:
+        im_hdr_original = data_loader_util.crop_input_hdr_batch(im_hdr_original, diffY=diffY, diffX=diffX)
+    filne_name_c = file_name + "_color_stretch"
     fake_im_gray_stretch = fake[0]
-    file_name_gray = file_name + "_gray"
-    hdr_image_util.save_color_tensor_as_numpy(fake_im_gray_stretch, out_dir, file_name_gray)
-    file_name_gray = file_name + "_color_stretch"
-    fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
+    fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
                                                        fake_im_gray_stretch.unsqueeze(dim=0))
-    # hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
-    # file_name = file_name + "_color_stretch"
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir + "/color_stretch", file_name_gray)
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, filne_name_c)
 
     file_name = file_name + "_gray_stretch"
     fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-    fake_im_color = hdr_image_util.back_to_color_batch(original_im_tensor,
+    fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
                                                        fake_im_gray_stretch.unsqueeze(dim=0))
-    hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir + "/gray_stretch", file_name)
+    hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)
 
 
 def run_trained_model_from_path(model_name):
@@ -327,7 +311,11 @@ def get_model_params(model_name, train_settings_path="none"):
                     "data_trc": get_data_trc,
                     "d_weight_mul_mode": get_manualD,
                     "manual_d_training": get_manual_d_training,
-                    "use_contrast_ratio_f": get_use_contrast_ratio_f}
+                    "use_contrast_ratio_f": get_use_contrast_ratio_f,
+                    "final_shape_addition": get_use_contrast_ratio_f,
+                   "bilinear": get_use_contrast_ratio_f,
+                   "padding":get_use_contrast_ratio_f,
+    "convtranspose_kernel":get_use_contrast_ratio_f}
     print(train_settings_path)
     if os.path.exists(train_settings_path):
         train_settings = np.load(train_settings_path, allow_pickle=True)[()]
