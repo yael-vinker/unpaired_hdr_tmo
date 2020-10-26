@@ -78,10 +78,10 @@ normalization="bugy_max_normalization"
 
 # ====== SAVE RESULTS ======
 epoch_to_save=40
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_25_new/results_10_25_new/push_test/"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_26/results_10_26/push_test/"
 final_epoch=320
 fid_real_path="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2"
-fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_25_new/fid_res/"
+fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_26/fid_res/"
 
 
 test_names=("test_git")
