@@ -46,7 +46,6 @@ class GanTrainer:
 
         # ====== LOSS ======
         self.train_with_D = opt.train_with_D
-        self.multi_scale_D = opt.multi_scale_D
         self.d_nlayers = opt.d_nlayers
         self.pyramid_weight_list = opt.pyramid_weight_list
         self.mse_loss = torch.nn.MSELoss()
@@ -56,18 +55,10 @@ class GanTrainer:
             self.struct_loss = struct_loss.StructLoss(window_size=opt.ssim_window_size,
                                                 pyramid_weight_list=opt.pyramid_weight_list,
                                                 pyramid_pow=False, use_c3=False,
-                                                apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
                                                 struct_method=opt.struct_method,
                                                 std_norm_factor=opt.std_norm_factor,
                                                 crop_input=opt.add_frame,
                                                 final_shape_addition=opt.final_shape_addition)
-
-        self.use_bilateral_weight = opt.apply_intensity_loss_laplacian_weights
-        self.bilateral_sigma_r = opt.bilateral_sigma_r
-        self.bilateral_mu = opt.bilateral_mu
-        self.blf_input = opt.blf_input
-        self.blf_alpha = opt.blf_alpha
-        self.std_mul_max = opt.std_mul_max
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.struct_loss_factor = opt.ssim_loss_factor
@@ -78,7 +69,6 @@ class GanTrainer:
         self.G_accuracy, self.D_accuracy_real, self.D_accuracy_fake = [], [], []
         self.G_loss_struct, self.G_loss_d, self.G_loss_intensity = [], [], []
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
-        self.apply_intensity_loss = opt.apply_intensity_loss
         self.adv_weight_list = opt.adv_weight_list
         self.strong_details_D_weights = opt.strong_details_D_weights
         self.basic_details_D_weights = opt.basic_details_D_weights
@@ -201,15 +191,7 @@ class GanTrainer:
             # Calculate loss on all-real batch
             label = torch.full(output_on_real.shape, self.real_label, device=self.device)
             full_scale_loss = self.mse_loss(output_on_real, label)
-            if self.multi_scale_D:
-                real_ldr = F.interpolate(real_ldr, scale_factor=0.5, mode='bicubic', align_corners=False)
-                real_ldr = real_ldr.clamp(0, 1)
-                output_on_real = self.netD(real_ldr).view(-1)
-                label = torch.full(output_on_real.shape, self.real_label, device=self.device)
-                half_scale_loss = self.mse_loss(output_on_real, label)
-                self.errD_real = full_scale_loss + half_scale_loss
-            else:
-                self.errD_real = full_scale_loss
+            self.errD_real = full_scale_loss
         self.errD_real.backward()
 
     def D_fake_pass(self, hdr_input):
@@ -242,15 +224,7 @@ class GanTrainer:
             self.accDfake_counter += (output_on_fake <= 0.5).sum().item()
             # Calculate D's loss on the all-fake batch
             full_scale_loss = self.mse_loss(output_on_fake, label)
-            if self.multi_scale_D:
-                fake = F.interpolate(fake, scale_factor=0.5, mode='bicubic', align_corners=False)
-                fake = fake.clamp(0, 1)
-                output_on_fake = self.netD(fake.detach()).view(-1)
-                label = torch.full(output_on_fake.shape, self.fake_label, device=self.device)
-                half_scale_loss = self.mse_loss(output_on_fake, label)
-                self.errD_fake = full_scale_loss + half_scale_loss
-            else:
-                self.errD_fake = full_scale_loss
+            self.errD_fake = full_scale_loss
             # Calculate the gradients for this batch
         self.errD_fake.backward()
 

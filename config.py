@@ -51,36 +51,16 @@ def parse_arguments():
     parser.add_argument('--d_padding', type=int, default=0)
     parser.add_argument('--convtranspose_kernel', type=int, default=2)
     parser.add_argument('--final_shape_addition', type=int, default=64)
-    parser.add_argument('--up_mode', type=int, default=0)
+    parser.add_argument('--up_mode', type=int, default=1)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument("--multi_scale_D", type=int, default=0)
     parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,2,1")
     parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="2,2,6")
-
-    parser.add_argument('--apply_intensity_loss', type=float, default=0)
-    parser.add_argument('--std_method', type=str, default="gamma_factor_loss_bilateral")
-    parser.add_argument('--alpha', type=float, default=0.5)
-    parser.add_argument('--apply_intensity_loss_laplacian_weights', type=int, default=0)
-    parser.add_argument('--intensity_epsilon', type=float, default=0.00001)
-    parser.add_argument('--std_pyramid_weight_list', help='delimited list input', type=str, default="5,5,1")
-
-    parser.add_argument('--mu_loss_factor', type=float, default=0)
-    parser.add_argument('--mu_pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
-
-    parser.add_argument('--apply_sig_mu_ssim', type=int, default=0)
-    parser.add_argument('--bilateral_sigma_r', type=float, default=0.05)
-    parser.add_argument('--bilateral_mu', type=float, default=1)
-    parser.add_argument('--std_mul_max', type=int, default=0)
-    parser.add_argument('--blf_input', type=str, default="log",
-                        help="can be 'log' for log(hdr/hdr.max * brightness)**alpha or 'gamma' for gamma.")
-    parser.add_argument('--blf_alpha', type=float, default=0.8,
-                        help="if blf_input is log than specify alpha")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -148,8 +128,6 @@ def get_opt():
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     opt.device = device
     opt.pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.pyramid_weight_list.split(',')]).to(device)
-    opt.std_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.std_pyramid_weight_list.split(',')]).to(device)
-    opt.mu_pyramid_weight_list = torch.FloatTensor([float(item) for item in opt.mu_pyramid_weight_list.split(',')]).to(device)
     opt.adv_weight_list = torch.FloatTensor([float(item) for item in opt.adv_weight_list.split(',')]).to(
         device)
 
@@ -235,8 +213,6 @@ def get_D_params(opt):
             result_dir_pref += "maxPool_"
     if opt.d_norm != "none":
         result_dir_pref += opt.d_norm + "_"
-    if opt.multi_scale_D:
-        result_dir_pref += "2scale_"
     # if opt.d_padding:
     result_dir_pref += "pad_" + str(opt.d_padding)
     return result_dir_pref
@@ -300,21 +276,6 @@ def get_losses_params(opt):
         else:
             result_dir_pref += "_%s_%s[%s]_" % (struct_loss, str(opt.ssim_loss_factor), opt.pyramid_weight_list)
         # result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
-    if opt.apply_intensity_loss:
-        s = opt.std_method + str(opt.apply_intensity_loss) + "_" + opt.std_pyramid_weight_list + "_wind" + \
-            str(opt.ssim_window_size) + "_"
-        if opt.std_mul_max:
-            s += "std_mul_max_"
-        result_dir_pref = result_dir_pref + s + "eps" + str(opt.intensity_epsilon)
-        if opt.std_method not in ["std", "std_bilateral"]:
-            result_dir_pref = result_dir_pref + "_alpha" + str(opt.alpha)
-    if opt.apply_intensity_loss_laplacian_weights:
-        result_dir_pref = result_dir_pref + "_sigr" + str(opt.bilateral_sigma_r) + "_" #"bmu" + str(opt.bilateral_mu)
-        if opt.blf_input == "log":
-            result_dir_pref = result_dir_pref + str(opt.blf_input) + str(opt.blf_alpha) + "_"
-
-    if opt.mu_loss_factor:
-        result_dir_pref = result_dir_pref + "_cmprs" + str(opt.mu_loss_factor) + "_" + opt.mu_pyramid_weight_list
     return result_dir_pref
 
 

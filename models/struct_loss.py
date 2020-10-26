@@ -8,7 +8,7 @@ from utils import params, data_loader_util
 # =======================================
 class StructLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
-                 apply_sig_mu_ssim=False, struct_method="gamma_ssim", std_norm_factor=1, crop_input=True,
+                 struct_method="gamma_ssim", std_norm_factor=1, crop_input=True,
                  final_shape_addition=0):
         super(StructLoss, self).__init__()
         self.window_size = window_size
@@ -20,7 +20,6 @@ class StructLoss(torch.nn.Module):
         self.pyramid_weight_list = pyramid_weight_list
         self.pyramid_pow = pyramid_pow
         self.use_c3 = use_c3
-        self.apply_sig_mu_ssim = apply_sig_mu_ssim
         self.struct_method = struct_method
         self.std_norm_factor = std_norm_factor
 
@@ -44,8 +43,6 @@ class StructLoss(torch.nn.Module):
                                        pyramid_weight_list,
                                        self.mse_loss)
 
-# [0/5]	Loss_D: 1.9204 	Loss_D_real: 1.3420 	Loss_D_fake: 0.5785 	Loss_G: 1.6440 	Loss_G_SSIM: 9.9926
-# [0/5]	Acc_D_fake: 0.6667 	Acc_D_real: 0.2500 	Acc_G: 0.3333
 # =======================================
 # ========== Loss Functions =============
 # =======================================
