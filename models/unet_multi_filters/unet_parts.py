@@ -88,11 +88,12 @@ class double_conv(nn.Module):
 
 class double_last_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
-    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose):
         super(double_last_conv, self).__init__()
         self.padding_mode = padding_mode
         self.padding = padding
         self.up_mode = up_mode
+        self.doubleConvTranspose = doubleConvTranspose
         self.conv = nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=padding, padding_mode=padding_mode)
         if unet_norm == 'batch_norm':
             self.norm = nn.BatchNorm2d(out_ch)
@@ -135,10 +136,11 @@ class double_last_conv(nn.Module):
         if self.norm:
             x = self.norm(x)
         x = self.activation(x)
-        # x = self.conv1(x)
-        # if self.norm1:
-        #     x = self.norm1(x)
-        # x = self.activation1(x)
+        if self.doubleConvTranspose:
+            x = self.conv1(x)
+            if self.norm1:
+                x = self.norm1(x)
+            x = self.activation1(x)
         return x
 
 
@@ -227,12 +229,12 @@ class down(nn.Module):
 
 class last_down(nn.Module):
     def __init__(self, in_ch, out_ch, network, dilation, unet_norm, activation,
-                 padding, padding_mode, up_mode):
+                 padding, padding_mode, up_mode, doubleConvTranspose):
         super(last_down, self).__init__()
         if network == params.unet_network:
             self.mpconv = nn.Sequential(
                 nn.MaxPool2d(2),
-                double_last_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode)
+                double_last_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose)
             )
         else:
             assert 0, "Unsupported network request: {}".format(self.network)

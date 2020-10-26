@@ -166,7 +166,11 @@ def closest_power(x, final_shape_addition):
     # closest_power_ = max(x + ceil(x * 0.2 / 2.) * 2, 2**(x - 1).bit_length())
     # closest_power_ = max((2 ** (x - 1).bit_length()), int((x + final_shape_addition)))
     # closest_power_ = max((2 ** (x - 1).bit_length()), int(16 * round((x + final_shape_addition) / 16.)))
-    closest_power_ = max((2 ** (x - 1).bit_length()), int(16 * round((x + final_shape_addition) / 16.))) + 12
+    # closest_power_ = max((2 ** (x - 1).bit_length()), int(16 * round((x + final_shape_addition) / 16.))) + 12
+    divider = 0
+    if (256 + final_shape_addition - 12) % 16 == 0:
+        divider = 12
+    closest_power_ = int(16. * round((x + final_shape_addition - divider) / 16.)) + divider
     return closest_power_
     # return 1 if x == 0 else closest_power_ + 12
 

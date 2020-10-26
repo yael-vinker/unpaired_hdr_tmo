@@ -33,7 +33,8 @@ class UNet(nn.Module):
                 dilation = dilation * 2
         # if doubleConvTranspose:
         self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm,
-                                        activation=activation, padding=padding, padding_mode=padding_mode, up_mode=up_mode))
+                                        activation=activation, padding=padding, padding_mode=padding_mode,
+                                        up_mode=up_mode, doubleConvTranspose=doubleConvTranspose))
         # else:
         #     self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
         #                                padding=padding, padding_mode=padding_mode))
