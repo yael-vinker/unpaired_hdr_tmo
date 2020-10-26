@@ -253,21 +253,22 @@ class up(nn.Module):
         #  would be a nice idea if the upsampling could be learned too,
         #  but my machine do not have enough memory to handle all those weights
         if network == params.unet_network:
-            if bilinear:
-                self.up = nn.Sequential(nn.Upsample(scale_factor=2),
-                nn.Conv2d(in_ch // layer_factor, in_ch // layer_factor, kernel_size=1))
+            if not up_mode:
+                if bilinear:
+                    self.up = nn.Sequential(nn.Upsample(scale_factor=2),
+                    nn.Conv2d(in_ch // layer_factor, in_ch // layer_factor, kernel_size=1))
             # elif up_mode:
             #     self.up =
-            else:
-                cur_padding = 0
-                output_padding=0
-                if convtranspose_kernel == 5:
-                    cur_padding = convtranspose_kernel // 2
-                    output_padding = 1
-                if convtranspose_kernel == 4:
-                    cur_padding = 1
-                self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor,
-                                             convtranspose_kernel, stride=2, padding=cur_padding, output_padding=output_padding)
+                else:
+                    cur_padding = 0
+                    output_padding=0
+                    if convtranspose_kernel == 5:
+                        cur_padding = convtranspose_kernel // 2
+                        output_padding = 1
+                    if convtranspose_kernel == 4:
+                        cur_padding = 1
+                    self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor,
+                                                 convtranspose_kernel, stride=2, padding=cur_padding, output_padding=output_padding)
 
         elif network == params.torus_network:  # for torus
             self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0,
@@ -303,7 +304,7 @@ class up(nn.Module):
             #          diffX // 2:x1.shape[3] - (diffX - diffX // 2)]
             #     print("new size", x1.size())
             # else:
-            #     x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
+            # x2 = x2[:, :, diffY // 2:x2.shape[2] - (diffY - diffY // 2), diffX // 2:x2.shape[3] - (diffX - diffX // 2)]
         # for padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd

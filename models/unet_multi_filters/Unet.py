@@ -7,8 +7,8 @@ from utils import data_loader_util
 
 class UNet(nn.Module):
     def __init__(self, n_channels, output_dim, last_layer, depth, layer_factor, con_operator, filters, bilinear,
-                 network, dilation, to_crop, unet_norm, stretch_g, activation, apply_exp, doubleConvTranspose,
-                 padding_mode, convtranspose_kernel, up_mode):
+                 network, dilation, to_crop, unet_norm, stretch_g, activation, doubleConvTranspose,
+                 padding_mode, convtranspose_kernel, up_mode=True):
         super(UNet, self).__init__()
         self.to_crop = to_crop
         self.con_operator = con_operator
@@ -18,6 +18,8 @@ class UNet(nn.Module):
         padding = 1
         if doubleConvTranspose or up_mode:
             padding = 0
+        self.padding = padding
+        self.up_mode = up_mode
         self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding, padding_mode, up_mode)
         ch = down_ch
         self.down_path = nn.ModuleList()
@@ -59,10 +61,6 @@ class UNet(nn.Module):
             if network == params.torus_network:
                 dilation = dilation // 2
         self.outc = outconv(down_ch, output_dim)
-        if apply_exp:
-            self.exp = Blocks.Exp()
-        else:
-            self.exp = None
         self.last_sig = None
         if last_layer == 'tanh':
             self.last_sig = nn.Tanh()

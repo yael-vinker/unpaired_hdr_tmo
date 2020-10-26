@@ -1,5 +1,5 @@
 from torch import nn
-
+import torch.nn.functional as F
 from models import Blocks
 
 
@@ -138,7 +138,7 @@ class MultiscaleDiscriminator(nn.Module):
                 input_size = input_size // 2
             setattr(self, 'layer' + str(i), netD.model)
 
-        self.downsample = nn.AvgPool2d(3, stride=2, padding=[1, 1], count_include_pad=False)
+        # self.downsample = nn.AvgPool2d(3, stride=2)#, padding=[1, 1], count_include_pad=False)
 
     def singleD_forward(self, model, input):
         return [model(input)]
@@ -152,7 +152,8 @@ class MultiscaleDiscriminator(nn.Module):
             model = getattr(self, 'layer' + str(i))
             result.append(self.singleD_forward(model, input_downsampled))
             if i != (num_D - 1):
-                input_downsampled = self.downsample(input_downsampled)
+                # input_downsampled = self.downsample(input_downsampled)
+                input_downsampled = F.interpolate(input_downsampled, scale_factor=0.5, mode='bicubic', align_corners=False)
         return result
 
 # class NLayerDiscriminator(nn.Module):
