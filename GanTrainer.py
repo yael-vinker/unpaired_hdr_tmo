@@ -11,8 +11,7 @@ import Tester
 import matplotlib
 # matplotlib.use('Agg')
 from utils import printer, params
-from models import ssim
-import tranforms as custom_transform
+from models import struct_loss
 import utils.data_loader_util as data_loader_util
 import utils.model_save_util as model_save_util
 import utils.plot_util as plot_util
@@ -54,7 +53,7 @@ class GanTrainer:
         self.wind_size = opt.ssim_window_size
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
-            self.struct_loss = ssim.StructLoss(window_size=opt.ssim_window_size,
+            self.struct_loss = struct_loss.StructLoss(window_size=opt.ssim_window_size,
                                                 pyramid_weight_list=opt.pyramid_weight_list,
                                                 pyramid_pow=False, use_c3=False,
                                                 apply_sig_mu_ssim=opt.apply_sig_mu_ssim,
@@ -68,14 +67,7 @@ class GanTrainer:
         self.bilateral_mu = opt.bilateral_mu
         self.blf_input = opt.blf_input
         self.blf_alpha = opt.blf_alpha
-        if opt.apply_intensity_loss:
-            self.intensity_loss = ssim.IntensityLoss(opt.intensity_epsilon, opt.std_pyramid_weight_list, opt.alpha,
-                                                         opt.std_method, opt.ssim_window_size, opt.add_frame)
-            self.intensity_loss_factor = opt.apply_intensity_loss
         self.std_mul_max = opt.std_mul_max
-        if opt.mu_loss_factor:
-            self.mu_loss = ssim.MuLoss(opt.mu_pyramid_weight_list, opt.ssim_window_size, opt.add_frame)
-        self.mu_loss_factor = opt.mu_loss_factor
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.struct_loss_factor = opt.ssim_loss_factor
@@ -192,10 +184,7 @@ class GanTrainer:
 
     def D_real_pass(self, real_ldr):
         # Forward pass real batch through D
-        if self.enhance_detail:
-            output_on_real = self.netD(ssim.enhance_details(real_ldr, self.wind_size))
-        else:
-            output_on_real = self.netD(real_ldr)
+        output_on_real = self.netD(real_ldr)
         if "multiLayerD" in self.d_model:
             loss = []
             for i, input_i in zip(range(len(output_on_real)), output_on_real):
@@ -235,10 +224,7 @@ class GanTrainer:
                                                              self.final_shape_addition)
 
         # Classify all fake batch with D
-        if self.enhance_detail:
-            output_on_fake = self.netD(ssim.enhance_details(fake.detach(), self.wind_size).detach())
-        else:
-            output_on_fake = self.netD(fake.detach())
+        output_on_fake = self.netD(fake.detach())
 
         if "multiLayerD" in self.d_model:
             loss = []
@@ -280,25 +266,11 @@ class GanTrainer:
         fake = self.netG(hdr_input, diffY=self.final_shape_addition, diffX=self.final_shape_addition)
         printer.print_g_progress(fake, "output")
         if self.train_with_D:
-            if self.enhance_detail:
-                output_on_fake = self.netD(ssim.enhance_details(fake, self.wind_size))
-            else:
-                output_on_fake = self.netD(fake)
+            output_on_fake = self.netD(fake)
             self.update_g_d_loss(output_on_fake)
-
-        if self.use_bilateral_weight:
-            blf_input = hdr_input
-            if self.blf_input == "log":
-                blf_input = ssim.get_blf_log_input(hdr_original_gray_norm, gamma_factor, alpha=self.blf_alpha)
-            r_weights = ssim.get_radiometric_weights(blf_input, self.wind_size, self.bilateral_sigma_r,
-                                                     self.bilateral_mu, self.blf_input)
-        else:
-            r_weights = None
         if self.manual_d_training:
             hdr_input = hdr_input[:, :1, :, :]
-        self.update_struct_loss(hdr_input, hdr_original_gray_norm, fake, r_weights)
-        self.update_intensity_loss(fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray)
-        self.update_mu_loss(hdr_original_gray_norm, fake, hdr_input, r_weights)
+        self.update_struct_loss(hdr_input, hdr_original_gray_norm, fake)
         self.optimizerG.step()
 
     def get_hdr_input(self, data_hdr):
@@ -307,7 +279,6 @@ class GanTrainer:
             weight_channel = torch.full(hdr_input.shape, self.d_weight_mul).type_as(hdr_input)
             hdr_input = torch.cat([hdr_input, weight_channel], dim=1)
         return hdr_input.to(self.device)
-
 
     def update_g_d_loss(self, output_on_fake):
         if "multiLayerD" in self.d_model:
@@ -331,34 +302,12 @@ class GanTrainer:
         self.errG_d.backward(retain_graph=retain_graph)
         self.G_loss_d.append(self.errG_d.item())
 
-    def update_struct_loss(self, hdr_input, hdr_input_original_gray_norm, fake, r_weights):
+    def update_struct_loss(self, hdr_input, hdr_input_original_gray_norm, fake):
         if self.struct_loss_factor:
             self.errG_struct = self.struct_loss_factor * self.struct_loss(fake, hdr_input_original_gray_norm,
-                                                                            hdr_input, r_weights, self.pyramid_weight_list)
-            retain_graph = False
-            if self.apply_intensity_loss or self.mu_loss_factor:
-                retain_graph = True
-            self.errG_struct.backward(retain_graph=retain_graph)
+                                                                            hdr_input, self.pyramid_weight_list)
+            self.errG_struct.backward()
             self.G_loss_struct.append(self.errG_struct.item())
-
-    def update_intensity_loss(self, fake, hdr_input, hdr_original_gray_norm, r_weights, gamma_factor, hdr_original_gray):
-        if not self.std_mul_max:
-            hdr_original_gray = None
-        if self.apply_intensity_loss:
-            self.errG_intensity = self.intensity_loss_factor * self.intensity_loss(fake, hdr_input,
-                                                                                   hdr_original_gray_norm,
-                                                                                   r_weights, gamma_factor,
-                                                                                   hdr_original_gray)
-            retain_graph = False
-            if self.mu_loss_factor:
-                retain_graph = True
-            self.errG_intensity.backward(retain_graph=retain_graph)
-            self.G_loss_intensity.append(self.errG_intensity.item())
-
-    def update_mu_loss(self, hdr_input_original_gray, fake, hdr_input, r_weights):
-        if self.mu_loss_factor:
-            self.errG_mu = self.mu_loss_factor * self.mu_loss(fake, hdr_input_original_gray, hdr_input, r_weights)
-            self.errG_mu.backward()
 
     def verify_checkpoint(self):
         if self.isCheckpoint:
