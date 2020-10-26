@@ -64,7 +64,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name, use_xaviar=False):
 
 
 def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters, con_operator, unet_depth_,
-                 add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim, apply_exp,
+                 add_frame, unet_norm, stretch_g, activation, use_xaviar, output_dim,
                  g_doubleConvTranspose, bilinear, padding, convtranspose_kernel, up_mode):
     layer_factor = get_layer_factor(con_operator)
     if model != params.unet_network:
@@ -73,7 +73,7 @@ def create_G_net(model, device_, is_checkpoint, input_dim_, last_layer, filters,
                              layer_factor=layer_factor, con_operator=con_operator, filters=filters,
                              bilinear=bilinear, network=model, dilation=0, to_crop=add_frame,
                              unet_norm=unet_norm, stretch_g=stretch_g,
-                             activation=activation, apply_exp=apply_exp,
+                             activation=activation,
                              doubleConvTranspose=g_doubleConvTranspose, padding_mode=padding,
                              convtranspose_kernel=convtranspose_kernel, up_mode=up_mode).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator", use_xaviar)
@@ -202,7 +202,8 @@ def load_g_model(model_params, device, net_path):
                          g_doubleConvTranspose=model_params["g_doubleConvTranspose"],
                          bilinear=model_params["bilinear"],
                          padding=model_params["padding"],
-                         convtranspose_kernel=model_params["convtranspose_kernel"])
+                         convtranspose_kernel=model_params["convtranspose_kernel"],
+                         up_mode=model_params["up_mode"])
 
     checkpoint = torch.load(net_path, map_location=torch.device('cpu'))
     state_dict = checkpoint['modelG_state_dict']
@@ -267,11 +268,17 @@ def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
     im_hdr_original = im_hdr_original.unsqueeze(dim=0)
     if add_frame:
         im_hdr_original = data_loader_util.crop_input_hdr_batch(im_hdr_original, diffY=diffY, diffX=diffX)
-    filne_name_c = file_name + "_color_stretch"
+    # filne_name_c = file_name + "_color_stretch"
+    # fake_im_gray_stretch = fake[0]
+    # fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
+    #                                                    fake_im_gray_stretch.unsqueeze(dim=0))
+    # hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, filne_name_c)
+
+    filne_name_c = file_name + "_gray"
     fake_im_gray_stretch = fake[0]
-    fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
-                                                       fake_im_gray_stretch.unsqueeze(dim=0))
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, filne_name_c)
+    # fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
+    #                                                    fake_im_gray_stretch.unsqueeze(dim=0))
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_gray_stretch, out_dir, filne_name_c)
 
     file_name = file_name + "_gray_stretch"
     fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
@@ -315,7 +322,8 @@ def get_model_params(model_name, train_settings_path="none"):
                     "final_shape_addition": get_use_contrast_ratio_f,
                    "bilinear": get_use_contrast_ratio_f,
                    "padding":get_use_contrast_ratio_f,
-    "convtranspose_kernel":get_use_contrast_ratio_f}
+                   "up_mode":get_use_contrast_ratio_f,
+                    "convtranspose_kernel":get_use_contrast_ratio_f}
     print(train_settings_path)
     if os.path.exists(train_settings_path):
         train_settings = np.load(train_settings_path, allow_pickle=True)[()]

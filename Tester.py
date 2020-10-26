@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 
 class Tester:
-    def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, log_factor_, args):
+    def __init__(self, device, loss_g_d_factor_, ssim_loss_g_factor_, args):
         self.args = args
         self.to_crop = args.add_frame
         self.data_trc = args.data_trc
@@ -33,21 +33,16 @@ class Tester:
         self.loss_g_d_factor = loss_g_d_factor_
         self.test_num_iter = 0
         self.Q_arr, self.S_arr, self.N_arr = [], [], []
-        self.log_factor = log_factor_
         self.use_contrast_ratio_f = args.use_contrast_ratio_f
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
         self.max_normalization = custom_transform.MaxNormalization()
         self.min_max_normalization = custom_transform.MinMaxNormalization()
         self.clip_transform = custom_transform.Clip()
-        self.apply_wind_norm = args.apply_wind_norm
         self.wind_size = args.ssim_window_size
-        self.std_norm_factor = args.std_norm_factor
         self.manual_d_training = args.manual_d_training
         self.d_weight_mul_mode = args.d_weight_mul_mode
 
-
     def load_original_test_hdr_images(self, root):
-        print("using input loader number ", self.args.wind_norm_option)
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):

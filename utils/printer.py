@@ -215,7 +215,6 @@ def print_opt(opt):
     print("LOSS G D FACTOR:", opt.loss_g_d_factor)
     print("SSIM LOSS FACTOR:", opt.ssim_loss_factor)
     print("SSIM PYRAMID WEIGHTS:", opt.pyramid_weight_list)
-    print("LOG FACTOR:", opt.log_factor)
     print("FACTORISED DATA:", opt.use_factorise_data)
     print("=====================\n")
 

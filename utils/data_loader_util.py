@@ -65,11 +65,16 @@ def resize_im(im, add_frame, final_shape_addition):
     print("original shape", im.shape)
     h, w = im.shape[1], im.shape[2]
     diffY, diffX = 0, 0
+    h1 = (int(16 * round(h / 16.)))
+    w1 = (int(16 * round(w / 16.)))
+    diffh = h - h1
+    diffw = w - w1
+    im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
+    # if h % 2:
+    #     im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
+    # if w % 2:
+    #     im = im[:, :, 0: w - 1]
     if add_frame:
-        if h % 2:
-            im = im[:, 0:h - 1, :]
-        if w % 2:
-            im = im[:, :, 0: w-1]
         diffY = hdr_image_util.closest_power(im.shape[1], final_shape_addition) - im.shape[1]
         diffX = hdr_image_util.closest_power(im.shape[2], final_shape_addition) - im.shape[2]
         im = add_frame_to_im(im, diffX=diffX, diffY=diffY)

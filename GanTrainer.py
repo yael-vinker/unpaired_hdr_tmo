@@ -41,7 +41,6 @@ class GanTrainer:
         self.num_D = opt.num_D
         self.d_pretrain_epochs = opt.d_pretrain_epochs
         self.pre_train_mode = False
-        self.enhance_detail = opt.enhance_detail
         self.manual_d_training = opt.manual_d_training
 
         # ====== LOSS ======
@@ -56,7 +55,6 @@ class GanTrainer:
                                                 pyramid_weight_list=opt.pyramid_weight_list,
                                                 pyramid_pow=False, use_c3=False,
                                                 struct_method=opt.struct_method,
-                                                std_norm_factor=opt.std_norm_factor,
                                                 crop_input=opt.add_frame,
                                                 final_shape_addition=opt.final_shape_addition)
 
@@ -80,8 +78,6 @@ class GanTrainer:
             data_loader_util.load_train_data(opt.dataset_properties, title="train")
         self.input_dim = opt.input_dim
         self.input_images_mean = opt.input_images_mean
-        self.log_factor = opt.log_factor
-        self.use_factorise_gamma_data = opt.use_factorise_gamma_data
         self.gamma_log = opt.gamma_log
         self.use_new_f = opt.use_new_f
         self.use_hist_fit = opt.use_hist_fit
@@ -89,7 +85,6 @@ class GanTrainer:
 
         # ====== POST PROCESS ======
         self.to_crop = opt.add_frame
-        self.use_normalization = opt.use_normalization
         self.normalization = opt.normalization
 
         # ====== SAVE RESULTS ======
@@ -97,7 +92,7 @@ class GanTrainer:
         self.epoch_to_save = opt.epoch_to_save
         self.best_accG = 0
         self.tester = Tester.Tester(self.device, self.loss_g_d_factor, self.struct_loss_factor,
-                                    self.log_factor, opt)
+                                    opt)
         self.final_epoch = opt.final_epoch
         self.fid_real_path = opt.fid_real_path
         self.fid_res_path = opt.fid_res_path

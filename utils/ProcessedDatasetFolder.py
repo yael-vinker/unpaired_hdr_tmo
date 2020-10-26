@@ -42,7 +42,7 @@ def get_f(use_hist_fit, f_dict_path, im_name, factor_coeff, use_contrast_ratio_f
     return brightness_factor
 
 
-def npy_loader(path, addFrame, hdrMode, normalization, std_norm_factor, min_stretch,
+def npy_loader(path, addFrame, hdrMode, normalization, min_stretch,
                max_stretch, factor_coeff, use_contrast_ratio_f, use_hist_fit, f_dict_path,
                final_shape_addition):
     """
@@ -87,7 +87,6 @@ class ProcessedDatasetFolder(DatasetFolder):
         self.addFrame = dataset_properties["add_frame"]
         self.hdrMode = hdrMode
         self.normalization = dataset_properties["normalization"]
-        self.std_norm_factor = dataset_properties["std_norm_factor"]
         self.max_stretch = dataset_properties["max_stretch"]
         self.min_stretch = dataset_properties["min_stretch"]
         self.factor_coeff = dataset_properties["factor_coeff"]
@@ -108,7 +107,6 @@ class ProcessedDatasetFolder(DatasetFolder):
         input_im, color_im, gray_original_norm, gray_original, gamma_factor = self.loader(path, self.addFrame,
                                                                                           self.hdrMode,
                                                                                           self.normalization,
-                                                                                          self.std_norm_factor,
                                                                                           self.min_stretch,
                                                                                           self.max_stretch,
                                                                                           self.factor_coeff,

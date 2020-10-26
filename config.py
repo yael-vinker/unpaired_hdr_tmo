@@ -17,9 +17,10 @@ def parse_arguments():
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--lr_decay_step", type=float, default=30)
-    parser.add_argument("--decay_epoch", type=int, default=100, help="epoch from which to start lr decay")
-    parser.add_argument("--milestones", type=str, default='100', help="epoch from which to start lr decay")
     parser.add_argument("--d_pretrain_epochs", type=int, default=0)
+    parser.add_argument('--use_xaviar', type=int, default=1)
+
+    # ====== SLIDER_MODE ======
     parser.add_argument("--manual_d_training", type=int, default=0)
     parser.add_argument("--d_weight_mul_mode", type=str, default="double")
     parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
@@ -36,12 +37,9 @@ def parse_arguments():
     parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
-    parser.add_argument('--custom_sig_factor', type=float, default=3)
-    parser.add_argument('--use_xaviar', type=int, default=1)
     parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
     parser.add_argument('--num_D', type=int, default=3, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
-    parser.add_argument('--apply_exp', type=int, default=0)
     parser.add_argument('--stretch_g', type=str, default="none")
     parser.add_argument('--g_doubleConvTranspose', type=int, default=0)
     parser.add_argument('--d_fully_connected', type=int, default=0)
@@ -52,6 +50,8 @@ def parse_arguments():
     parser.add_argument('--convtranspose_kernel', type=int, default=2)
     parser.add_argument('--final_shape_addition', type=int, default=64)
     parser.add_argument('--up_mode', type=int, default=1)
+    parser.add_argument("--input_dim", type=int, default=1)
+    parser.add_argument("--output_dim", type=int, default=1)
 
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
@@ -68,16 +68,9 @@ def parse_arguments():
     parser.add_argument("--test_dataroot_npy", type=str, default=params.test_dataroot_hdr)
     parser.add_argument("--test_dataroot_original_hdr", type=str, default=params.test_dataroot_original_hdr)
     parser.add_argument("--test_dataroot_ldr", type=str, default=params.test_dataroot_ldr)
-    parser.add_argument("--input_dim", type=int, default=1)
-    parser.add_argument("--output_dim", type=int, default=1)
     parser.add_argument("--input_images_mean", type=float, default=0)
     parser.add_argument('--use_factorise_data', type=int, default=1)
-    parser.add_argument('--use_factorise_gamma_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=0.1)
-    parser.add_argument('--window_tm_data', type=int, default=0)
-    parser.add_argument('--apply_wind_norm', type=int, default=0)
-    parser.add_argument('--std_norm_factor', type=float, default=0.8)
-    parser.add_argument('--wind_norm_option', type=str, default="a")
     parser.add_argument('--gamma_log', type=int, default=10)
     parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist) #52180538.8149
     parser.add_argument('--use_new_f', type=int, default=0)
@@ -88,13 +81,7 @@ def parse_arguments():
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)
-    parser.add_argument('--enhance_detail', type=int, default=0)
-
-    # ====== POST PROCESS ======
-    parser.add_argument("--add_frame", type=int, default=0)  # int(False) = 0
-    parser.add_argument("--add_clipping", type=int, default=0)  # int(False) = 0
-    parser.add_argument('--use_normalization', type=int, default=0)
-    parser.add_argument("--log_factor", type=float, default=1000)
+    parser.add_argument("--add_frame", type=int, default=0)
     parser.add_argument("--normalization", type=str, default='bugy_max_normalization', help='max/min_max')
 
     # ====== SAVE RESULTS ======
@@ -133,9 +120,6 @@ def get_opt():
 
     opt.strong_details_D_weights = torch.FloatTensor([float(item) for item in opt.strong_details_D_weights.split(',')]).to(device)
     opt.basic_details_D_weights = torch.FloatTensor([float(item) for item in opt.basic_details_D_weights.split(',')]).to(device)
-
-    opt.milestones = [int(item) for item in opt.milestones.split(',')]
-
     return opt
 
 
@@ -158,16 +142,11 @@ def get_dataset_properties(opt):
                           "output_dim": opt.output_dim,
                           "input_images_mean": opt.input_images_mean,
                           "use_factorise_data": opt.use_factorise_data,
-                          "use_factorise_gamma_data": opt.use_factorise_gamma_data,
                           "factor_coeff": opt.factor_coeff,
-                          "window_tm_data": opt.window_tm_data,
-                          "apply_wind_norm": opt.apply_wind_norm,
-                          "std_norm_factor": opt.std_norm_factor,
                           "add_frame": opt.add_frame,
                           "batch_size": opt.batch_size,
                           "normalization": opt.normalization,
                           "use_c3": False,
-                          "wind_norm_option": opt.wind_norm_option,
                           "max_stretch": opt.max_stretch,
                           "min_stretch": opt.min_stretch,
                           "data_trc": opt.data_trc,
@@ -189,10 +168,6 @@ def get_G_params(opt):
         result_dir_pref += "_up_mode_"
     if opt.unet_norm != "none":
         result_dir_pref = result_dir_pref + "_g" + opt.unet_norm + "_"
-    if opt.add_clipping:
-        result_dir_pref = result_dir_pref + "clip_"
-    if opt.apply_exp:
-        result_dir_pref = result_dir_pref + "exp_"
     if opt.stretch_g != "none":
         result_dir_pref += opt.stretch_g + "_"
     return result_dir_pref
@@ -236,8 +211,6 @@ def get_training_params(opt):
         result_dir_pref = result_dir_pref + "_frame_" + str(opt.final_shape_addition)
     if opt.normalization == "stretch":
         result_dir_pref = result_dir_pref + "stretch_" + str(opt.max_stretch)
-    if opt.enhance_detail:
-        result_dir_pref = result_dir_pref + "detailen_"
     return result_dir_pref
 
 
