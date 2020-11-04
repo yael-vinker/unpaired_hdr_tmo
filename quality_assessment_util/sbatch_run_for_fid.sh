@@ -1,16 +1,15 @@
 #!/bin/bash
 
-#dir="/cs/snapless/raananf/yael_vinker/data/dng_data_npy/"
-dir="/cs/snapless/raananf/yael_vinker/data/dng_data_npy/set14_b/"
-sub_dirs=("set1" "set2" "set3" "set4" "set5" "set6" "set7" "set8" "set9" "set10" "set11" "set12" "set13" "set14" "set15" "set16" "set17" "set18" "set19" "set20" "set21" "set22")
+dir="/cs/snapless/raananf/yael_vinker/data/oct_fid_npy_split/"
+sub_dirs=("set_0" "set_50" "set_100" "set_150" "set_200" "set_250" "set_300" "set_350" "set_400" "set_450" "set_500" "set_550" "set_600" "set_650" "set_700" "set_750" "set_800" "set_850" "set_900" "set_950" "set_1000")
 
 func_to_run="run_trained_model"
-model_name="D_[0.8,0.5,0]__G_ssr_d1.0_struct_1.0[0.4,0.8,0.8]___noframe__min_log_0.5hist_fit_"
-output_name="fid_color_stretch_fix"
-model_path="/cs/labs/raananf/yael_vinker/Oct/10_15/results_10_16/fix_train_dataset/"
-f_factor_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_20_bins_all_fix.npy"
+model_name="D_[0.8,0.8,0.8]_pad_0_G_ssr_doubleConvT__d1.0_struct_1.0[1,1,1]__trans2_replicate_lr_g1e-05_d1e-05_decay50__noframe__min_log_0.1hist_fit_"
+output_name="fid"
+model_path="/cs/labs/raananf/yael_vinker/Nov/11_03/results_11_03/tmqi_fid/"
+f_factor_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/fix_lum_hist/dng_hist_20_bins_all_fix.npy"
 test_mode_f_factor=0
-test_mode_frame=1
+test_mode_frame=0
 input_images_names_path=""
 
 for ((i = 0; i < ${#sub_dirs[@]}; ++i)); do
