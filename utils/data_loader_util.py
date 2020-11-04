@@ -62,11 +62,12 @@ def load_test_data(dataset_properties, title):
 
 
 def resize_im(im, add_frame, final_shape_addition):
+    from math import floor
     print("original shape", im.shape)
     h, w = im.shape[1], im.shape[2]
     diffY, diffX = 0, 0
-    h1 = (int(16 * round(h / 16.)))
-    w1 = (int(16 * round(w / 16.)))
+    h1 = (int(16 * floor(h / 16.)))
+    w1 = (int(16 * floor(w / 16.)))
     diffh = h - h1
     diffw = w - w1
     im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
@@ -112,6 +113,17 @@ def add_frame_to_im_batch(images_batch, diffX, diffY):
     return images_batch
 
 
+
+
 if __name__ == '__main__':
-    calc_conv_params(h_in=20, stride=(2,2), padding=(0,1), dilation=(1,1), kernel_size=(5,5), output_padding=(0,0))
-    calc_conv_params(h_in=20, stride=(2, 2), padding=(0, 1), dilation=(1, 1), kernel_size=(4, 3), output_padding=(0, 0))
+    from math import floor
+    h, w = 780, 1052
+    h1 = (int(16 * floor(h / 16.)))
+    w1 = (int(16 * floor(w / 16.)))
+    diffh = h - h1
+    diffw = w - w1
+    print(h1, diffh, w1, diffw)
+
+    # im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
+    # calc_conv_params(h_in=20, stride=(2,2), padding=(0,1), dilation=(1,1), kernel_size=(5,5), output_padding=(0,0))
+    # calc_conv_params(h_in=20, stride=(2, 2), padding=(0, 1), dilation=(1, 1), kernel_size=(4, 3), output_padding=(0, 0))

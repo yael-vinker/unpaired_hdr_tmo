@@ -42,8 +42,8 @@ def read_hdr_image(path):
         im = imageio.imread(path_lib_path, format="EXR-FI").astype('float32')
     elif file_extension == ".npy":
         im = np.load(path, allow_pickle=True)[()]
-        print(im.keys())
-        im = im["display_image"].permute(1, 2, 0).detach().cpu().numpy()
+        if not isinstance(im, np.ndarray):
+            im = im["display_image"].permute(1, 2, 0).detach().cpu().numpy()
     else:
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im
@@ -189,12 +189,6 @@ def to_gray_tensor(rgb_tensor):
     return grayscale_image
 
 
-def reshape_im(im, new_y, new_x):
-    return skimage.transform.resize(im, (new_y, new_x),
-                                    mode='reflect', preserve_range=False,
-                                    anti_aliasing=True, order=3).astype("float32")
-
-
 def to_0_1_range(im):
     if np.max(im) - np.min(im) == 0:
         im = (im - np.min(im)) / (np.max(im) - np.min(im) + params.epsilon)
@@ -204,7 +198,7 @@ def to_0_1_range(im):
 
 def to_0_1_range_outlier(im):
     im_max = np.percentile(im, 99.0)
-    im_min = np.percentile(im, 1)
+    im_min = np.percentile(im, 1.0)
     if np.max(im) - np.min(im) == 0:
         im = (im - im_min) / (im_max - im_min + params.epsilon)
     else:
@@ -229,6 +223,38 @@ def back_to_color(im_hdr, fake):
     norm_im_gray = norm_im_gray[:, :, None]
     output_im = (norm_im / (norm_im_gray + params.epsilon)) * fake
     return output_im
+
+
+def back_to_color2(im_hdr, fake):
+    if np.min(im_hdr) < 0:
+        im_hdr = im_hdr + np.abs(np.min(im_hdr))
+    im_gray_ = to_gray(im_hdr)#np.sum(im_hdr, axis=2)
+    norm_im = np.zeros(im_hdr.shape)
+    norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
+    norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
+    norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
+    norm_im = np.power(norm_im, 0.5)
+    output_im = norm_im * fake
+    return output_im
+
+
+def back_to_color_tensor(im_hdr, fake, device):
+    if im_hdr.min() < 0:
+        im_hdr = im_hdr - im_hdr.min()
+    im_gray_ = to_gray_tensor(im_hdr)#np.sum(im_hdr, axis=2)
+    norm_im = torch.zeros(im_hdr.shape).to(device)
+    norm_im[0, :, :] = im_hdr[0, :, :] / (im_gray_ + params.epsilon)
+    norm_im[1, :, :] = im_hdr[1, :, :] / (im_gray_ + params.epsilon)
+    norm_im[2, :, :] = im_hdr[2, :, :] / (im_gray_ + params.epsilon)
+    norm_im = torch.pow(norm_im, 0.5)
+    output_im = norm_im * fake
+    return output_im
+
+
+def reshape_im(im, new_y, new_x):
+    return skimage.transform.resize(im, (new_y, new_x),
+                                    mode='reflect', preserve_range=False,
+                                    anti_aliasing=True, order=3).astype("float32")
 
 
 def reshape_image(rgb_im, train_reshape):
@@ -267,6 +293,34 @@ def back_to_color_batch(im_hdr_batch, fake_batch):
         fake = fake_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
         norm_im = back_to_color(im_hdr, fake)
         output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
+    return torch.stack(output)
+
+
+def back_to_color_batch2(im_hdr_batch, fake_batch):
+    b_size = im_hdr_batch.shape[0]
+    output = []
+    import time
+    a = time.time()
+    for i in range(b_size):
+        im_hdr = im_hdr_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        fake = fake_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
+        norm_im = back_to_color2(im_hdr, fake)
+        output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
+    print("time took back to color", time.time() - a)
+    return torch.stack(output)
+
+
+def back_to_color_batch_tensor(im_hdr_batch, fake_batch):
+    b_size = im_hdr_batch.shape[0]
+    output = []
+    import time
+    a = time.time()
+    for i in range(b_size):
+        im_hdr = im_hdr_batch[i]
+        fake = fake_batch[i]
+        norm_im = back_to_color_tensor(im_hdr, fake)
+        output.append(norm_im)
+    print("time took back to color", time.time() - a)
     return torch.stack(output)
 
 
@@ -323,6 +377,7 @@ def save_gray_tensor_as_numpy_stretch_entire_range(tensor, output_path, im_name)
 
 
 def save_color_tensor_as_numpy(tensor, output_path, im_name):
+    print(tensor.max(), tensor.min())
     tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
     im = (tensor_0_1 * 255).astype('uint8')

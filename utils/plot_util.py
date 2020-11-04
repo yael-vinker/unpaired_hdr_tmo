@@ -12,8 +12,11 @@ def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D
     if use_g_ssim_loss or use_g_d_loss:
         plt.figure()
         if len(loss_D_fake) != 0 and len(loss_D_real) != 0:
-            plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
-            plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+            plt.plot(range(len(loss_D_fake)), loss_D_fake, '-r', label='loss D fake')
+            plt.plot(range(len(loss_D_fake)), loss_D_real, '-b', label='loss D real')
+        plt.savefig(os.path.join(path, title + "D.png"))  # should before show method
+        plt.close()
+        plt.figure()
         if use_g_d_loss:
             plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
         if use_g_ssim_loss:
@@ -28,20 +31,20 @@ def plot_general_losses(G_loss_d, G_loss_ssim, G_loss_sigma, loss_D_fake, loss_D
         plt.savefig(os.path.join(path, title + "all.png"))  # should before show method
         plt.close()
 
-    plt.figure()
-    if len(loss_D_fake) != 0 and len(loss_D_real) != 0:
-        plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
-        plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
-    if use_g_d_loss:
-        plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
-
-    plt.xlabel("n iteration")
-    plt.legend(loc='upper left')
-    plt.title(title)
-
-    # save image
-    plt.savefig(os.path.join(path, title + ".png"))  # should before show method
-    plt.close()
+    # plt.figure()
+    # if len(loss_D_fake) != 0 and len(loss_D_real) != 0:
+    #     plt.plot(range(iters_n), loss_D_fake, '-r', label='loss D fake')
+    #     plt.plot(range(iters_n), loss_D_real, '-b', label='loss D real')
+    # if use_g_d_loss:
+    #     plt.plot(range(iters_n), G_loss_d, '-g', label='loss G')
+    #
+    # plt.xlabel("n iteration")
+    # plt.legend(loc='upper left')
+    # plt.title(title)
+    #
+    # # save image
+    # plt.savefig(os.path.join(path, title + ".png"))  # should before show method
+    # plt.close()
 
 
 def plot_discriminator_losses(loss_D_fake, loss_D_real, title, iters_n, path):
