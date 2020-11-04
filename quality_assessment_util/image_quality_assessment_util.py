@@ -215,6 +215,22 @@ def npy_to_jpg(input_path, output_path):
         cur_output_path = os.path.join(output_path, os.path.splitext(os.path.basename(f))[0] + ".raw")
         imageio.imsave(cur_output_path, color_im, format="RAW-FI")
 
+def split_npy_fid():
+    images_name = os.listdir("/cs/snapless/raananf/yael_vinker/data/oct_fid_npy")
+    total_image = len(images_name)
+    counter = 0
+    start, end = 0, 50
+    while counter < total_image:
+        output_name = "set_%d" % counter
+        output_dir = os.path.join("/cs/snapless/raananf/yael_vinker/data/oct_fid_npy_split/", output_name)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        for img_name in images_name[start: end]:
+            shutil.copy(os.path.join("/cs/snapless/raananf/yael_vinker/data/oct_fid_npy", img_name),
+                        os.path.join(output_dir, img_name))
+            counter += 1
+        start, end = end, min(end + 50, total_image)
+
 
 def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
     for test_name in os.listdir(arch_dir):
@@ -308,7 +324,7 @@ def run_trained_model(args):
         os.makedirs(output_images_path)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     model_save_util.run_model_on_path(model_params, device, net_path, input_images_path,
-                                      output_images_path, f_factor_path, None, input_images_names_path)
+                                      output_images_path, f_factor_path, None, input_images_names_path, model_params["final_shape_addition"])
     print(time.time()-start0)
 
 
@@ -345,6 +361,70 @@ def im_crop_test(filename):
     plt.imshow(im)
 
 
+
+def sort_files_fid():
+    images = ["belgium", "train_merged_6FHF_20150307_114949_588"]
+    epoch = "320"
+    arch_dir = "/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/"
+    a = np.load("/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/fid_res/fid_results.npy", allow_pickle=True)[()]
+    print(a)
+    for ke in a.keys():
+        # print(os.path.basename(os.path.split(ke)[0]), os.path.basename(ke))
+        for im_name in images:
+            new_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/sort_fid_rseed/sort_" + im_name
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+
+            if os.path.basename(os.path.split(ke)[0]) == "fid_rseed":
+                cur_dir = os.path.join(arch_dir, os.path.basename(os.path.split(ke)[0]), epoch, im_name)
+                cur_file = os.path.join(cur_dir, "_" + os.path.basename(ke) + "_gray_stretch.png")
+                val = a[ke]['fid_res_gray_stretch']
+                new_name = ("%.5s" % val) + "_" + os.path.basename(ke) + ".png"
+                new_im_path = os.path.join(new_path, new_name)
+                print(new_im_path)
+                shutil.copy(cur_file, new_im_path)
+
+def sort_files_tmqi():
+    images = ["belgium", "train_merged_6FHF_20150307_114949_588"]
+    epoch = "320"
+    arch_dir = "/Users/yaelvinker/Documents/university/lab/Oct/10_19/"
+    # csv_dirs = "/Users/yaelvinker/Documents/university/lab/Oct/10_18/tmqi/"
+    csv_dirs = "/Users/yaelvinker/Documents/university/lab/Oct/10_19/bilinear/"
+    a = {}
+    for f in os.listdir(csv_dirs):
+        if os.path.splitext(f)[1] == ".csv":
+            with open(csv_dirs + f) as csv_file:
+                csv_reader = csv.reader(csv_file, delimiter=',')
+                next(csv_reader)
+                for row in csv_reader:
+                    a[row[0]] = (os.path.splitext(f)[0], row[1])
+                    print(row[0], row[1])
+    keys = list(a.keys())
+    keys.remove("8")
+    for ke in keys:
+        for im_name in images:
+            new_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_19/bilinear/tmqi_sort/sort_" + im_name
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+            cur_dir = os.path.join(arch_dir, a[ke][0], epoch, im_name)
+            cur_file = os.path.join(cur_dir, "_" + ke + "_gray_stretch.png")
+            val = a[ke][1]
+            new_name = ("%.5s" % val) + "_" + os.path.basename(ke) + ".png"
+            new_im_path = os.path.join(new_path, new_name)
+            shutil.copy(cur_file, new_im_path)
+
+
+def gather_all_small_images_epochs(input_path, output_path):
+    im_input_path = os.path.join(input_path, "model_results")
+    for d in os.listdir(im_input_path):
+        cur_im_path = os.path.join(im_input_path, d)
+        old_name = "set 0.png"
+        if os.path.exists(os.path.join(cur_im_path, old_name)):
+            output_name = d + ".png"
+            shutil.copy(os.path.join(cur_im_path, old_name), os.path.join(output_path, output_name))
+            print(os.path.join(output_path, output_name))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--func_to_run", type=str)
@@ -358,9 +438,9 @@ if __name__ == '__main__':
     parser.add_argument("--input_images_names_path", type=str)
     parser.add_argument("--results_path", type=str)
     parser.add_argument("--summary_path", type=str)
-
+    # sort_files_tmqi()
+    # sort_files_fid()
     args = parser.parse_args()
-
     func_to_run = args.func_to_run
     if func_to_run == "run_trained_model":
         run_trained_model(args)
