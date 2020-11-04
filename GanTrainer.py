@@ -106,7 +106,7 @@ class GanTrainer:
             print("Starting Discriminator Pre-training Loop...")
             for epoch in range(self.d_pretrain_epochs):
                 self.train_epoch()
-                self.lr_scheduler_D.step()
+                # self.lr_scheduler_D.step()
                 printer.print_epoch_acc_summary(epoch, self.d_pretrain_epochs, self.accDfake, self.accDreal, self.accG)
         self.save_loss_plot(self.d_pretrain_epochs, self.output_dir)
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
@@ -129,7 +129,8 @@ class GanTrainer:
                                                 enumerate(self.train_data_loader_ldr, 0)):
             self.num_iter += 1
             if not self.d_weight_mul_mode == "single":
-                self.d_weight_mul = self.num_iter % 2
+                # self.d_weight_mul = self.num_iter % 2
+                self.d_weight_mul = torch.rand(1).to(self.device)
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
                 hdr_input = self.get_hdr_input(data_hdr)
@@ -140,7 +141,7 @@ class GanTrainer:
                     # self.adv_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
                     #                        (1 - self.d_weight_mul) * self.basic_details_D_weights
                     self.pyramid_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
-                                           (1 - self.d_weight_mul) * self.basic_details_D_weights
+                                           (torch.ones(1).to(self.device) - self.d_weight_mul) * self.basic_details_D_weights
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 if not self.pre_train_mode:
@@ -245,7 +246,7 @@ class GanTrainer:
     def get_hdr_input(self, data_hdr):
         hdr_input = data_hdr[params.gray_input_image_key]
         if self.manual_d_training and not self.pre_train_mode:
-            weight_channel = torch.full(hdr_input.shape, self.d_weight_mul).type_as(hdr_input)
+            weight_channel = torch.full(hdr_input.shape, self.d_weight_mul[0]).type_as(hdr_input)
             hdr_input = torch.cat([hdr_input, weight_channel], dim=1)
         return hdr_input.to(self.device)
 
@@ -369,8 +370,8 @@ class GanTrainer:
         model_params["test_mode_f_factor"] = False
         model_params["test_mode_frame"] = True
         net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
-        # self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
-        # self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+        self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
+        self.run_model_on_path("npy_pth", "npy", model_params, net_path)
         # self.run_model_on_path("test_source", "exr", model_params, net_path)
 
 
@@ -381,22 +382,18 @@ class GanTrainer:
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
         output_images_path_color_stretch = os.path.join(output_images_path, "color_stretch")
-        output_images_path_gray_stretch = os.path.join(output_images_path, "gray_stretch")
         if not os.path.exists(output_images_path_color_stretch):
             os.mkdir(output_images_path_color_stretch)
-        if not os.path.exists(output_images_path_gray_stretch):
-            os.mkdir(output_images_path_gray_stretch)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, f_factor_path, self.netG, input_images_path)
+                                          output_images_path, f_factor_path, self.netG, input_images_path,
+                                          self.final_shape_addition)
         if data_format == "npy":
             fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],
                                                 batch_size=20, cuda=False, dims=768)
-            fid_res_gray_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_gray_stretch],
-                                                batch_size=20, cuda=False, dims=768)
             if os.path.exists(self.fid_res_path):
                 data = np.load(self.fid_res_path, allow_pickle=True)[()]
-                data[model_params["model_name"]] = {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}
+                data[model_params["model_name"]] = fid_res_color_stretch
                 np.save(self.fid_res_path, data)
             else:
-                my_res = {model_params["model_name"]: {"fid_res_color_stretch": fid_res_color_stretch, "fid_res_gray_stretch": fid_res_gray_stretch}}
+                my_res = {model_params["model_name"]: fid_res_color_stretch}
                 np.save(self.fid_res_path, my_res)

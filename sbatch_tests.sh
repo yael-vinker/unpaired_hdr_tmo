@@ -6,7 +6,7 @@ change_random_seed=0
 
 # ====== TRAINING ======
 batch_size=16
-num_epochs=325
+num_epochs=321
 G_lr=0.00001
 D_lr=0.00001
 lr_decay_step=50
@@ -60,7 +60,7 @@ pyramid_weight_list="0.2,0.4,0.6"
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/train/"
 data_root_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/train_half2"
 test_dataroot_npy="/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/test"
-test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/new_test_hdr"
+test_dataroot_original_hdr="/cs/labs/raananf/yael_vinker/data/test/small_test_hdr_padding"
 test_dataroot_ldr="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half"
 use_factorise_data=1
 factor_coeff=0.1
@@ -77,20 +77,45 @@ add_frame=0
 normalization="bugy_max_normalization"
 
 # ====== SAVE RESULTS ======
-epoch_to_save=40
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_26/results_10_26/push_test/"
+epoch_to_save=80
+result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_30/results_11_03/tmqi_fid/"
 final_epoch=320
 fid_real_path="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2"
-fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_26/fid_res/"
+fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_30/results_11_03/fid_11_03/"
 
 
-test_names=("test_git")
+test_names=("lr_reg")
+#"lr_up")
+up_mode_lst=(0)
+add_frame_lst=(0)
+final_shape_addition_lst=(0)
+g_doubleConvTranspose_lst=(1)
 
-for ((i = 0; i < ${#test_names[@]}; ++i)); do
-  test_name="${test_names[i]}"
+pyramid_weight_list_lst=("0.3,0.4,0.8")
+#"0.2,0.4,0.6" "0.2,0.2,0.6" "0.2,0.2,0.8" "0.2,0.4,0.6")
+adv_weight_list_lst=("0.8,0.5,0.1")
+#"1,1,0.5" "1,1,0.2" "1,1,0" "1,1,0.3")
+#"0.1,0.4,0.6" "0.2,0.2,0.6" "0.1,0.2,0.6" "0.2,0.2,0.4")
+
+for ((i = 0; i < ${#pyramid_weight_list_lst[@]}; ++i)); do
+
+  test_name="${test_names[0]}"
+  up_mode="${up_mode_lst[0]}"
+  add_frame="${add_frame_lst[0]}"
+  final_shape_addition="${final_shape_addition_lst[0]}"
+  g_doubleConvTranspose="${g_doubleConvTranspose_lst[0]}"
+  pyramid_weight_list="${pyramid_weight_list_lst[i]}"
+  adv_weight_list="${adv_weight_list_lst[i]}"
 
   echo "======================================================"
   echo "tests_name $test_name"
+  echo "up_mode $up_mode"
+  echo "add_frame $add_frame"
+  echo "final_shape_addition $final_shape_addition"
+  echo "g_doubleConvTranspose $g_doubleConvTranspose"
+  echo "rseed $change_random_seed"
+  echo "adv_weight_list $adv_weight_list"
+  echo "pyramid_weight_list $pyramid_weight_list"
 
   sbatch --mem=8000m -c2 --gres=gpu:1 --time=2-0 train.sh \
     $checkpoint \

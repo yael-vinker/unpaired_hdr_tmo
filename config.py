@@ -16,15 +16,15 @@ def parse_arguments():
     parser.add_argument("--num_epochs", type=int, default=5)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
-    parser.add_argument("--lr_decay_step", type=float, default=30)
-    parser.add_argument("--d_pretrain_epochs", type=int, default=0)
+    parser.add_argument("--lr_decay_step", type=float, default=1)
+    parser.add_argument("--d_pretrain_epochs", type=int, default=5)
     parser.add_argument('--use_xaviar', type=int, default=1)
 
     # ====== SLIDER_MODE ======
     parser.add_argument("--manual_d_training", type=int, default=0)
     parser.add_argument("--d_weight_mul_mode", type=str, default="double")
     parser.add_argument("--strong_details_D_weights", type=str, default="1,1,1")
-    parser.add_argument("--basic_details_D_weights", type=str, default="0.8,0.5,0.1")
+    parser.add_argument("--basic_details_D_weights", type=str, default="0.1,0.1,0.1")
 
     # ====== ARCHITECTURES ======
     parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
@@ -41,14 +41,14 @@ def parse_arguments():
     parser.add_argument('--num_D', type=int, default=3, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--stretch_g', type=str, default="none")
-    parser.add_argument('--g_doubleConvTranspose', type=int, default=0)
+    parser.add_argument('--g_doubleConvTranspose', type=int, default=1)
     parser.add_argument('--d_fully_connected', type=int, default=0)
     parser.add_argument('--simpleD_maxpool', type=int, default=0)
     parser.add_argument('--bilinear', type=int, default=0)
     parser.add_argument('--padding', type=str, default="replicate")
     parser.add_argument('--d_padding', type=int, default=0)
     parser.add_argument('--convtranspose_kernel', type=int, default=2)
-    parser.add_argument('--final_shape_addition', type=int, default=64)
+    parser.add_argument('--final_shape_addition', type=int, default=0)
     parser.add_argument('--up_mode', type=int, default=1)
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--output_dim", type=int, default=1)
