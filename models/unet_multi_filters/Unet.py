@@ -20,26 +20,23 @@ class UNet(nn.Module):
             padding = 0
         self.padding = padding
         self.up_mode = up_mode
-        self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding, padding_mode, up_mode)
+        self.inc = inconv(n_channels, down_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose)
         ch = down_ch
         self.down_path = nn.ModuleList()
         for i in range(self.depth - 1):
             self.down_path.append(
                 down(ch, ch * 2, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
-                     padding=padding, padding_mode=padding_mode, up_mode=up_mode)
+                     padding=padding, padding_mode=padding_mode, up_mode=up_mode, doubleConvTranspose=doubleConvTranspose)
             )
             ch = ch * 2
             if network == params.torus_network:
                 dilation = dilation * 2
-        # if doubleConvTranspose:
         self.down_path.append(last_down(ch, ch, network, dilation=dilation, unet_norm=unet_norm,
                                         activation=activation, padding=padding, padding_mode=padding_mode,
                                         up_mode=up_mode, doubleConvTranspose=doubleConvTranspose))
-        # else:
-        #     self.down_path.append(down(ch, ch, network, dilation=dilation, unet_norm=unet_norm, activation=activation,
-        #                                padding=padding, padding_mode=padding_mode))
 
         self.up_path = nn.ModuleList()
+        output_padding = 0
         for i in range(self.depth):
             in_ch = ch * layer_factor
             if con_operator == params.square_and_square_root_manual_d:
@@ -52,11 +49,13 @@ class UNet(nn.Module):
                        convtranspose_kernel=convtranspose_kernel, up_mode=up_mode)
                 )
             else:
+                if i == 1 and not (up_mode):
+                    output_padding=1
                 self.up_path.append(
                     up(in_ch, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
                        doubleConvTranspose=doubleConvTranspose, padding=padding, padding_mode=padding_mode,
-                       convtranspose_kernel=convtranspose_kernel, up_mode=up_mode)
+                       convtranspose_kernel=convtranspose_kernel, up_mode=up_mode, output_padding1=output_padding)
                 )
             ch = ch // 2
             if network == params.torus_network:

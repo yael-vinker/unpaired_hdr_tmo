@@ -10,9 +10,10 @@ from utils import params
 class double_conv(nn.Module):
     '''(conv => BN => ReLU) * 2'''
 
-    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose):
         super(double_conv, self).__init__()
         self.padding = padding
+        self.doubleConvTranspose = doubleConvTranspose
         self.padding_mode = padding_mode
         self.up_mode = up_mode
         self.conv = nn.Conv2d(in_ch, out_ch, kernel_size=3, stride=1, padding=padding, padding_mode=padding_mode)
@@ -61,7 +62,7 @@ class double_conv(nn.Module):
         #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
         #     # print("x",x.shape)
         x = self.conv(x)
-        if self.up_mode:
+        if self.up_mode and not self.doubleConvTranspose:
             expanded_padding = (1, 1,
                                 1, 1)
             x = F.pad(x, expanded_padding, mode='replicate')
@@ -75,7 +76,7 @@ class double_conv(nn.Module):
         #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
             # print("x", x.shape)
         x = self.conv1(x)
-        if self.up_mode:
+        if self.up_mode and not self.doubleConvTranspose:
             expanded_padding = (1, 1,
                                 1, 1)
             x = F.pad(x, expanded_padding, mode='replicate')
@@ -124,12 +125,8 @@ class double_last_conv(nn.Module):
             assert 0, "Unsupported activation: {%s}" % (activation)
 
     def forward(self, x):
-        # if self.padding:
-        #     expanded_padding = ((self.padding + 1) // 2, self.padding // 2,
-        #                         (self.padding + 1) // 2, self.padding // 2)
-        #     x = F.pad(x, expanded_padding, mode=self.padding_mode)
         x = self.conv(x)
-        if self.up_mode:
+        if self.up_mode and not self.doubleConvTranspose:
             expanded_padding = (1, 1,
                                 1, 1)
             x = F.pad(x, expanded_padding, mode='replicate')
@@ -197,9 +194,9 @@ class double_conv_traspose(nn.Module):
 
 
 class inconv(nn.Module):
-    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode):
+    def __init__(self, in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose):
         super(inconv, self).__init__()
-        self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode)
+        self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose)
 
     def forward(self, x):
         x = self.conv(x)
@@ -208,12 +205,12 @@ class inconv(nn.Module):
 
 class down(nn.Module):
     def __init__(self, in_ch, out_ch, network, dilation, unet_norm, activation, padding,
-                 padding_mode, up_mode):
+                 padding_mode, up_mode, doubleConvTranspose):
         super(down, self).__init__()
         if network == params.unet_network:
             self.mpconv = nn.Sequential(
                 nn.MaxPool2d(2),
-                double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode)
+                double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose)
             )
         elif network == params.torus_network:  # for torus
             self.mpconv = nn.Sequential(
@@ -245,7 +242,7 @@ class last_down(nn.Module):
 
 class up(nn.Module):
     def __init__(self, in_ch, out_ch, bilinear, layer_factor, network, dilation, unet_norm, activation,
-                 doubleConvTranspose, padding, padding_mode, convtranspose_kernel, up_mode):
+                 doubleConvTranspose, padding, padding_mode, convtranspose_kernel, up_mode, output_padding1=0):
         super(up, self).__init__()
         self.padding_mode = padding_mode
         self.up_mode = up_mode
@@ -263,14 +260,15 @@ class up(nn.Module):
             #     self.up =
                 else:
                     cur_padding = 0
-                    output_padding=0
+                    output_padding = output_padding1
                     if convtranspose_kernel == 5:
                         cur_padding = convtranspose_kernel // 2
                         output_padding = 1
                     if convtranspose_kernel == 4:
                         cur_padding = 1
                     self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor,
-                                                 convtranspose_kernel, stride=2, padding=cur_padding, output_padding=output_padding)
+                                                 convtranspose_kernel, stride=2, padding=cur_padding,
+                                                 output_padding=output_padding)
 
         elif network == params.torus_network:  # for torus
             self.up = nn.ConvTranspose2d(in_ch // layer_factor, in_ch // layer_factor, 3, stride=1, padding=0,
@@ -280,7 +278,7 @@ class up(nn.Module):
         if doubleConvTranspose:
             self.conv = double_conv_traspose(in_ch, out_ch, unet_norm, activation)
         else:
-            self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode)
+            self.conv = double_conv(in_ch, out_ch, unet_norm, activation, padding, padding_mode, up_mode, doubleConvTranspose)
 
     def forward(self, x1, x2, con_operator, network, d_weight_mul):
         if self.up_mode:
@@ -332,6 +330,7 @@ class up(nn.Module):
             x = torch.cat([weight_channel, x2, x1, square_x, square_root_x], dim=1)
         else:
             assert 0, "Unsupported con_operator request: {}".format(con_operator)
+
         x = self.conv(x)
         return x
 
