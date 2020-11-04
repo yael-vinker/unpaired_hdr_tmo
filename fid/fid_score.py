@@ -44,6 +44,7 @@ parent_dir = two_up
 print(parent_dir)
 sys.path.insert(0, parent_dir)
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import random
 
 import numpy as np
 import torch
@@ -67,12 +68,12 @@ def imread(filename):
     """
     im = Image.open(filename)
 
-    #width, height = im.size
-    #left = 20
-    #top = 20
-    #right = width - 20
-    #bottom = height - 20
-    #im = im.crop((left, top, right, bottom))
+    width, height = im.size
+    left = 10
+    top = 10
+    right = width - 10
+    bottom = height - 10
+    im = im.crop((left, top, right, bottom))
 
     im = im.resize((299,299), Image.BICUBIC)
     im = np.asarray(im)[..., :3]
@@ -131,9 +132,14 @@ def get_activations_for_small_dataset(files, model, batch_size=50, dims=2048,
         images = np.zeros([batch_size, 299, 299, 3])
         for f,i in zip(files[start_files:end_files], range(batch_size)):
             im = imread(str(f)).astype(np.float32)
-            #if is_real:
-            #    im = ((im - im.min()) / im.max())*1.05 - 0.025
-            #    im = np.clip(im, 0, 1) * 255
+            if not is_real:
+                im = im / im.max()
+                alpha = 0.8
+                new_mean = alpha * 0.45 + (1 - alpha) * im.mean()
+                im = (im - im.mean())
+                im = im + new_mean
+                im = np.clip(im, 0, 1) * 255
+            images[i] = im
             images[i] = im
 
         images = images.transpose((0, 3, 1, 2))
@@ -147,26 +153,9 @@ def get_activations_for_small_dataset(files, model, batch_size=50, dims=2048,
         # If model output is not scalar, apply global spatial average pooling.
         # This happens if you choose a dimensionality not equal 2048.
         if pred.shape[2] != 8 or pred.shape[3] != 8:
-         #   print("changed pred shape from ", pred.shape)
             pred = adaptive_avg_pool2d(pred, output_size=(8, 8))
-        #print("pred shape before = ", pred.shape)
-        #a, b, c = pred[0, :, 0, 0], pred[0, :, 0, 1], pred[0, :, 1, 0]
-        #print("a ", a)
-        #print("b ", b)
-        #print("c ", c)
-
         permuted_pred = pred.permute((0, 2, 3, 1))
-        #print("pred permuted_pred = ", permuted_pred.shape)
-        #a2, b2, c2 = permuted_pred[0, 0, 0, :], permuted_pred[0, 0, 1, :], permuted_pred[0, 1, 0, :]
-        #print("a2 ",a2)
-        #print("b2 ", b2)
-        #print("c2 ", c2)
         reshaped_pred = permuted_pred.cpu().data.numpy().reshape(batch_size * 64, dims)
-        #a3, b3, c3 = reshaped_pred[0, :], reshaped_pred[1, :], reshaped_pred[8, :]
-        #print("a3 ",a3)
-        #print("b3 ", b3)
-        #print("c3 ", c3)
-        #print("pred reshaped_pred = ", reshaped_pred.shape)
         pred_arr[start:end] = reshaped_pred
     if verbose:
         print(' done')
@@ -266,12 +255,12 @@ def _compute_statistics_of_path(path, model, batch_size, dims, cuda, is_real=Fal
         files = list(path.glob('*.jpg'))
         if len(files) == 0:
             files = list(path.glob('*.png'))
-        print(path,len(files))
-        files = files[:900]
         print(path, len(files))
+        print("rnadom 10")
+        random.Random(10).shuffle(files)
+        files = files[:900]
         m, s = calculate_activation_statistics(files, model, batch_size,
                                                dims, cuda, is_real)
-
     return m, s
 
 
@@ -293,11 +282,12 @@ def calculate_fid_given_paths(paths, batch_size, cuda, dims):
     # paths[0] should be the real images
     print("no stretch")
     m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
-                                          dims, cuda, is_real=False)
+                                          dims, cuda, is_real=True)
     # paths[1] should be the fake images (smaller data that will be multiple by 64)
     m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
                                          dims, cuda, is_real=False)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
+    print("FID:", fid_value)
     return fid_value
 
 
@@ -323,7 +313,6 @@ if __name__ == '__main__':
                                           args.batch_size,
                                           args.gpu != '',
                                           args.dims)
-
 
     print('FID: ', fid_value)
     if os.path.exists(args.path_to_save):
