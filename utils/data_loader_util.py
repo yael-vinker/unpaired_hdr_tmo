@@ -63,7 +63,7 @@ def load_test_data(dataset_properties, title):
 def resize_im(im, add_frame, final_shape_addition):
     from math import floor
     im_max = im.max()
-    print("original shape", im.shape)
+    # print("original shape", im.shape)
     h, w = im.shape[1], im.shape[2]
     # diffY, diffX = 0, 0
     h1 = (int(16 * int(h / 16.))) + 12
@@ -80,7 +80,7 @@ def resize_im(im, add_frame, final_shape_addition):
         diffY = hdr_image_util.closest_power(im.shape[1], final_shape_addition) - im.shape[1]
         diffX = hdr_image_util.closest_power(im.shape[2], final_shape_addition) - im.shape[2]
         im = add_frame_to_im(im, diffX=diffX, diffY=diffY)
-    print("new shape", im.shape)
+    # print("new shape", im.shape)
     return im, diffY, diffX
 
 

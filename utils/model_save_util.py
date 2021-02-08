@@ -330,7 +330,8 @@ def run_trained_model_from_path(model_name):
 
 # ====== GET PARAMS ======
 def get_model_params(model_name, train_settings_path="none"):
-    print(train_settings_path)
+    # print(train_settings_path)
+    # print("------")
     model_params = {"model_name": model_name, "model": params.unet_network,
                     "filters": 32, "depth": 4,
                     "factorised_data": True,
@@ -352,12 +353,12 @@ def get_model_params(model_name, train_settings_path="none"):
                    "padding":get_use_contrast_ratio_f,
                    "up_mode":get_use_contrast_ratio_f,
                     "convtranspose_kernel":get_use_contrast_ratio_f}
-    print(train_settings_path)
+    # print(train_settings_path)
     if os.path.exists(train_settings_path):
         train_settings = np.load(train_settings_path, allow_pickle=True)[()]
         for param in params_dict.keys():
             model_params[param] = train_settings[param]
-            print(param,model_params[param])
+            # print(param,model_params[param])
     # params_dict["factor_coeff"] = get_factor_coeff(model_name)
     # else:
     #     for param in params_dict.keys():
@@ -365,7 +366,7 @@ def get_model_params(model_name, train_settings_path="none"):
 
     if model_params["manual_d_training"]:
         model_params["input_dim"] = 2
-    print(model_params)
+    # print(model_params)
     return model_params
 
 
