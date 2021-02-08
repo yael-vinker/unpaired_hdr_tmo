@@ -368,12 +368,11 @@ class GanTrainer:
                                                         train_settings_path=os.path.join(self.output_dir,
                                                                                          "run_settings.npy"))
         model_params["test_mode_f_factor"] = False
-        model_params["test_mode_frame"] = True
+        model_params["test_mode_frame"] = False
         net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
-        self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
-        self.run_model_on_path("npy_pth", "npy", model_params, net_path)
-        # self.run_model_on_path("test_source", "exr", model_params, net_path)
-
+        # self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
+        # self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+        self.run_model_on_path("test_source", "exr", model_params, net_path)
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):
         input_images_path = model_save_util.get_hdr_source_path(data_source)
@@ -385,7 +384,7 @@ class GanTrainer:
         if not os.path.exists(output_images_path_color_stretch):
             os.mkdir(output_images_path_color_stretch)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, f_factor_path, self.netG, input_images_path,
+                                          output_images_path, f_factor_path, None, input_images_path,
                                           self.final_shape_addition)
         if data_format == "npy":
             fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],

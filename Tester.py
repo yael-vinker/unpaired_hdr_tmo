@@ -175,22 +175,36 @@ class Tester:
                 im_hdr_original = im_and_q['im_hdr_original']
                 im_log_normalize_tensor = im_and_q['im_log_normalize_tensor'].unsqueeze(0).to(self.device)
                 printer.print_g_progress(im_log_normalize_tensor, "input_tester")
-                if self.manual_d_training:
-                    file_name = im_and_q["im_name"] + "_1"
-                    self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                      file_name, 1.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
-                    if not self.d_weight_mul_mode == "single":
-                        file_name = im_and_q["im_name"] + "_0"
-                        self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                          file_name, 0.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
-                        file_name = im_and_q["im_name"] + "_0.5"
-                        self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                          file_name, 0.5, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
+                with torch.no_grad():
+                    fake = netG(im_log_normalize_tensor, apply_crop=self.to_crop,
+                                diffY=im_and_q['diffY'], diffX=im_and_q['diffX'])
+                    print("fake", fake.max(), fake.mean(), fake.min())
+                fake2 = fake.clamp(0.005, 0.995)
+                fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
+                fake_im_color2 = hdr_image_util.back_to_color_tensor(im_hdr_original, fake_im_gray_stretch[0], self.device)
+                h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
+                im_max = fake_im_color2.max()
+                fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - im_and_q['diffY'], w - im_and_q['diffX']), mode='bicubic',
+                              align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
+                hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, out_dir + "/color_stretch",
+                                                                 im_and_q["im_name"] + "_color_stretch")
 
-                else:
-                    file_name = im_and_q["im_name"]
-                    self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                                                      file_name, None, im_and_q['diffX'], im_and_q['diffY'], im_and_q)
+                # if self.manual_d_training:
+                #     file_name = im_and_q["im_name"] + "_1"
+                #     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                #                                       file_name, 1.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
+                #     if not self.d_weight_mul_mode == "single":
+                #         file_name = im_and_q["im_name"] + "_0"
+                #         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                #                                           file_name, 0.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
+                #         file_name = im_and_q["im_name"] + "_0.5"
+                #         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                #                                           file_name, 0.5, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
+                #
+                # else:
+                #     file_name = im_and_q["im_name"]
+                #     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
+                #                                       file_name, None, im_and_q['diffX'], im_and_q['diffY'], im_and_q)
 
     def run_model_on_im_and_save_res(self, im_log_normalize_tensor, netG, im_hdr_original,
                                      out_dir, file_name, additional_channel, diffX, diffY, im_and_q):

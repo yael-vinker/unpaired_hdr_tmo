@@ -19,10 +19,10 @@ if __name__ == '__main__':
                                          opt.use_xaviar, opt.d_model, opt.d_nlayers, opt.d_last_activation,
                                          opt.num_D, opt.d_fully_connected, opt.simpleD_maxpool, opt.d_padding)
 
-    input_size = 256
+    input_size = params.input_size
     printer.print_net("D", net_D, opt, input_size=input_size)
     if opt.add_frame:
-        input_size = 256 + opt.final_shape_addition
+        input_size = params.input_size + opt.final_shape_addition
     printer.print_net("G", net_G, opt, input_size=(input_size, input_size))
 
     # Setup Adam optimizers for both G and D

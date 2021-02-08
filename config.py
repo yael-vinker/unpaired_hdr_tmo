@@ -37,7 +37,9 @@ def parse_arguments():
     parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
-    parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
+    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
+    # parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
+
     parser.add_argument('--num_D', type=int, default=3, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
     parser.add_argument('--stretch_g', type=str, default="none")
@@ -49,7 +51,7 @@ def parse_arguments():
     parser.add_argument('--d_padding', type=int, default=0)
     parser.add_argument('--convtranspose_kernel', type=int, default=2)
     parser.add_argument('--final_shape_addition', type=int, default=0)
-    parser.add_argument('--up_mode', type=int, default=1)
+    parser.add_argument('--up_mode', type=int, default=0)
     parser.add_argument("--input_dim", type=int, default=1)
     parser.add_argument("--output_dim", type=int, default=1)
 
