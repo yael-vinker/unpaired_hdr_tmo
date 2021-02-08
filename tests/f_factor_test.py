@@ -623,13 +623,13 @@ def f_test_trained_model(model_path, model_name, input_images_path):
     start0 = time.time()
     net_path = os.path.join(model_path, model_name, "models", "net_epoch_320.pth")
     model_params = model_save_util.get_model_params(model_name)
-    # model_params["factor_coeff"] = 0.5
+    # model_params["factor_coeff"] = 1 / 255
     print("===============================================")
     print(model_name)
     print(model_params)
     # f_factor_path = os.path.join("/Users/yaelvinker/Documents/university/lab/July/baseline/stretch_1.05data10_d1.0_gamma_ssim2.0_1,2,3_gamma_factor_loss_bilateral1.0_8,4,1_wind5_bmu1.0_sigr0.07_log0.8_eps1e-05_alpha0.5_mu_loss2.0_1,1,1_unet_square_and_square_root_d_model_patchD/test_factors.npy")
-    f_factor_path = "none"
-    output_images_path = os.path.join(model_path, model_name, "color_STRETCH_2_avg")
+    f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/tests/hist_fit/temp_data_test20_bins.npy"
+    output_images_path = os.path.join(model_path, model_name, "coeff0.1")
     # output_images_path = "/Users/yaelvinker/Downloads/input_images/our_orion"
     if not os.path.exists(output_images_path):
         os.makedirs(output_images_path)
@@ -654,7 +654,7 @@ if __name__ == '__main__':
     # parser.add_argument("--input_path", type=str)
     # args = parser.parse_args()
     # model_name = args.model_name
-    models_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_11"
+    models_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_13/10_13_summary"
     #    input_path = os.path.join("/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_format_fixed_size")
     # input_path = args.input_path
     input_path="/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
@@ -663,7 +663,7 @@ if __name__ == '__main__':
     #    input_path = os.path.join("/cs/labs/raananf/yael_vinker/data/quality_assesment/from_openEXR_data")
 
     #    run_model_on_folder(models_path)
-    model_name = "D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT__pretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d5.0_gamma_ssim1.0_2,4,4__DATA_min_log_0.1new_f_"
+    model_name = "1_D_multiLayerD_simpleD__num_D3_1,1,1_ch16_3layers_sigmoid__G_unet_ssr_relu_doubleConvT___rseed_Truepretrain50_lr_g1e-05_d1e-05_decay50_noframe__LOSS_d1.0_gamma_ssim1.0_1,1,1__DATA_min_log_0.1hist_fit_"
     f_test_trained_model(models_path, model_name, input_path)
     # regex_test()
 

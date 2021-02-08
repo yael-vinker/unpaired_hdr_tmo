@@ -235,17 +235,18 @@ def split_npy_fid():
 def gather_all_architectures_accuracy(arch_dir, output_path, epoch, date):
     for test_name in os.listdir(arch_dir):
         cur_path = os.path.join(os.path.abspath(arch_dir), test_name)
-        for arch_name in os.listdir(cur_path):
-            im_path = os.path.join(os.path.abspath(arch_dir), test_name, arch_name, "accuracy")
-            old_name = "acc" + epoch + ".png"
-            cur_output_path = os.path.join(output_path, test_name, "accuracy_" + epoch)
-            output_name = date + "_" + arch_name + ".png"
-            if not os.path.exists(cur_output_path):
-                os.makedirs(cur_output_path)
-            if os.path.exists(os.path.join(im_path, old_name)):
-                shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
-            else:
-                print(os.path.join(im_path,old_name))
+        if os.path.isdir(cur_path):
+            for arch_name in os.listdir(cur_path):
+                im_path = os.path.join(os.path.abspath(arch_dir), test_name, arch_name, "accuracy")
+                old_name = "acc" + epoch + ".png"
+                cur_output_path = os.path.join(output_path, test_name, "accuracy_" + epoch)
+                output_name = date + "_" + arch_name + ".png"
+                if not os.path.exists(cur_output_path):
+                    os.makedirs(cur_output_path)
+                if os.path.exists(os.path.join(im_path, old_name)):
+                    shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+                else:
+                    print(os.path.join(im_path,old_name))
 
 
 def gather_all_architectures_loss(arch_dir, output_path, epoch, date):
@@ -268,23 +269,24 @@ def gather_all_architectures_loss(arch_dir, output_path, epoch, date):
 def gather_all_architectures(arch_dir, output_path, epoch, date, im_number):
     for test_name in os.listdir(arch_dir):
         cur_path = os.path.join(os.path.abspath(arch_dir), test_name)
-        for arch_name in os.listdir(cur_path):
-            im_path = os.path.join(os.path.abspath(arch_dir), test_name, arch_name, "model_results", epoch)
-            cur_output_path = os.path.join(output_path, test_name, epoch, im_number)
-            if not os.path.exists(cur_output_path):
-                os.makedirs(cur_output_path)
-            old_name = im_number + ".png"
-            if os.path.exists(os.path.join(im_path, old_name)):
-                output_name = date + "_" + arch_name + ".png"
-                shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
-            old_name = im_number + "_1.png"
-            if os.path.exists(os.path.join(im_path, old_name)):
-                output_name = date + "_" + arch_name + "_1.png"
-                shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
-            old_name = im_number + "_0.png"
-            if os.path.exists(os.path.join(im_path, old_name)):
-                output_name = date + "_" + arch_name + "_0.png"
-                shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+        if os.path.isdir(cur_path):
+            for arch_name in os.listdir(cur_path):
+                im_path = os.path.join(os.path.abspath(arch_dir), test_name, arch_name, "model_results", epoch, "color_stretch")
+                cur_output_path = os.path.join(output_path, test_name, epoch, im_number)
+                if not os.path.exists(cur_output_path):
+                    os.makedirs(cur_output_path)
+                old_name = im_number + "_fake_clamp_and_stretch.png"
+                if os.path.exists(os.path.join(im_path, old_name)):
+                    output_name = date + "_" + arch_name + ".png"
+                    shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+                old_name = im_number + "_1.png"
+                if os.path.exists(os.path.join(im_path, old_name)):
+                    output_name = date + "_" + arch_name + "_1.png"
+                    shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
+                old_name = im_number + "_0.png"
+                if os.path.exists(os.path.join(im_path, old_name)):
+                    output_name = date + "_" + arch_name + "_0.png"
+                    shutil.copy(os.path.join(im_path, old_name), os.path.join(cur_output_path, output_name))
 
 
 def save_training_summary(args):
@@ -315,7 +317,7 @@ def run_trained_model(args):
     model_params = model_save_util.get_model_params(model_name, train_settings_path)
     model_params["test_mode_f_factor"] = args.test_mode_f_factor
     model_params["test_mode_frame"] = args.test_mode_frame
-    # model_params["factor_coeff"] = 0.5
+    # model_params["factor_coeff"] = 1
     print("===============================================")
     print(model_params)
 
@@ -360,29 +362,73 @@ def im_crop_test(filename):
     plt.figure()
     plt.imshow(im)
 
-
-
 def sort_files_fid():
-    images = ["belgium", "train_merged_6FHF_20150307_114949_588"]
+    import csv
+    images = ["2", "belgium", "train_merged_6FHF_20150307_114949_588"]
     epoch = "320"
-    arch_dir = "/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/"
-    a = np.load("/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/fid_res/fid_results.npy", allow_pickle=True)[()]
-    print(a)
+    tmqi_arch = "/cs/labs/raananf/yael_vinker/Nov/11_04/summary_11_04/"
+    a = np.load("/cs/labs/raananf/yael_vinker/Nov/11_04/results_11_04/fid_results.npy", allow_pickle=True)[()]
+    # print(a)
     for ke in a.keys():
         # print(os.path.basename(os.path.split(ke)[0]), os.path.basename(ke))
         for im_name in images:
-            new_path = "/Users/yaelvinker/Documents/university/lab/Oct/10_30/summary_10_30/sort_fid_rseed/sort_" + im_name
+            new_path = "/cs/labs/raananf/yael_vinker/Nov/11_04/summary_11_04//sort_fid/sort_" + im_name
             if not os.path.exists(new_path):
                 os.makedirs(new_path)
 
-            if os.path.basename(os.path.split(ke)[0]) == "fid_rseed":
-                cur_dir = os.path.join(arch_dir, os.path.basename(os.path.split(ke)[0]), epoch, im_name)
-                cur_file = os.path.join(cur_dir, "_" + os.path.basename(ke) + "_gray_stretch.png")
-                val = a[ke]['fid_res_gray_stretch']
-                new_name = ("%.5s" % val) + "_" + os.path.basename(ke) + ".png"
+            # if os.path.basename(os.path.split(ke)[0]) == "fid_rseed":
+                cur_file = os.path.join(ke, "model_results", epoch, "color_stretch", im_name + "_color_stretch.png")
+                # cur_file = os.path.join(cur_dir, "_" + os.path.basename(ke) + "_gray_stretch.png")
+                tmqi_path = os.path.join(tmqi_arch, os.path.basename(os.path.split(ke)[0])+"_all.csv")
+                val = a[ke]
+                new_name = ("%.5s" % val) + "_" + os.path.basename(os.path.split(ke)[0]) + "_" + os.path.basename(ke) + ".png"
                 new_im_path = os.path.join(new_path, new_name)
                 print(new_im_path)
                 shutil.copy(cur_file, new_im_path)
+
+def sort_files_to_table():
+    import csv
+    import pandas
+    # images = ["2", "belgium", "train_merged_6FHF_20150307_114949_588"]
+    # epoch = "320"
+    tmqi_arch = "/cs/labs/raananf/yael_vinker/Nov/11_04/summary_11_04/"
+    # res_arch_dir = "/cs/labs/raananf/yael_vinker/Nov/11_04/results_11_04"
+    a = np.load("/cs/labs/raananf/yael_vinker/Nov/11_04/results_11_04/fid_results.npy", allow_pickle=True)[()]
+    # print(a)
+    data_list = [["sub_folder", "Name", "fid", "tmqi"]]
+    # with open(tmqi_arch + '/sort_all.csv', 'w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow(["sub_folder", "Name", "fid", "tmqi"])
+    for ke in a.keys():
+        print(os.path.basename(os.path.split(ke)[0]), os.path.basename(ke))
+        cur_sub_folder = os.path.basename(os.path.split(ke)[0])
+        tmqi_path = os.path.join(tmqi_arch, cur_sub_folder + "_all.csv")
+        d = {}
+        with open(tmqi_path) as csv_file:
+            reader = csv.reader(csv_file)
+            for row in reader:
+                d[row[0]] = row[1]
+
+        fid_res = a[ke]
+        # with open(tmqi_arch + '/sort_all.csv', 'w', newline='') as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow([cur_sub_folder, os.path.basename(ke), fid_res, d[os.path.basename(ke)]])
+        data_list.append([cur_sub_folder, os.path.basename(ke), fid_res, d[os.path.basename(ke)]])
+    with open(tmqi_arch + '/sort_all.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(data_list)
+    # with open(tmqi_arch + '/sort_all.csv', 'w', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow([cur_sub_folder, os.path.basename(ke), fid_res, d[os.path.basename(ke)]])
+    with open(tmqi_arch + '/sort_all.csv') as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            print(row)
+        # new_name = ("%.5s" % val) + "_" + cur_sub_folder + "_" + os.path.basename(ke) + ".png"
+        # new_im_path = os.path.join(new_path, new_name)
+        # print(new_im_path)
+        # shutil.copy(cur_file, new_im_path)
+
 
 def sort_files_tmqi():
     images = ["belgium", "train_merged_6FHF_20150307_114949_588"]
@@ -424,6 +470,13 @@ def gather_all_small_images_epochs(input_path, output_path):
             shutil.copy(os.path.join(cur_im_path, old_name), os.path.join(output_path, output_name))
             print(os.path.join(output_path, output_name))
 
+def print_fid_res(args):
+    a = np.load(os.path.join(args.results_path, "fid_results.npy"), allow_pickle=True)[()]
+    b = {k: v for k, v in sorted(a.items(), key=lambda item: item[1])}
+    for k in b.keys():
+        print(k, b[k])
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
@@ -444,5 +497,6 @@ if __name__ == '__main__':
     func_to_run = args.func_to_run
     if func_to_run == "run_trained_model":
         run_trained_model(args)
+        # print_fid_res(args)
     elif func_to_run == "run_summary":
         save_training_summary(args)

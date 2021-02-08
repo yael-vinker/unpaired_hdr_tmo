@@ -178,15 +178,19 @@ def split_train_test_data(input_path, train_path, test_path, test_fid_test):
 
 
 def copy_train_data_from_old_set(input_path_names, input_images_path, output_path):
-
     names = os.listdir(input_path_names)
-    counter = 0
-    for img_name in names:
-        print("[%d] %s"%(counter,img_name))
-        source_path = os.path.join(input_images_path, img_name)
-        output_im_path = os.path.join(output_path, img_name)
-        copyfile(source_path, output_im_path)
-        counter+=1
+    counter = 446
+    while counter < 896:
+        for img_name in names:
+            print("[%d] %s"%(counter,img_name))
+            source_path = os.path.join(input_images_path, img_name)
+            if os.path.exists(source_path):
+                output_im_path = os.path.join(output_path, img_name)
+                if not os.path.exists(output_im_path):
+                    copyfile(source_path, output_im_path)
+                    counter += 1
+
+
 
 
 def apply_preprocess_for_ldr(im_path):
@@ -239,6 +243,8 @@ def get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f
             f_factor = data[()][im_name]
             print("[%s] found in dict [%.4f]" % (im_name, f_factor))
             return f_factor * 255 * factor_coeff
+        else:
+            f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * factor_coeff
     elif use_contrast_ratio_f:
         print("===============")
         print(np.percentile(gray_im, 99.0), np.percentile(gray_im, 99.9), gray_im.max())
@@ -470,6 +476,22 @@ def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
         np.save(output_path, f_factors)
 
 
+def dng_to_npy_for_fid():
+    import skimage
+    npy_names_dir = "/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/test_fid"
+    output_dir = "/cs/snapless/raananf/yael_vinker/data/oct_fid_npy/"
+    input_dng_files = "/cs/labs/raananf/yael_vinker/dng_collection/"
+    for im_name in os.listdir(npy_names_dir):
+        im_path = os.path.join(input_dng_files, os.path.splitext(im_name)[0] + ".dng")
+        im = hdr_image_util.read_hdr_image(im_path)
+        im = skimage.transform.resize(im, (int(im.shape[0] / 2),
+                                                   int(im.shape[1] / 2)),
+                                          mode='reflect', preserve_range=False,
+                                          anti_aliasing=True, order=3).astype("float32")
+        print(im_name, im.shape)
+        np.save(os.path.join(output_dir, im_name), im)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Parser for gan network")
     parser.add_argument("--input_dir", type=str, default="/Users/yaelvinker/PycharmProjects/lab/utils/folders/data")
@@ -499,8 +521,11 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_dir):
        os.mkdir(args.output_dir)
     # create_data(args)
-    print_result("/Users/yaelvinker/Documents/university/lab/Oct/10_15/data_test/")
-    plt.show()
+    # print_result("/Users/yaelvinker/Documents/university/lab/Oct/10_15/data_test/")
+    # plt.show()
+    copy_train_data_from_old_set("/cs/snapless/raananf/yael_vinker/data/new_data/train/hdrplus_new_f_min_log_factor1.0_crop/hdrplus_new_f_min_log_factor1.0_crop",
+                                 "/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/train/train/",
+                                 "/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/train_prev_subset/train")
     # save_f_factor(args)
     # copy_train_data_from_old_set(input_path_names, input_images_path, output_path)
     # split_train_test_data("/cs/snapless/raananf/yael_vinker/data/new_data/flicker_use_factorise_data_0_factor_coeff_1000.0_use_normalization_1",
