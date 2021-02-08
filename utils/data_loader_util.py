@@ -32,7 +32,6 @@ def load_train_data(dataset_properties, title):
                                   [title + "_hdr_dataloader", title + "_ldr_dataloader"],
                                   [True, False],
                                   [True, True])
-
     printer.load_data_dict_mode(train_hdr_dataloader, train_ldr_dataloader, title, images_number=2)
     return train_hdr_dataloader, train_ldr_dataloader
 
@@ -63,14 +62,16 @@ def load_test_data(dataset_properties, title):
 
 def resize_im(im, add_frame, final_shape_addition):
     from math import floor
+    im_max = im.max()
     print("original shape", im.shape)
     h, w = im.shape[1], im.shape[2]
-    diffY, diffX = 0, 0
-    h1 = (int(16 * floor(h / 16.)))
-    w1 = (int(16 * floor(w / 16.)))
-    diffh = h - h1
-    diffw = w - w1
-    im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
+    # diffY, diffX = 0, 0
+    h1 = (int(16 * int(h / 16.))) + 12
+    w1 = (int(16 * int(w / 16.))) + 12
+    diffY = abs(h - h1)
+    diffX = abs(w - w1)
+    im = F.interpolate(im.unsqueeze(dim=0), size=(h1, w1), mode='bicubic', align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
+    # im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
     # if h % 2:
     #     im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
     # if w % 2:

@@ -45,6 +45,7 @@ def read_hdr_image(path):
         if not isinstance(im, np.ndarray):
             im = im["display_image"].permute(1, 2, 0).detach().cpu().numpy()
     else:
+        print(path)
         raise Exception('invalid hdr file format: {}'.format(file_extension))
     return im
 
@@ -351,14 +352,32 @@ def save_color_tensor_batch_as_numpy(batch, output_path, batch_num):
 def save_gray_tensor_as_numpy(tensor, output_path, im_name):
     tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
+    # gray_im_flat = np.reshape(tensor_0_1, (-1,))
+    # sum_hists, all_bins = np.histogram(gray_im_flat, bins=20, density=True, range=(0, 1))
+    # plt.figure()
+    # plt.subplot(2,2,1)
+    # plt.imshow(tensor_0_1, cmap='gray',vmin=0, vmax=1)
+    # plt.subplot(2,2,2)
+    # plt.bar(all_bins[:-1] + np.diff(all_bins) / 2, sum_hists, np.diff(all_bins))
+
     im = (tensor_0_1 * 255).astype('uint8')
+
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
+    # im = imageio.imread(os.path.join(output_path, im_name + ".png"))
+    # plt.subplot(2, 2, 3)
+    # plt.imshow(im, cmap='gray', vmin=0, vmax=255)
+    # plt.subplot(2, 2, 4)
+    # gray_im_flat = np.reshape(im, (-1,))
+    # sum_hists, all_bins = np.histogram(gray_im_flat, bins=20, density=True, range=(0, 255))
+    # plt.bar(all_bins[:-1] + np.diff(all_bins) / 2, sum_hists, np.diff(all_bins))
+    # plt.show()
+    # plt.close()
 
 
 def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
-    tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
+    tensor = tensor.clamp(0,1).clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
     tensor_0_1 = to_0_1_range_outlier(tensor_0_1)
     im = (tensor_0_1 * 255).astype('uint8')

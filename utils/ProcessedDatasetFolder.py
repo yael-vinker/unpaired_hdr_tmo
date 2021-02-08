@@ -6,6 +6,8 @@ from torchvision.datasets import DatasetFolder
 
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
+import utils.params as params
+import torch.nn.functional as F
 
 IMG_EXTENSIONS_local = ('.npy')
 
@@ -52,6 +54,11 @@ def npy_loader(path, addFrame, hdrMode, normalization, min_stretch,
     data = np.load(path, allow_pickle=True)
     input_im = data[()]["input_image"]
     color_im = data[()]["display_image"]
+    input_im_max, color_im_max = input_im.max(), color_im.max()
+    input_im = F.interpolate(input_im.unsqueeze(dim=0), size=(params.input_size, params.input_size), mode='bicubic',
+                             align_corners=False).squeeze(dim=0).clamp(min=0, max=input_im_max)
+    color_im = F.interpolate(color_im.unsqueeze(dim=0), size=(params.input_size, params.input_size), mode='bicubic',
+                             align_corners=False).squeeze(dim=0).clamp(min=0, max=color_im_max)
     if not hdrMode:
         input_im = get_ldr_im(normalization, input_im, max_stretch, min_stretch)
         return input_im, color_im, input_im, input_im, 0

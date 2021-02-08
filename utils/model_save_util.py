@@ -188,7 +188,6 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
                 #                           output_images_path, model_params, f_factor_path, final_shape_addition)
         else:
             print("%s in already exists" % (img_name))
-        print("took %.4f seconds to run model" % (time.time() - a))
 
 
 def load_g_model(model_params, device, net_path):
@@ -202,10 +201,10 @@ def load_g_model(model_params, device, net_path):
                          padding=model_params["padding"],
                          convtranspose_kernel=model_params["convtranspose_kernel"],
                          up_mode=model_params["up_mode"])
-    a = time.time()
+    # a = time.time()
     checkpoint = torch.load(net_path, map_location=device)
     state_dict = checkpoint['modelG_state_dict']
-    print("from loaded model ", list(state_dict.keys())[0])
+    # print("from loaded model ", list(state_dict.keys())[0])
     if "module" in list(state_dict.keys())[0]:
         from collections import OrderedDict
         new_state_dict = OrderedDict()
@@ -217,7 +216,7 @@ def load_g_model(model_params, device, net_path):
     G_net.load_state_dict(new_state_dict)
     G_net.to(device)
     G_net.eval()
-    print("time took to load weights", time.time() - a)
+    # print("time took to load weights", time.time() - a)
     return G_net
 
 
@@ -225,6 +224,7 @@ def fast_load_inference(im_path, f_factor_path, factor_coeff, device):
     data = np.load(f_factor_path, allow_pickle=True)[()]
     f_factor = data[os.path.splitext(os.path.basename(im_path))[0]] * 255 * factor_coeff
     rgb_img = hdr_image_util.read_hdr_image(im_path)
+    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
     rgb_img = tranforms.hdr_im_transform(rgb_img).to(device)
     # TODO: check what to do with negative exr
     if rgb_img.min() < 0:
@@ -276,13 +276,26 @@ def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path,
     rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
     gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
     with torch.no_grad():
+        print("input", gray_im_log.shape, gray_im_log.max(), gray_im_log.min())
         fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
         print("fake", fake.max(), fake.mean(), fake.min())
-    fake2 = fake.clamp(0.005, 0.995)
+    max_p = np.percentile(fake.cpu().numpy(), 99.5)
+    min_p = np.percentile(fake.cpu().numpy(), 0.5)
+    # print("percentile", max_p, min_p)
+    fake2 = fake.clamp(min_p, max_p)
     fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
     fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
+    h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
+    im_max = fake_im_color2.max()
+    fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - diffY, w - diffX),
+                                   mode='bicubic',
+                                   align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
+
     hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path + "/color_stretch",
-                                                     im_name + "_color_stretch")
+                                                     im_name + "_fake_clamp_and_stretch")
+
+
+
 
 
 def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
