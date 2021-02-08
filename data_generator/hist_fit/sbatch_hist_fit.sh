@@ -2,7 +2,7 @@
 
 input_images_path="/cs/labs/raananf/yael_vinker/dng_collection/"
 mean_hist_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/ldr_avg_hist_900_images_20_bins.npy"
-output_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_hist_fit_factor_dict_split"
+output_path="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/zhang/"
 inpue_names_path_dir="/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/dng_name_split"
 names=("dng[0_100]")
 for ((i = 0; i < ${#names[@]}; ++i)); do
