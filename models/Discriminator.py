@@ -46,7 +46,6 @@ class Flatten(nn.Module):
         return x
 
 
-
 class SimpleDiscriminator(nn.Module):
     def __init__(self, input_size, input_dim, dim, norm, last_activation, simpleD_maxpool, padding):
         super(SimpleDiscriminator, self).__init__()
@@ -62,8 +61,8 @@ class SimpleDiscriminator(nn.Module):
             last_dim = dim * 2
             self.model += [nn.AdaptiveMaxPool2d((1))]
         else:
-
-            last_dim = ((int(input_size / 4) - sub) ** 2)
+            last_dim = ((input_size // 2 - 1) // 2 - 1) ** 2
+            # last_dim = ((int(input_size / 4) - sub) ** 2)
             print("last_dim",last_dim, padding)
             self.model += [nn.LeakyReLU(0.2, inplace=True),
                            nn.Conv2d(dim * 2, 1, kernel_size=1, stride=1, padding=0, bias=True)]

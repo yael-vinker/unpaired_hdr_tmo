@@ -49,8 +49,8 @@ class UNet(nn.Module):
                        convtranspose_kernel=convtranspose_kernel, up_mode=up_mode)
                 )
             else:
-                if i == 1 and not (up_mode):
-                    output_padding=1
+                # if i == 1 and not (up_mode):
+                #     output_padding=1
                 self.up_path.append(
                     up(in_ch, ch // 2, bilinear, layer_factor, network,
                        dilation=dilation, unet_norm=unet_norm, activation=activation,
