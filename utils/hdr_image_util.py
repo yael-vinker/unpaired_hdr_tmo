@@ -6,10 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import skimage
 import torch
-
-import tranforms
 from utils import params
-from math import log, ceil, floor
 
 
 # ====== IMAGE PRINTER ======
@@ -68,14 +65,9 @@ def get_bump(im):
     tmp = im
     tmp[(tmp > 255)] = 255
     tmp = tmp.astype('uint8')
-
     hist, bins = np.histogram(tmp, bins=255)
-
     a0 = np.mean(hist[0:65])
     a1 = np.mean(hist[65:200])
-    # a0 = np.sum(hist[0:65])
-    # a1 = np.sum(hist[65:200])
-
     return a1 / a0
 
 
@@ -99,11 +91,7 @@ def get_brightness_factor(im_hdr, mean_target, factor):
 
     for i in range(1500):
         r = get_bump(im_hdr * f)
-
         im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + factor * np.log10(f * 255)))) * 255)
-        # print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
-        # if r > 1 and i % 5 == 0:
-        #     print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.min(im_gamma)))
         if r > big and np.mean(im_gamma) > mean_target:
             print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
             return f
@@ -111,17 +99,6 @@ def get_brightness_factor(im_hdr, mean_target, factor):
             f = f * 1.01
     print("i[%d]  r[%f]  f[%f]" % (i, r, f))
     return f
-
-
-def print_im_data(J):
-    print("======================")
-    print(np.percentile(J, 50))
-    print(np.percentile(J, 1))
-    print(np.percentile(J, 99))
-    print(np.percentile(J, 100))
-    print(J.min(), J.mean(), J.max())
-    # plt.hist(np.log(J), rwidth=0.9, color='#607c8e', density=True, bins=5)
-    # plt.show()
 
 
 def get_new_brightness_factor(M):
@@ -136,44 +113,23 @@ def get_new_brightness_factor(M):
     npix = J.shape[0]
     Cout = 1
     for i in range(100):
-
         C = np.sqrt(2) ** i
-
         I = J * C
-
         I = I[I < 0.99]
-
         if I.shape[0] / npix < 0.1:
             # Cout = C * np.sqrt(2)
-
             break
 
         h = np.histogram(I, bins=5)
         h = h[0]
-
         if np.mean(h[1]) > 0:
             rat = np.mean(h[0]) / np.mean(h[1])
-
             # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
             if rat > 0.5:
                 Cout = C * np.sqrt(2)
-
             else:
                 print("%d: %.2f (%.2f) [%.4f]" % (i, rat, I.shape[0] / npix, Cout))
     return Cout
-
-
-def closest_power(x, final_shape_addition):
-    # closest_power_ = max(x + ceil(x * 0.2 / 2.) * 2, 2**(x - 1).bit_length())
-    # closest_power_ = max((2 ** (x - 1).bit_length()), int((x + final_shape_addition)))
-    # closest_power_ = max((2 ** (x - 1).bit_length()), int(16 * round((x + final_shape_addition) / 16.)))
-    # closest_power_ = max((2 ** (x - 1).bit_length()), int(16 * round((x + final_shape_addition) / 16.))) + 12
-    divider = 0
-    if (256 + final_shape_addition - 12) % 16 == 0:
-        divider = 12
-    closest_power_ = int(16. * round((x + final_shape_addition - divider) / 16.)) + divider
-    return closest_power_
-    # return 1 if x == 0 else closest_power_ + 12
 
 
 # ====== IMAGE MANIPULATE ======
@@ -185,7 +141,7 @@ def to_gray_tensor(rgb_tensor):
     r_image = rgb_tensor[0]
     g_image = rgb_tensor[1]
     b_image = rgb_tensor[2]
-    grayscale_image = (0.299*r_image + 0.587*g_image + 0.114*b_image)
+    grayscale_image = (0.299 * r_image + 0.587 * g_image + 0.114 * b_image)
     grayscale_image = grayscale_image[None, :, :]
     return grayscale_image
 
@@ -196,6 +152,7 @@ def to_0_1_range(im):
     else:
         im = (im - np.min(im)) / (np.max(im) - np.min(im))
     return im
+
 
 def to_0_1_range_outlier(im):
     im_max = np.percentile(im, 99.0)
@@ -209,21 +166,6 @@ def to_0_1_range_outlier(im):
 
 def to_minus1_1_range(im):
     return 2 * im - 1
-
-
-def back_to_color(im_hdr, fake):
-    if np.min(im_hdr) < 0:
-        im_hdr = im_hdr + np.abs(np.min(im_hdr))
-    im_gray_ = to_gray(im_hdr)
-    norm_im = np.zeros(im_hdr.shape)
-    norm_im[:, :, 0] = im_hdr[:, :, 0] / (im_gray_ + params.epsilon)
-    norm_im[:, :, 1] = im_hdr[:, :, 1] / (im_gray_ + params.epsilon)
-    norm_im[:, :, 2] = im_hdr[:, :, 2] / (im_gray_ + params.epsilon)
-    norm_im = np.power(norm_im, 0.5)
-    norm_im_gray = to_gray(norm_im)
-    norm_im_gray = norm_im_gray[:, :, None]
-    output_im = (norm_im / (norm_im_gray + params.epsilon)) * fake
-    return output_im
 
 
 def back_to_color2(im_hdr, fake):
@@ -286,17 +228,6 @@ def reshape_image_fixed_size(rgb_im):
     return rgb_im
 
 
-def back_to_color_batch(im_hdr_batch, fake_batch):
-    b_size = im_hdr_batch.shape[0]
-    output = []
-    for i in range(b_size):
-        im_hdr = im_hdr_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        fake = fake_batch[i].clone().permute(1, 2, 0).detach().cpu().numpy()
-        norm_im = back_to_color(im_hdr, fake)
-        output.append(torch.from_numpy(norm_im.transpose((2, 0, 1))).float())
-    return torch.stack(output)
-
-
 def back_to_color_batch2(im_hdr_batch, fake_batch):
     b_size = im_hdr_batch.shape[0]
     output = []
@@ -333,6 +264,13 @@ def display_tensor(tensor, cmap):
 
     plt.imshow(im, cmap=cmap, vmin=im.min(), vmax=im.max())
     # plt.show()
+
+def closest_power(x, final_shape_addition):
+    divider = 0
+    if (256 + final_shape_addition - 12) % 16 == 0:
+        divider = 12
+    closest_power_ = int(16. * round((x + final_shape_addition - divider) / 16.)) + divider
+    return closest_power_
 
 
 # ====== SAVE IMAGES ======
