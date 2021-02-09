@@ -1,18 +1,15 @@
 import os
 
-import imageio
-import matplotlib.pyplot as plt
-import numpy as np
-from utils import params
 import torch
-import tranforms as custom_transform
-from utils import printer
+import torch.nn.functional as F
+
+import data_generator.create_dng_npy_data as create_dng_npy_data
 import tranforms
+import tranforms as custom_transform
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
 import utils.plot_util as plot_util
-import data_generator.create_dng_npy_data as create_dng_npy_data
-import torch.nn.functional as F
+from utils import printer
 
 
 class Tester:
@@ -92,7 +89,8 @@ class Tester:
             self.test_G_losses_d.append(test_errGd.item())
             if self.ssim_loss_g_factor != 0:
                 if self.to_crop:
-                    hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input, self.final_shape_addition, self.final_shape_addition)
+                    hdr_input = data_loader_util.crop_input_hdr_batch(hdr_input, self.final_shape_addition,
+                                                                      self.final_shape_addition)
                 fake_rgb_n = fake + 1
                 hdr_input_rgb_n = hdr_input + 1
                 test_errGssim = self.ssim_loss_g_factor * (1 - ssim_loss(fake_rgb_n, hdr_input_rgb_n))
@@ -181,51 +179,13 @@ class Tester:
                     print("fake", fake.max(), fake.mean(), fake.min())
                 fake2 = fake.clamp(0.005, 0.995)
                 fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
-                fake_im_color2 = hdr_image_util.back_to_color_tensor(im_hdr_original, fake_im_gray_stretch[0], self.device)
+                fake_im_color2 = hdr_image_util.back_to_color_tensor(im_hdr_original, fake_im_gray_stretch[0],
+                                                                     self.device)
                 h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
                 im_max = fake_im_color2.max()
-                fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - im_and_q['diffY'], w - im_and_q['diffX']), mode='bicubic',
-                              align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
+                fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - im_and_q['diffY'],
+                                                                                      w - im_and_q['diffX']),
+                                               mode='bicubic',
+                                               align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
                 hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, out_dir + "/color_stretch",
                                                                  im_and_q["im_name"] + "_color_stretch")
-
-                # if self.manual_d_training:
-                #     file_name = im_and_q["im_name"] + "_1"
-                #     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                #                                       file_name, 1.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
-                #     if not self.d_weight_mul_mode == "single":
-                #         file_name = im_and_q["im_name"] + "_0"
-                #         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                #                                           file_name, 0.0, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
-                #         file_name = im_and_q["im_name"] + "_0.5"
-                #         self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                #                                           file_name, 0.5, im_and_q['diffX'], im_and_q['diffY'],im_and_q)
-                #
-                # else:
-                #     file_name = im_and_q["im_name"]
-                #     self.run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original, out_dir,
-                #                                       file_name, None, im_and_q['diffX'], im_and_q['diffY'], im_and_q)
-
-    def run_model_on_im_and_save_res(self, im_log_normalize_tensor, netG, im_hdr_original,
-                                     out_dir, file_name, additional_channel, diffX, diffY, im_and_q):
-        if additional_channel is not None:
-            weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
-                im_log_normalize_tensor)
-            im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
-        with torch.no_grad():
-            fake = netG(im_log_normalize_tensor.detach(), apply_crop=self.to_crop, diffY=diffY, diffX=diffX)
-        im_hdr_original = im_hdr_original.unsqueeze(dim=0)
-        if self.to_crop:
-            im_hdr_original = data_loader_util.crop_input_hdr_batch(im_hdr_original, diffY=diffY, diffX=diffX)
-        printer.print_g_progress(fake, file_name)
-        filne_name_c = file_name + "_color_stretch"
-        fake_im_gray_stretch = fake[0]
-        fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
-                                                           fake_im_gray_stretch.unsqueeze(dim=0))
-        hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color[0], out_dir, filne_name_c)
-
-        file_name = file_name + "_gray_stretch"
-        fake_im_gray_stretch = (fake[0] - fake[0].min()) / (fake[0].max() - fake[0].min())
-        fake_im_color = hdr_image_util.back_to_color_batch(im_hdr_original,
-                                                           fake_im_gray_stretch.unsqueeze(dim=0))
-        hdr_image_util.save_color_tensor_as_numpy(fake_im_color[0], out_dir, file_name)

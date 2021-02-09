@@ -2,21 +2,19 @@ from __future__ import print_function
 
 import os
 import time
+
 import matplotlib.pyplot as plt
+import numpy as np
 import torch.utils.data
 from torch import autograd
-import numpy as np
 
 import Tester
-import matplotlib
-# matplotlib.use('Agg')
-from utils import printer, params
-from models import struct_loss
 import utils.data_loader_util as data_loader_util
 import utils.model_save_util as model_save_util
 import utils.plot_util as plot_util
-import torch.nn.functional as F
 from fid import fid_score
+from models import struct_loss
+from utils import printer, params
 
 
 class GanTrainer:
@@ -52,11 +50,11 @@ class GanTrainer:
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
             self.struct_loss = struct_loss.StructLoss(window_size=opt.ssim_window_size,
-                                                pyramid_weight_list=opt.pyramid_weight_list,
-                                                pyramid_pow=False, use_c3=False,
-                                                struct_method=opt.struct_method,
-                                                crop_input=opt.add_frame,
-                                                final_shape_addition=opt.final_shape_addition)
+                                                      pyramid_weight_list=opt.pyramid_weight_list,
+                                                      pyramid_pow=False, use_c3=False,
+                                                      struct_method=opt.struct_method,
+                                                      crop_input=opt.add_frame,
+                                                      final_shape_addition=opt.final_shape_addition)
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.struct_loss_factor = opt.ssim_loss_factor
@@ -106,7 +104,6 @@ class GanTrainer:
             print("Starting Discriminator Pre-training Loop...")
             for epoch in range(self.d_pretrain_epochs):
                 self.train_epoch()
-                # self.lr_scheduler_D.step()
                 printer.print_epoch_acc_summary(epoch, self.d_pretrain_epochs, self.accDfake, self.accDreal, self.accG)
         self.save_loss_plot(self.d_pretrain_epochs, self.output_dir)
         self.D_losses, self.D_loss_fake, self.D_loss_real = [], [], []
@@ -137,24 +134,17 @@ class GanTrainer:
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
                 hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
                 gamma_factor = data_hdr[params.gamma_factor].to(self.device)
-                if self.manual_d_training and not self.d_weight_mul_mode == "single":
-                    # self.adv_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
-                    #                        (1 - self.d_weight_mul) * self.basic_details_D_weights
-                    self.pyramid_weight_list = self.d_weight_mul * self.strong_details_D_weights + \
-                                           (torch.ones(1).to(self.device) - self.d_weight_mul) * self.basic_details_D_weights
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 if not self.pre_train_mode:
-                    self.train_G(hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor)
+                    self.train_G(hdr_input, hdr_original_gray_norm)
         self.update_accuracy()
 
     def train_D(self, hdr_input, real_ldr):
         """
-        Update D network: maximize log(D(x)) + log(1 - D(G(z)))
-        :param real_hdr_cpu: HDR images as input to G to generate fake data
-        :param real_ldr: LDR images as real input to D
-        :param label: Tensor contains real labels for first loss
-        :return: fake (Tensor) result of G on hdr_data, for G train
+        Update D network
+        :param hdr_input: HDR images as input to G to generate fake data
+        :param real_ldr: "real" LDR images as input to D
         """
         # Train with all-real batch
         self.netD.zero_grad()
@@ -169,7 +159,9 @@ class GanTrainer:
         self.D_loss_real.append(self.errD_real.item())
 
     def D_real_pass(self, real_ldr):
-        # Forward pass real batch through D
+        """
+        Forward pass real batch through D
+        """
         output_on_real = self.netD(real_ldr)
         if "multiLayerD" in self.d_model:
             loss = []
@@ -191,7 +183,9 @@ class GanTrainer:
         self.errD_real.backward()
 
     def D_fake_pass(self, hdr_input):
-        # Train with all-fake batch
+        """
+        Forward pass fake batch through D
+        """
         # Generate fake image batch with G
         if not self.pre_train_mode:
             fake = self.netG(hdr_input, diffY=self.final_shape_addition, diffX=self.final_shape_addition)
@@ -200,7 +194,6 @@ class GanTrainer:
             if self.to_crop:
                 fake = data_loader_util.crop_input_hdr_batch(hdr_input, self.final_shape_addition,
                                                              self.final_shape_addition)
-
         # Classify all fake batch with D
         output_on_fake = self.netD(fake.detach())
 
@@ -224,11 +217,11 @@ class GanTrainer:
             # Calculate the gradients for this batch
         self.errD_fake.backward()
 
-    def train_G(self, hdr_input, hdr_original_gray_norm, hdr_original_gray, gamma_factor):
+    def train_G(self, hdr_input, hdr_original_gray_norm):
         """
-        Update G network: maximize log(D(G(z))) and minimize loss_wind
-        :param label: Tensor contains real labels for first loss
-        :param hdr_input: (Tensor)
+        Update G network: naturalness loss and structural loss
+        :param hdr_input: HDR input (after pre-process) to be fed to G.
+        :param hdr_original_gray_norm: HDR input (without pre-process) for post-process.
         """
         self.netG.zero_grad()
         # Since we just updated D, perform another forward pass of all-fake batch through D
@@ -275,7 +268,7 @@ class GanTrainer:
     def update_struct_loss(self, hdr_input, hdr_input_original_gray_norm, fake):
         if self.struct_loss_factor:
             self.errG_struct = self.struct_loss_factor * self.struct_loss(fake, hdr_input_original_gray_norm,
-                                                                            hdr_input, self.pyramid_weight_list)
+                                                                          hdr_input, self.pyramid_weight_list)
             self.errG_struct.backward()
             self.G_loss_struct.append(self.errG_struct.item())
 
@@ -352,16 +345,10 @@ class GanTrainer:
                                          self.mse_loss, self.struct_loss, self.num_epochs, self.to_crop)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
-        print(self.output_dir)
         if epoch == self.final_epoch:
             model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
                                        self.netD, self.optimizerD)
             self.save_data_for_assessment()
-
-    def save_gradient_flow(self, epoch):
-        new_out_dir = os.path.join(self.output_dir, "gradient_flow")
-        plt.savefig(os.path.join(new_out_dir, "gradient_flow_epoch=" + str(epoch)))
-        plt.close()
 
     def save_data_for_assessment(self):
         model_params = model_save_util.get_model_params(self.output_dir,
@@ -376,7 +363,8 @@ class GanTrainer:
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):
         input_images_path = model_save_util.get_hdr_source_path(data_source)
-        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log, self.use_new_f, self.use_hist_fit)
+        f_factor_path = model_save_util.get_f_factor_path(data_source, self.gamma_log, self.use_new_f,
+                                                          self.use_hist_fit)
         output_images_path = os.path.join(self.output_dir, data_format + "_" + str(self.final_epoch))
         if not os.path.exists(output_images_path):
             os.mkdir(output_images_path)
@@ -387,8 +375,9 @@ class GanTrainer:
                                           output_images_path, f_factor_path, None, input_images_path,
                                           self.final_shape_addition)
         if data_format == "npy":
-            fid_res_color_stretch = fid_score.calculate_fid_given_paths([self.fid_real_path, output_images_path_color_stretch],
-                                                batch_size=20, cuda=False, dims=768)
+            fid_res_color_stretch = fid_score.calculate_fid_given_paths(
+                [self.fid_real_path, output_images_path_color_stretch],
+                batch_size=20, cuda=False, dims=768)
             if os.path.exists(self.fid_res_path):
                 data = np.load(self.fid_res_path, allow_pickle=True)[()]
                 data[model_params["model_name"]] = fid_res_color_stretch

@@ -1,3 +1,7 @@
+# ================================================
+# This is the implementation
+# ================================================
+
 import torch
 import torch.optim as optim
 
@@ -35,5 +39,3 @@ if __name__ == '__main__':
 
     gan_trainer = GanTrainer.GanTrainer(opt, net_G, net_D, optimizer_G, optimizer_D, lr_scheduler_G, lr_scheduler_D)
     gan_trainer.train()
-
-

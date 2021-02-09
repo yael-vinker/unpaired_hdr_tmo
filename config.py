@@ -37,8 +37,7 @@ def parse_arguments():
     parser.add_argument("--d_nlayers", type=int, default=3)
     parser.add_argument("--d_norm", type=str, default='none')
     parser.add_argument('--last_layer', type=str, default='sigmoid', help="none/tanh")
-    parser.add_argument('--d_model', type=str, default='original', help="original/patchD/multiLayerD")
-    # parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
+    parser.add_argument('--d_model', type=str, default='multiLayerD_simpleD', help="original/patchD/multiLayerD")
 
     parser.add_argument('--num_D', type=int, default=3, help="if d_model is multiLayerD then specify numD")
     parser.add_argument('--d_last_activation', type=str, default='sigmoid', help="sigmoid/none")
@@ -58,11 +57,11 @@ def parse_arguments():
     # ====== LOSS ======
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
-    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,2,1")
-    parser.add_argument('--struct_method', type=str, default="gamma_ssim") # hdr_ssim, gamma_ssim, div_ssim, laplace_ssim
+    parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,1,1")
+    parser.add_argument('--struct_method', type=str, default="gamma_ssim")
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
-    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="2,2,6")
+    parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
 
     # ====== DATASET ======
     parser.add_argument("--data_root_npy", type=str, default=params.train_dataroot_hdr)
@@ -74,7 +73,7 @@ def parse_arguments():
     parser.add_argument('--use_factorise_data', type=int, default=1)
     parser.add_argument('--factor_coeff', type=float, default=0.1)
     parser.add_argument('--gamma_log', type=int, default=10)
-    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist) #52180538.8149
+    parser.add_argument('--f_factor_path', type=str, default=params.f_factor_path_hist)
     parser.add_argument('--use_new_f', type=int, default=0)
     parser.add_argument('--use_contrast_ratio_f', type=int, default=0)
     parser.add_argument('--use_hist_fit', type=int, default=1)

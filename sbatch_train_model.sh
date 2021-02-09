@@ -35,7 +35,7 @@ d_model="multiLayerD_simpleD"
 num_D=3
 d_last_activation="sigmoid"
 stretch_g="none"
-g_doubleConvTranspose=0
+g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=0
 bilinear=0
@@ -85,10 +85,6 @@ fid_res_path="/cs/labs/raananf/yael_vinker/2021/Feb/final_code/results_02_08/"
 
 
 test_names=("lr_reg")
-up_mode_lst=(0)
-add_frame_lst=(0)
-final_shape_addition_lst=(0)
-g_doubleConvTranspose_lst=(1)
 
 pyramid_weight_list_lst=("1,1,1")
 adv_weight_list_lst=("1,1,1")
@@ -96,20 +92,11 @@ adv_weight_list_lst=("1,1,1")
 for ((i = 0; i < ${#pyramid_weight_list_lst[@]}; ++i)); do
 
   test_name="${test_names[0]}"
-  up_mode="${up_mode_lst[0]}"
-  add_frame="${add_frame_lst[0]}"
-  final_shape_addition="${final_shape_addition_lst[0]}"
-  g_doubleConvTranspose="${g_doubleConvTranspose_lst[0]}"
   pyramid_weight_list="${pyramid_weight_list_lst[i]}"
   adv_weight_list="${adv_weight_list_lst[i]}"
 
   echo "======================================================"
   echo "tests_name $test_name"
-  echo "up_mode $up_mode"
-  echo "add_frame $add_frame"
-  echo "final_shape_addition $final_shape_addition"
-  echo "g_doubleConvTranspose $g_doubleConvTranspose"
-  echo "rseed $change_random_seed"
   echo "adv_weight_list $adv_weight_list"
   echo "pyramid_weight_list $pyramid_weight_list"
 
