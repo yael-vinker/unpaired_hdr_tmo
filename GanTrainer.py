@@ -55,6 +55,13 @@ class GanTrainer:
                                                       struct_method=opt.struct_method,
                                                       crop_input=opt.add_frame,
                                                       final_shape_addition=opt.final_shape_addition)
+        if self.struct_method == "gamma_ssim":
+            self.struct_loss = struct_loss.SSIMLoss(window_size=opt.ssim_window_size,
+                                                      pyramid_weight_list=opt.pyramid_weight_list,
+                                                      pyramid_pow=False, use_c3=False,
+                                                      struct_method=opt.struct_method,
+                                                      crop_input=opt.add_frame,
+                                                      final_shape_addition=opt.final_shape_addition)
 
         self.loss_g_d_factor = opt.loss_g_d_factor
         self.struct_loss_factor = opt.ssim_loss_factor

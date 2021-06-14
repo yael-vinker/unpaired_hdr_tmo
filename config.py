@@ -58,7 +58,7 @@ def parse_arguments():
     parser.add_argument('--train_with_D', type=int, default=1)
     parser.add_argument("--loss_g_d_factor", type=float, default=1)
     parser.add_argument('--adv_weight_list', help='delimited list input', type=str, default="1,1,1")
-    parser.add_argument('--struct_method', type=str, default="gamma_ssim")
+    parser.add_argument('--struct_method', type=str, default="gamma_struct")
     parser.add_argument("--ssim_loss_factor", type=float, default=1)
     parser.add_argument("--ssim_window_size", type=int, default=5)
     parser.add_argument('--pyramid_weight_list', help='delimited list input', type=str, default="1,1,1")
@@ -238,8 +238,6 @@ def get_losses_params(opt):
 
     if opt.ssim_loss_factor:
         struct_loss = opt.struct_method
-        if opt.struct_method == "gamma_ssim":
-            struct_loss = "struct"
         if opt.manual_d_training:
             result_dir_pref += "_interp_" + opt.d_weight_mul_mode
             if opt.d_weight_mul_mode == "double":

@@ -12,7 +12,7 @@ from utils import params, data_loader_util
 # =======================================
 class StructLoss(torch.nn.Module):
     def __init__(self, pyramid_weight_list, window_size=5, pyramid_pow=False, use_c3=False,
-                 apply_sig_mu_ssim=False, struct_method="gamma_ssim", std_norm_factor=1, crop_input=True,
+                 apply_sig_mu_ssim=False, struct_method="gamma_struct", std_norm_factor=1, crop_input=True,
                  final_shape_addition=0):
         super(StructLoss, self).__init__()
         self.window_size = window_size
