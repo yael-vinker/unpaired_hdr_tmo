@@ -8,7 +8,7 @@ change_random_seed=0
 batch_size=16
 num_epochs=325
 G_lr=0.00001
-D_lr=0.00001
+D_lr=0.000015
 lr_decay_step=50
 d_pretrain_epochs=50
 use_xaviar=1
@@ -23,7 +23,7 @@ basic_details_D_weights="0.8,0.5,0"
 model="unet"
 filters=32
 unet_depth=4
-con_operator="square_and_square_root"
+con_operator="square_root"
 unet_norm="none"
 g_activation="relu"
 
@@ -35,7 +35,7 @@ d_model="multiLayerD_simpleD"
 num_D=3
 d_last_activation="sigmoid"
 stretch_g="none"
-g_doubleConvTranspose=0
+g_doubleConvTranspose=1
 d_fully_connected=0
 simpleD_maxpool=0
 bilinear=0
@@ -50,11 +50,13 @@ output_dim=1
 # ====== LOSS ======
 train_with_D=1
 loss_g_d_factor=1
-adv_weight_list="1,1,0"
-struct_method="gamma_ssim"
+#adv_weight_list="1,1,0"
+adv_weight_list="1,1,1"
+struct_method="gamma_struct"
 ssim_loss_factor=1
 ssim_window_size=5
-pyramid_weight_list="0.2,0.4,0.6"
+#pyramid_weight_list="0.2,0.4,0.6"
+pyramid_weight_list="1,1,1"
 
 # ====== DATASET ======
 data_root_npy="/cs/snapless/raananf/yael_vinker/data/new_data_crop_fix/train/"
