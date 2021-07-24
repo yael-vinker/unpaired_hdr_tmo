@@ -1,9 +1,12 @@
 import argparse
 import os
-import torch
-from utils import params
 import random
+
 import numpy as np
+import torch
+
+from utils import params
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parser for gan network")
@@ -13,7 +16,7 @@ def parse_arguments():
 
     # ====== TRAINING ======
     parser.add_argument("--batch_size", type=int, default=2)
-    parser.add_argument("--num_epochs", type=int, default=5)
+    parser.add_argument("--num_epochs", type=int, default=1)
     parser.add_argument("--G_lr", type=float, default=params.lr)
     parser.add_argument("--D_lr", type=float, default=params.lr)
     parser.add_argument("--lr_decay_step", type=float, default=1)
@@ -27,7 +30,7 @@ def parse_arguments():
     parser.add_argument("--basic_details_D_weights", type=str, default="0.1,0.1,0.1")
 
     # ====== ARCHITECTURES ======
-    parser.add_argument("--model", type=str, default=params.unet_network)  # up sampling is the default
+    parser.add_argument("--model", type=str, default=params.unet_network)
     parser.add_argument("--filters", type=int, default=params.filters)
     parser.add_argument("--unet_depth", type=int, default=4)
     parser.add_argument("--con_operator", type=str, default=params.square_and_square_root)
@@ -89,7 +92,8 @@ def parse_arguments():
     parser.add_argument("--epoch_to_save", type=int, default=2)
     parser.add_argument("--result_dir_prefix", type=str, default="")
     parser.add_argument("--final_epoch", type=int, default=1)
-    parser.add_argument("--fid_real_path", type=str, default="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2") #default="/Users/yaelvinker/PycharmProjects/lab/fid/fake_jpg")#
+    parser.add_argument("--fid_real_path", type=str,
+                        default="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2")  # default="/Users/yaelvinker/PycharmProjects/lab/fid/fake_jpg")#
     parser.add_argument("--fid_res_path", type=str,
                         default="/Users/yaelvinker/PycharmProjects/lab/results/")
 
@@ -119,8 +123,10 @@ def get_opt():
     opt.adv_weight_list = torch.FloatTensor([float(item) for item in opt.adv_weight_list.split(',')]).to(
         device)
 
-    opt.strong_details_D_weights = torch.FloatTensor([float(item) for item in opt.strong_details_D_weights.split(',')]).to(device)
-    opt.basic_details_D_weights = torch.FloatTensor([float(item) for item in opt.basic_details_D_weights.split(',')]).to(device)
+    opt.strong_details_D_weights = torch.FloatTensor(
+        [float(item) for item in opt.strong_details_D_weights.split(',')]).to(device)
+    opt.basic_details_D_weights = torch.FloatTensor(
+        [float(item) for item in opt.basic_details_D_weights.split(',')]).to(device)
     return opt
 
 
@@ -203,9 +209,6 @@ def get_training_params(opt):
     result_dir_pref += opt.padding + "_"
     if opt.change_random_seed:
         result_dir_pref = result_dir_pref + "rseed" + str(opt.manual_seed)
-    # if opt.d_pretrain_epochs:
-    #     result_dir_pref = result_dir_pref + "pretrain" + str(opt.d_pretrain_epochs) + "_"
-    # result_dir_pref += "lr_g%s_d%s_decay%d_" % (str(opt.G_lr), str(opt.D_lr), opt.lr_decay_step)
     if not opt.add_frame:
         result_dir_pref = result_dir_pref + "_noframe_"
     else:
@@ -216,7 +219,6 @@ def get_training_params(opt):
 
 
 def get_data_params(opt):
-    # result_dir_pref = "DATA_"
     result_dir_pref = opt.data_trc + "_" + str(opt.factor_coeff)
     if opt.use_new_f:
         result_dir_pref = result_dir_pref + "new_f_"
@@ -230,12 +232,8 @@ def get_data_params(opt):
 
 
 def get_losses_params(opt):
-    # result_dir_pref = "LOSS_"
     result_dir_pref = ""
     result_dir_pref = result_dir_pref + "d" + str(opt.loss_g_d_factor)
-
-    #     result_dir_pref = result_dir_pref + "apply_wind_norm_" + opt.wind_norm_option + "_factor_" + str(opt.std_norm_factor)
-
     if opt.ssim_loss_factor:
         struct_loss = opt.struct_method
         if opt.manual_d_training:
@@ -244,10 +242,8 @@ def get_losses_params(opt):
                 result_dir_pref += "_[(" + opt.strong_details_D_weights + ")_(" + opt.basic_details_D_weights + ")]_"
             else:
                 result_dir_pref += "_%s_%s[%s]_" % (struct_loss, str(opt.ssim_loss_factor), opt.pyramid_weight_list)
-        # if opt.apply_wind_norm:
         else:
             result_dir_pref += "_%s_%s[%s]_" % (struct_loss, str(opt.ssim_loss_factor), opt.pyramid_weight_list)
-        # result_dir_pref = result_dir_pref + "_" + opt.struct_method + str(opt.ssim_loss_factor) + "_" + opt.pyramid_weight_list + "_"
     return result_dir_pref
 
 
@@ -259,10 +255,9 @@ def create_dir(opt):
         result_dir_pref = result_dir_pref + "no_D_"
     else:
         result_dir_pref += get_D_params(opt)
-    result_dir_pref += "_" + get_G_params(opt) + "_" + get_losses_params(opt) + "_" + get_training_params(opt)\
+    result_dir_pref += "_" + get_G_params(opt) + "_" + get_losses_params(opt) + "_" + get_training_params(opt) \
                        + "_" + get_data_params(opt)
     output_dir = result_dir_pref
-    print(output_dir)
 
     model_path = params.models_save_path
     loss_graph_path = params.loss_path
@@ -271,6 +266,8 @@ def create_dir(opt):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print("Directory ", output_dir, " created")
+    else:
+        print("Directory ", output_dir, " exists")
     if not os.path.exists(opt.fid_res_path):
         os.makedirs(opt.fid_res_path)
     opt.fid_res_path = os.path.join(opt.fid_res_path, "fid_results.npy")
