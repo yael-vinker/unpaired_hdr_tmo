@@ -213,8 +213,8 @@ def print_opt(opt):
     print("G LR: ", opt.G_lr)
     print("D LR: ", opt.D_lr)
     print("LOSS G D FACTOR:", opt.loss_g_d_factor)
-    print("SSIM LOSS FACTOR:", opt.ssim_loss_factor)
-    print("SSIM PYRAMID WEIGHTS:", opt.pyramid_weight_list)
+    print("STRUCT LOSS FACTOR:", opt.ssim_loss_factor)
+    print("STRUCT LOSS PYRAMID WEIGHTS:", opt.pyramid_weight_list)
     print("FACTORISED DATA:", opt.use_factorise_data)
     print("=====================\n")
 

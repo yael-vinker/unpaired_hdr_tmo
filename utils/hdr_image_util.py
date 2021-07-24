@@ -156,12 +156,14 @@ def to_0_1_range(im):
 
 def to_0_1_range_outlier(im):
     im_max = np.percentile(im, 99.0)
-    im_min = np.percentile(im, 1.0)
+    # TODO: check this parameter
+    # im_min = np.percentile(im, 1.0)
+    im_min = np.percentile(im, 0.1)
     if np.max(im) - np.min(im) == 0:
         im = (im - im_min) / (im_max - im_min + params.epsilon)
     else:
         im = (im - im_min) / (im_max - im_min)
-    return np.clip(im,0,1)
+    return np.clip(im, 0, 1)
 
 
 def to_minus1_1_range(im):
