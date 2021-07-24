@@ -50,12 +50,10 @@ output_dim=1
 # ====== LOSS ======
 train_with_D=1
 loss_g_d_factor=1
-#adv_weight_list="1,1,0"
-adv_weight_list="1,1,1"
+adv_weight_list="1,1,0"
 struct_method="gamma_struct"
 ssim_loss_factor=1
 ssim_window_size=5
-#pyramid_weight_list="0.2,0.4,0.6"
 pyramid_weight_list="1,1,1"
 
 # ====== DATASET ======
@@ -80,10 +78,12 @@ normalization="bugy_max_normalization"
 
 # ====== SAVE RESULTS ======
 epoch_to_save=40
-result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_26/results_10_26/push_test/"
+#result_dir_prefix="/cs/labs/raananf/yael_vinker/Oct/10_26/results_10_26/push_test/"
+result_dir_prefix="/cs/labs/raananf/yael_vinker/2021/ICCV_rebuttal/results_06_14/"
 final_epoch=320
 fid_real_path="/cs/snapless/raananf/yael_vinker/data/div2k_large/test_half2"
-fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_26/fid_res/"
+#fid_res_path="/cs/labs/raananf/yael_vinker/Oct/10_26/fid_res/"
+fid_res_path="/cs/labs/raananf/yael_vinker/2021/ICCV_rebuttal/results/fid_res/"
 
 
 test_names=("test_git")
@@ -94,7 +94,7 @@ for ((i = 0; i < ${#test_names[@]}; ++i)); do
   echo "======================================================"
   echo "tests_name $test_name"
 
-  sbatch --mem=8000m -c2 --gres=gpu:1 --time=2-0 train.sh \
+  sbatch -J "vanilla_110" -o "slurm-vanilla_110.out" --mem=8000m -c2 --gres=gpu:1 --time=2-0 train.sh \
     $checkpoint \
     $change_random_seed \
     $batch_size \
