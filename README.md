@@ -32,6 +32,7 @@ pip install -r requirements.txt
 
 <br>
 <br>
+
 ## Quickstart (Run Demo Locally)
 
 #### Run a model on your own image
