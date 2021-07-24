@@ -5,7 +5,7 @@ Pytorch implementation of our method for HDR image tome mapping using GAN.
 <br>
 <br>
 
-![](results/teaser.png?raw=true)
+![](readme_images/teaser.png?raw=true)
 <!-- <p align='center'>  
   <img src='results/teaser.png' />
 </p> -->
