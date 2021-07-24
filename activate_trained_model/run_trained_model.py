@@ -27,6 +27,7 @@ def run_trained_model(args):
     train_settings_path = os.path.join(args.model_path, "run_settings.npy")
     output_images_path = os.path.join(args.output_path)
     model_params = model_save_util.get_model_params(args.model_name, train_settings_path)
+    # model_params["factor_coeff"] = 0.2
     if not os.path.exists(output_images_path):
         os.makedirs(output_images_path)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
@@ -46,8 +47,8 @@ def run_model_on_path(model_params, device, net_path, input_images_path, output_
         if os.path.splitext(img_name)[1] in extensions:
             fast_run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
                                            output_images_path, model_params, f_factor_path, final_shape_addition)
-        else:
-            raise Exception('invalid hdr file format: %s' % os.path.splitext(img_name)[1])
+        # else:
+        #     raise Exception('invalid hdr file format: %s' % os.path.splitext(img_name)[1])
 
 
 def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
@@ -59,6 +60,8 @@ def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path,
         fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
     max_p = np.percentile(fake.cpu().numpy(), 99.5)
     min_p = np.percentile(fake.cpu().numpy(), 0.5)
+    # max_p = np.percentile(fake.cpu().numpy(), 100)
+    # min_p = np.percentile(fake.cpu().numpy(), 0.0001)
     fake2 = fake.clamp(min_p, max_p)
     fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
     fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
@@ -159,7 +162,10 @@ def weights_init_xavier(m):
 default_params = {"model_path": "model_weights",
                   "model_name": "11_08_lr15D_size268_D_[1,1,1]_pad_0_G_ssr_doubleConvT__d1.0_struct_1.0[1,1,1]__trans2_replicate__noframe__min_log_0.1hist_fit_",
                   "input_images_path": "input_images",
+                  # "input_images_path": "/Users/yaelvinker/Documents/university/lab/ECCV/improve_images_for_paper/input",
                   "f_factor_path": "/Users/yaelvinker/PycharmProjects/lab/run_trained_model/lambda_data/exr_hist_dict_20_bins.npy",
+                  # "output_path": "output_original_images",
+                  # "output_path": "/Users/yaelvinker/Documents/university/lab/ECCV/improve_images_for_paper/double3_F/",
                   "output_path": "output",
                   "mean_hist_path": "lambda_data/ldr_avg_hist_900_images_20_bins.npy",
                   "lambda_output_path": "lambda_data",
