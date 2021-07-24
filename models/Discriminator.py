@@ -75,7 +75,6 @@ class SimpleDiscriminator(nn.Module):
         return self.model(x)
 
 
-
 class NLayerDiscriminator(nn.Module):
     """Defines a PatchGAN discriminator"""
 
@@ -154,93 +153,3 @@ class MultiscaleDiscriminator(nn.Module):
                 # input_downsampled = self.downsample(input_downsampled)
                 input_downsampled = F.interpolate(input_downsampled, scale_factor=0.5, mode='bicubic', align_corners=False)
         return result
-
-# class NLayerDiscriminator(nn.Module):
-#     """Defines a PatchGAN discriminator"""
-#
-#     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer="batch_norm", last_activation="none"):
-#         """Construct a PatchGAN discriminator
-#         Parameters:
-#             input_nc (int)  -- the number of channels in input images
-#             ndf (int)       -- the number of filters in the last conv layer
-#             n_layers (int)  -- the number of conv layers in the discriminator
-#             norm_layer      -- normalization layer
-#         """
-#         super(NLayerDiscriminator, self).__init__()
-#         kw = 4
-#         # import numpy as np
-#         padw = 2
-#         # print("padw", padw)
-#         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]
-#
-#         nf = ndf
-#         for n in range(1, n_layers):
-#             nf_prev = nf
-#             nf = min(nf * 2, 512)
-#             sequence += [
-#                 nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
-#                 nn.LeakyReLU(0.2, True)
-#             ]
-#
-#         nf_prev = nf
-#         nf = min(nf * 2, 512)
-#         sequence += [
-#             nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
-#             nn.LeakyReLU(0.2, True)
-#         ]
-#
-#         sequence += [nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]
-#         if last_activation == "sigmoid":
-#             sequence += [nn.Sigmoid()]
-#         self.model = nn.Sequential(*sequence)
-#
-#     def forward(self, input):
-#         """Standard forward."""
-#         return self.model(input)
-
-# class NLayerDiscriminator(nn.Module):
-#     """Defines a PatchGAN discriminator"""
-#
-#     def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, last_activation="none"):
-#         """Construct a PatchGAN discriminator
-#         Parameters:
-#             input_nc (int)  -- the number of channels in input images
-#             ndf (int)       -- the number of filters in the last conv layer
-#             n_layers (int)  -- the number of conv layers in the discriminator
-#             norm_layer      -- normalization layer
-#         """
-#         super(NLayerDiscriminator, self).__init__()
-#         norm_layer = nn.BatchNorm2d
-#         # if type(norm_layer) == functools.partial:  # no need to use bias as BatchNorm2d has affine parameters
-#         #     use_bias = norm_layer.func == nn.InstanceNorm2d
-#         # else:
-#         use_bias = norm_layer == nn.InstanceNorm2d
-#
-#         kw = 4
-#         padw = 1
-#         sequence = [nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]
-#         nf_mult = 1
-#         nf_mult_prev = 1
-#         for n in range(1, n_layers):  # gradually increase the number of filters
-#             nf_mult_prev = nf_mult
-#             nf_mult = min(2 ** n, 8)
-#             sequence += [
-#                 nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw, bias=use_bias),
-#                 norm_layer(ndf * nf_mult),
-#                 nn.LeakyReLU(0.2, True)
-#             ]
-#
-#         nf_mult_prev = nf_mult
-#         nf_mult = min(2 ** n_layers, 8)
-#         sequence += [
-#             nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw, bias=use_bias),
-#             norm_layer(ndf * nf_mult),
-#             nn.LeakyReLU(0.2, True)
-#         ]
-#
-#         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]  # output 1 channel prediction map
-#         self.model = nn.Sequential(*sequence)
-#
-#     def forward(self, input):
-#         """Standard forward."""
-#         return self.model(input)

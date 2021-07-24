@@ -1,7 +1,7 @@
 from torch import nn
 import torch
-import utils.printer
 import utils.params as params
+
 
 class Conv2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, norm='none', activation="none"):
@@ -34,6 +34,7 @@ class Conv2dBlock(nn.Module):
         if self.activation is not None:
             out = self.activation(out)
         return out
+
 
 class ConvTranspose2dBlock(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, stride, padding=0, activation="none"):
@@ -77,9 +78,9 @@ class Exp(nn.Module):
     def __init__(self):
         super(Exp, self).__init__()
 
-
     def forward(self, x):
         return torch.exp(x) - 1
+
 
 class MySig(nn.Module):
     def __init__(self, factor):
@@ -135,16 +136,3 @@ class MinMaxNormalization(nn.Module):
         x_max = x.view(x.shape[0], -1).max(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
         x_min = x.view(x.shape[0], -1).min(dim=1)[0].reshape(x.shape[0], 1, 1, 1)
         return (x - x_min) / (x_max - x_min + params.epsilon)
-
-
-#
-# class LambdaLR:
-#     def __init__(self, n_epochs, offset, decay_start_epoch):
-#         assert (n_epochs - decay_start_epoch) > 0, "Decay must start before the training session ends!"
-#         self.n_epochs = n_epochs
-#         self.offset = offset
-#         self.decay_start_epoch = decay_start_epoch
-#
-#     def step(self, epoch):
-#         return 1.0 - max(0, epoch + self.offset - self.decay_start_epoch) / (self.n_epochs - self.decay_start_epoch)
-#
