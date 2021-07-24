@@ -3,9 +3,7 @@ import os
 import torch
 import torch.nn.functional as F
 
-import data_generator.create_dng_npy_data as create_dng_npy_data
 import tranforms
-import tranforms as custom_transform
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
 import utils.plot_util as plot_util
@@ -43,13 +41,10 @@ class Tester:
             im_path = os.path.join(root, img_name)
             print(img_name)
             rgb_img, gray_im_log, f_factor = \
-                create_dng_npy_data.hdr_preprocess(im_path,
-                                                   self.args.factor_coeff, train_reshape=False,
-                                                   gamma_log=self.args.gamma_log,
-                                                   f_factor_path=f_factor_path,
-                                                   use_new_f=self.args.use_new_f,
-                                                   data_trc=self.data_trc, test_mode=False,
-                                                   use_contrast_ratio_f=self.use_contrast_ratio_f)
+                data_loader_util.hdr_preprocess(im_path,
+                                               self.args.factor_coeff, train_reshape=False,
+                                               f_factor_path=f_factor_path,
+                                               data_trc=self.data_trc)
             rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
             rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, self.to_crop, self.final_shape_addition)
             gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, self.to_crop, self.final_shape_addition)

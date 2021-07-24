@@ -12,7 +12,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import data_generator.create_dng_npy_data as create_dng_npy_data
 import models.unet_multi_filters.Unet as Generator
 import tranforms
 from models import Discriminator

@@ -1,5 +1,7 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
+import os
 
 from utils import ProcessedDatasetFolder
 from utils import hdr_image_util
@@ -104,3 +106,40 @@ def add_frame_to_im_batch(images_batch, diffX, diffY):
     images_batch = F.pad(images_batch, (diffX // 2, diffX - diffX // 2,
                                         diffY // 2, diffY - diffY // 2), mode='replicate')
     return images_batch
+
+
+def hdr_preprocess(im_path, factor_coeff, train_reshape, f_factor_path, data_trc):
+    rgb_img = hdr_image_util.read_hdr_image(im_path)
+    if np.min(rgb_img) < 0:
+        rgb_img = rgb_img + np.abs(np.min(rgb_img))
+    gray_im = hdr_image_util.to_gray(rgb_img)
+    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
+    gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
+    im_name = os.path.splitext(os.path.basename(im_path))[0]
+    f_factor = get_f(factor_coeff, f_factor_path, im_name)
+    if f_factor < 1:
+        print("==== %s ===== buggy im" % im_path)
+    brightness_factor = f_factor
+    print("brightness_factor", brightness_factor)
+    if "min" in data_trc:
+        gray_im = gray_im - gray_im.min()
+    gamma = (1 / (1 + np.log10(brightness_factor)))
+    if "log" in data_trc:
+        gray_im = np.log10((gray_im / np.max(gray_im)) * brightness_factor + 1)
+        gray_im = gray_im / gray_im.max()
+    elif "gamma" in data_trc:
+        gray_im = (gray_im / np.max(gray_im)) ** gamma
+    return rgb_img, gray_im, gamma
+
+
+def get_f(factor_coeff, f_factor_path, im_name):
+    if f_factor_path != "none":
+        data = np.load(f_factor_path, allow_pickle=True)
+        if im_name in data[()]:
+            f_factor = data[()][im_name]
+            print("[%s] found in dict [%.4f]" % (im_name, f_factor))
+            return f_factor * 255 * factor_coeff
+        else:
+            raise Exception("no lambda found for file {} in {}".format(im_name, f_factor_path))
+    else:
+        raise Exception("please provide valid path to lambdas")
