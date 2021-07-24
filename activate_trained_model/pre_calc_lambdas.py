@@ -2,7 +2,6 @@ import scipy.optimize as optimize
 import numpy as np
 import os
 import utils.hdr_image_util as hdr_image_util
-import matplotlib.pyplot as plt
 
 
 def cross_entropy(factor, gray_im, targets, bins_):

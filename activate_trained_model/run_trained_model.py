@@ -1,11 +1,17 @@
 import argparse
 import os
 import time
+import sys
+import inspect
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
 
 import activate_trained_model.pre_calc_lambdas as pre_calc_lambdas
 import models.unet_multi_filters.Unet as Generator
@@ -13,11 +19,6 @@ import tranforms
 from utils import model_save_util, hdr_image_util, data_loader_util, params
 
 extensions = [".hdr", ".dng", ".exr", ".npy"]
-
-
-# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# parent_dir = os.path.dirname(current_dir)
-# sys.path.insert(0, parent_dir)
 
 
 def get_args():
@@ -33,7 +34,7 @@ def get_args():
     parser.add_argument("--lambda_output_path", type=str, default=default_params["lambda_output_path"])
     parser.add_argument("--bins", type=str, default=default_params["bins"])
     args = parser.parse_args()
-    print_args(args)
+    # print_args(args)
     return args
 
 
@@ -179,10 +180,7 @@ def weights_init_xavier(m):
 default_params = {"model_path": "model_weights",
                   "model_name": "11_08_lr15D_size268_D_[1,1,1]_pad_0_G_ssr_doubleConvT__d1.0_struct_1.0[1,1,1]__trans2_replicate__noframe__min_log_0.1hist_fit_",
                   "input_images_path": "input_images",
-                  # "input_images_path": "/Users/yaelvinker/Documents/university/lab/ECCV/improve_images_for_paper/input",
-                  "f_factor_path": "/Users/yaelvinker/PycharmProjects/lab/run_trained_model/lambda_data/exr_hist_dict_20_bins.npy",
-                  # "output_path": "output_original_images",
-                  # "output_path": "/Users/yaelvinker/Documents/university/lab/ECCV/improve_images_for_paper/double3_F/",
+                  "f_factor_path": "lambda_data/exr_hist_dict_20_bins.npy",
                   "output_path": "output",
                   "mean_hist_path": "lambda_data/ldr_avg_hist_900_images_20_bins.npy",
                   "lambda_output_path": "lambda_data",
