@@ -26,12 +26,9 @@ class NormalizeForDisplay(object):
             Tensor: Normalized Tensor image.
         """
         tensor = tensor.clone().to(self.device)
-        # tensor = tensor.to(self.device)
         mean = torch.tensor(self.mean, dtype=torch.float32, device=self.device)
         std = torch.tensor(self.std, dtype=torch.float32, device=self.device)
-        # tensor.sub_(mean[:, None, None]).div_(std[:, None, None])
         tensor.mul_(std[:, None, None]).add_(mean[:, None, None])
-        # to_pil = torch_transforms.ToPILImage()
         return tensor
 
 

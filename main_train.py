@@ -1,7 +1,3 @@
-# ================================================
-# This is the implementation
-# ================================================
-
 import torch
 import torch.optim as optim
 

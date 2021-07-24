@@ -3,7 +3,6 @@ from __future__ import print_function
 import os
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.utils.data
 from torch import autograd
@@ -50,13 +49,6 @@ class GanTrainer:
         self.struct_method = opt.struct_method
         if opt.ssim_loss_factor:
             self.struct_loss = struct_loss.StructLoss(window_size=opt.ssim_window_size,
-                                                      pyramid_weight_list=opt.pyramid_weight_list,
-                                                      pyramid_pow=False, use_c3=False,
-                                                      struct_method=opt.struct_method,
-                                                      crop_input=opt.add_frame,
-                                                      final_shape_addition=opt.final_shape_addition)
-        if self.struct_method == "gamma_ssim":
-            self.struct_loss = struct_loss.SSIMLoss(window_size=opt.ssim_window_size,
                                                       pyramid_weight_list=opt.pyramid_weight_list,
                                                       pyramid_pow=False, use_c3=False,
                                                       struct_method=opt.struct_method,
@@ -133,14 +125,11 @@ class GanTrainer:
                                                 enumerate(self.train_data_loader_ldr, 0)):
             self.num_iter += 1
             if not self.d_weight_mul_mode == "single":
-                # self.d_weight_mul = self.num_iter % 2
                 self.d_weight_mul = torch.rand(1).to(self.device)
             with autograd.detect_anomaly():
                 real_ldr = data_ldr[params.gray_input_image_key].to(self.device)
                 hdr_input = self.get_hdr_input(data_hdr)
                 hdr_original_gray_norm = data_hdr[params.original_gray_norm_key].to(self.device)
-                hdr_original_gray = data_hdr[params.original_gray_key].to(self.device)
-                gamma_factor = data_hdr[params.gamma_factor].to(self.device)
                 if self.train_with_D:
                     self.train_D(hdr_input, real_ldr)
                 if not self.pre_train_mode:
@@ -352,10 +341,10 @@ class GanTrainer:
                                          self.mse_loss, self.struct_loss, self.num_epochs, self.to_crop)
             self.save_loss_plot(epoch, self.output_dir)
             self.tester.save_images_for_model(self.netG, self.output_dir, epoch)
-        if epoch == self.final_epoch:
-            model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
-                                       self.netD, self.optimizerD)
-            self.save_data_for_assessment()
+        # if epoch == self.final_epoch:
+        #     model_save_util.save_model(params.models_save_path, epoch, self.output_dir, self.netG, self.optimizerG,
+        #                                self.netD, self.optimizerD)
+        #     self.save_data_for_assessment()
 
     def save_data_for_assessment(self):
         model_params = model_save_util.get_model_params(self.output_dir,
@@ -364,9 +353,9 @@ class GanTrainer:
         model_params["test_mode_f_factor"] = False
         model_params["test_mode_frame"] = False
         net_path = os.path.join(self.output_dir, "models", "net_epoch_" + str(self.final_epoch) + ".pth")
-        # self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
-        # self.run_model_on_path("npy_pth", "npy", model_params, net_path)
-        self.run_model_on_path("test_source", "exr", model_params, net_path)
+        self.run_model_on_path("open_exr_exr_format", "exr", model_params, net_path)
+        self.run_model_on_path("npy_pth", "npy", model_params, net_path)
+        # self.run_model_on_path("test_source", "exr", model_params, net_path)
 
     def run_model_on_path(self, data_source, data_format, model_params, net_path):
         input_images_path = model_save_util.get_hdr_source_path(data_source)
