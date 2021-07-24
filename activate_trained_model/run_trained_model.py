@@ -13,10 +13,9 @@ current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfra
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
-import activate_trained_model.pre_calc_lambdas as pre_calc_lambdas
 import models.unet_multi_filters.Unet as Generator
 import tranforms
-from utils import model_save_util, hdr_image_util, data_loader_util, params
+from utils import model_save_util, hdr_image_util, data_loader_util, params, adaptive_lambda
 
 extensions = [".hdr", ".dng", ".exr", ".npy"]
 
@@ -39,7 +38,8 @@ def get_args():
 
 
 def run_trained_model(args):
-    pre_calc_lambdas.calc_lambda(args, extensions)
+    args.f_factor_path = adaptive_lambda.calc_lambda(args.f_factor_path, extensions, args.input_images_path,
+                                                args.mean_hist_path, args.lambda_output_path, args.bins)
     start = time.time()
     net_path = os.path.join(args.model_path, "trained_weights.pth")
     train_settings_path = os.path.join(args.model_path, "run_settings.npy")

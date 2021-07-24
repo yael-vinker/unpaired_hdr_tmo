@@ -22,23 +22,14 @@ def get_ldr_im(normalization, input_im, max_stretch, min_stretch):
 
 
 def get_f(use_hist_fit, f_dict_path, im_name, factor_coeff, use_contrast_ratio_f, gray_original_im, gamma_factor):
-    if use_hist_fit:
-        data = np.load(f_dict_path, allow_pickle=True)
-        if im_name in data[()]:
-            f_factor = data[()][im_name]
-            # print("[%s] found in dict [%.4f]" % (im_name, f_factor))
-            brightness_factor = f_factor * 255 * factor_coeff
-    elif use_contrast_ratio_f:
-        print("contrast ratio")
-        im_max = np.percentile(gray_original_im, 99.0)
-        im_min = np.percentile(gray_original_im, 1.0)
-        if im_min == 0:
-            print("min = 0")
-            im_min += 0.0001
-        brightness_factor = im_max / im_min * factor_coeff
+    # use_hist_fit true by default
+    data = np.load(f_dict_path, allow_pickle=True)
+    if im_name in data[()]:
+        f_factor = data[()][im_name]
+        brightness_factor = f_factor * 255 * factor_coeff
     else:
-        print("================== no factor found for [%s] falls to gamma ==================" % (im_name))
-        brightness_factor = (10 ** (1 / gamma_factor - 1)) * factor_coeff
+        # TODO: add the option to calculate f here
+        raise Exception("no lambda found for file %s in %s" % (im_name, f_dict_path))
     return brightness_factor
 
 

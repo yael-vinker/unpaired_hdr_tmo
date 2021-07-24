@@ -9,7 +9,7 @@ import tranforms as custom_transform
 import utils.data_loader_util as data_loader_util
 import utils.hdr_image_util as hdr_image_util
 import utils.plot_util as plot_util
-from utils import printer
+from utils import printer, adaptive_lambda
 
 
 class Tester:
@@ -29,17 +29,14 @@ class Tester:
         self.ssim_loss_g_factor = ssim_loss_g_factor_
         self.loss_g_d_factor = loss_g_d_factor_
         self.test_num_iter = 0
-        self.Q_arr, self.S_arr, self.N_arr = [], [], []
         self.use_contrast_ratio_f = args.use_contrast_ratio_f
+        self.extensions = [".hdr", ".dng", ".exr", ".npy"]
         self.test_original_hdr_images = self.load_original_test_hdr_images(args.test_dataroot_original_hdr)
-        self.max_normalization = custom_transform.MaxNormalization()
-        self.min_max_normalization = custom_transform.MinMaxNormalization()
-        self.clip_transform = custom_transform.Clip()
-        self.wind_size = args.ssim_window_size
-        self.manual_d_training = args.manual_d_training
-        self.d_weight_mul_mode = args.d_weight_mul_mode
+
 
     def load_original_test_hdr_images(self, root):
+        f_factor_path = adaptive_lambda.calc_lambda(self.args.f_factor_path, self.extensions, root,
+                                    self.args.mean_hist_path, self.args.lambdas_path, self.args.bins)
         original_hdr_images = []
         counter = 1
         for img_name in os.listdir(root):
@@ -49,7 +46,7 @@ class Tester:
                 create_dng_npy_data.hdr_preprocess(im_path,
                                                    self.args.factor_coeff, train_reshape=False,
                                                    gamma_log=self.args.gamma_log,
-                                                   f_factor_path=self.args.f_factor_path,
+                                                   f_factor_path=f_factor_path,
                                                    use_new_f=self.args.use_new_f,
                                                    data_trc=self.data_trc, test_mode=False,
                                                    use_contrast_ratio_f=self.use_contrast_ratio_f)
@@ -141,24 +138,8 @@ class Tester:
         test_hdr_batch = next(iter(self.test_data_loader_npy))
         # test_hdr_batch_image = test_hdr_batch[params.image_key].to(self.device)
         test_hdr_batch_image = test_hdr_batch["input_im"].to(self.device)
-        if self.manual_d_training:
-            additional_channel = 1.0
-            weight_channel = torch.full(test_hdr_batch_image.shape, additional_channel).type_as(test_hdr_batch_image)
-            test_hdr_batch_image1 = torch.cat([test_hdr_batch_image, weight_channel], dim=1)
-            fake1 = self.get_fake_test_images(test_hdr_batch_image1, netG)
-            fake0 = fake1
-            if not self.d_weight_mul_mode == "single":
-                additional_channel = 0.0
-                weight_channel = torch.full(test_hdr_batch_image.shape, additional_channel).type_as(
-                    test_hdr_batch_image)
-                test_hdr_batch_image0 = torch.cat([test_hdr_batch_image, weight_channel], dim=1)
-                fake0 = self.get_fake_test_images(test_hdr_batch_image0, netG)
-
-        else:
-            fake1 = self.get_fake_test_images(test_hdr_batch_image, netG)
-            fake0 = fake1
-
-        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake1, fake0,
+        fake1 = self.get_fake_test_images(test_hdr_batch_image, netG)
+        plot_util.save_groups_images(test_hdr_batch, test_real_batch, fake1, fake1,
                                      new_out_dir, len(self.test_data_loader_npy.dataset), epoch,
                                      input_images_mean)
 

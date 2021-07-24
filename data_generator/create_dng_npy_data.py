@@ -236,7 +236,7 @@ def get_mean_and_factor(gamma_log, use_new_f):
     return mean_target, factor
 
 
-def get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f, factor_coeff, f_factor_path, im_name):
+def get_f(factor_coeff, f_factor_path, im_name):
     if f_factor_path != "none":
         data = np.load(f_factor_path, allow_pickle=True)
         if im_name in data[()]:
@@ -244,24 +244,9 @@ def get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f
             print("[%s] found in dict [%.4f]" % (im_name, f_factor))
             return f_factor * 255 * factor_coeff
         else:
-            f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * factor_coeff
-    elif use_contrast_ratio_f:
-        print("===============")
-        print(np.percentile(gray_im, 99.0), np.percentile(gray_im, 99.9), gray_im.max())
-        print(np.percentile(rgb_img, 99.0), np.percentile(rgb_img, 99.9), rgb_img.max())
-        print(np.percentile(gray_im, 1.0), np.percentile(gray_im, 0.1), gray_im.min())
-        im_max = np.percentile(gray_im, 100)
-        im_min = np.percentile(gray_im, 1.0)
-        if im_min == 0:
-            im_min += 0.0001
-        f_factor = im_max / im_min * factor_coeff
-        return f_factor
-    elif use_new_f:
-        f_factor = hdr_image_util.get_new_brightness_factor(rgb_img) * 255 * factor_coeff
-        return f_factor
+            raise Exception("no lambda found for file {} in {}".format(im_name, f_factor_path))
     else:
-        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor) * 255 * factor_coeff
-    return f_factor
+        raise Exception("please provide valid path to lambdas")
 
 
 def fix_im_avg(gray_im, f_factor, brightness_factor):
@@ -289,8 +274,7 @@ def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_pat
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape)
     gray_im = hdr_image_util.reshape_image(gray_im, train_reshape)
     im_name = os.path.splitext(os.path.basename(im_path))[0]
-    f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f,
-                     factor_coeff, f_factor_path, im_name)
+    f_factor = get_f(factor_coeff, f_factor_path, im_name)
     if f_factor < 1:
         print("==== %s ===== buggy im" % im_path)
     # print("f_factor", f_factor)
@@ -300,11 +284,8 @@ def hdr_preprocess(im_path, factor_coeff, train_reshape, gamma_log, f_factor_pat
         gray_im = gray_im - gray_im.min()
     gamma = (1 / (1 + factor * np.log10(brightness_factor)))
     if "log" in data_trc:
-        if test_mode:
-            gray_im = fix_im_avg(gray_im, f_factor, brightness_factor)
-        else:
-            gray_im = np.log10((gray_im / np.max(gray_im)) * brightness_factor + 1)
-            gray_im = gray_im / gray_im.max()
+        gray_im = np.log10((gray_im / np.max(gray_im)) * brightness_factor + 1)
+        gray_im = gray_im / gray_im.max()
     elif "gamma" in data_trc:
         gray_im = (gray_im / np.max(gray_im)) ** gamma
     return rgb_img, gray_im, gamma
@@ -319,8 +300,7 @@ def hdr_preprocess_crop_data(im_path, factor_coeff, train_reshape, gamma_log, f_
     gray_im = hdr_image_util.to_gray(rgb_img)
 
     im_name = os.path.splitext(os.path.basename(im_path))[0]
-    f_factor = get_f(use_new_f, rgb_img, gray_im, mean_target, factor, use_contrast_ratio_f,
-                     factor_coeff, f_factor_path, im_name)
+    f_factor = get_f(factor_coeff, f_factor_path, im_name)
     if f_factor < 1:
         print("==== %s ===== buggy im" % im_path)
     h, w = gray_im.shape[0], gray_im.shape[1]

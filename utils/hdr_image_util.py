@@ -101,37 +101,6 @@ def get_brightness_factor(im_hdr, mean_target, factor):
     return f
 
 
-def get_new_brightness_factor(M):
-    # from PIL import Image
-    J = np.mean(M, axis=2)
-    J = np.reshape(J, (-1,))
-    M = M / np.max(J)
-
-    J = J / np.max(J)
-    J = J[J>0]
-
-    npix = J.shape[0]
-    Cout = 1
-    for i in range(100):
-        C = np.sqrt(2) ** i
-        I = J * C
-        I = I[I < 0.99]
-        if I.shape[0] / npix < 0.1:
-            # Cout = C * np.sqrt(2)
-            break
-
-        h = np.histogram(I, bins=5)
-        h = h[0]
-        if np.mean(h[1]) > 0:
-            rat = np.mean(h[0]) / np.mean(h[1])
-            # print("%d: %.2f (%.2f)" % (i, rat, I.shape[0] / npix))
-            if rat > 0.5:
-                Cout = C * np.sqrt(2)
-            else:
-                print("%d: %.2f (%.2f) [%.4f]" % (i, rat, I.shape[0] / npix, Cout))
-    return Cout
-
-
 # ====== IMAGE MANIPULATE ======
 def to_gray(im):
     return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')

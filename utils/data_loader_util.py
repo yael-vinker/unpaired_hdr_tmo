@@ -63,7 +63,6 @@ def resize_im(im, add_frame, final_shape_addition):
     this padding will be removed at the end.
     """
     im_max = im.max()
-    # print("original shape", im.shape)
     h, w = im.shape[1], im.shape[2]
     h1 = (int(16 * int(h / 16.))) + 12
     w1 = (int(16 * int(w / 16.))) + 12
@@ -75,7 +74,6 @@ def resize_im(im, add_frame, final_shape_addition):
         diffY = hdr_image_util.closest_power(im.shape[1], final_shape_addition) - im.shape[1]
         diffX = hdr_image_util.closest_power(im.shape[2], final_shape_addition) - im.shape[2]
         im = add_frame_to_im(im, diffX=diffX, diffY=diffY)
-    # print("new shape", im.shape)
     return im, diffY, diffX
 
 
@@ -106,18 +104,3 @@ def add_frame_to_im_batch(images_batch, diffX, diffY):
     images_batch = F.pad(images_batch, (diffX // 2, diffX - diffX // 2,
                                         diffY // 2, diffY - diffY // 2), mode='replicate')
     return images_batch
-
-
-if __name__ == '__main__':
-    from math import floor
-
-    h, w = 780, 1052
-    h1 = (int(16 * floor(h / 16.)))
-    w1 = (int(16 * floor(w / 16.)))
-    diffh = h - h1
-    diffw = w - w1
-    print(h1, diffh, w1, diffw)
-
-    # im = im[:, diffh // 2:h - (diffh - diffh // 2), diffw // 2:w - (diffw - diffw // 2)]
-    # calc_conv_params(h_in=20, stride=(2,2), padding=(0,1), dilation=(1,1), kernel_size=(5,5), output_padding=(0,0))
-    # calc_conv_params(h_in=20, stride=(2, 2), padding=(0, 1), dilation=(1, 1), kernel_size=(4, 3), output_padding=(0, 0))

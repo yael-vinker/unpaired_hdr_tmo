@@ -81,7 +81,9 @@ def parse_arguments():
     parser.add_argument('--use_contrast_ratio_f', type=int, default=0)
     parser.add_argument('--use_hist_fit', type=int, default=1)
     parser.add_argument('--f_train_dict_path', type=str, default=params.f_factor_path_hist)
-
+    parser.add_argument('--mean_hist_path', type=str, default=params.mean_hist_path)
+    parser.add_argument('--lambdas_path', type=str, default=params.lambdas_path)
+    parser.add_argument('--bins', type=int, default=20)
     parser.add_argument('--data_trc', type=str, default="min_log", help="gamma/log")
     parser.add_argument('--max_stretch', type=float, default=1)
     parser.add_argument('--min_stretch', type=float, default=0)

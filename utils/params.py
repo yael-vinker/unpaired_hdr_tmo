@@ -1,16 +1,17 @@
 import os
 
-train_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data_with_f"
+train_dataroot_hdr = "data/hdr_data_with_f"
+train_dataroot_ldr = "data/ldr_data"
 
-train_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
+test_dataroot_hdr = "data/hdr_data_with_f"
+test_dataroot_ldr = "data/ldr_data"
+test_dataroot_original_hdr = "data/temp_data"
 
-test_dataroot_hdr = "/Users/yaelvinker/PycharmProjects/lab/data/hdr_data_with_f"
-test_dataroot_ldr = "/Users/yaelvinker/PycharmProjects/lab/data/factorised_data_original_range/flicker_use_factorise_data_1_factor_coeff_0.1_use_normalization_0"
-test_dataroot_original_hdr = "/Users/yaelvinker/PycharmProjects/lab/utils/folders/temp_data"
-apply_windows_loss = False
 
-f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"
-f_factor_path_hist="/Users/yaelvinker/PycharmProjects/lab/tests/train_hdr_20_bins.npy"
+# f_factor_path = "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"
+f_factor_path_hist="data/lambdas/train_hdr_20_bins.npy"
+mean_hist_path="activate_trained_model/lambda_data/ldr_avg_hist_900_images_20_bins.npy"
+lambdas_path="data/lambdas/"
 image_key = "hdr_image"
 window_image_key = "binary_windows"
 gray_input_image_key = "input_im"
@@ -18,6 +19,8 @@ color_image_key = "color_im"
 original_gray_key = "original_gray"
 original_gray_norm_key = "original_gray_norm"
 gamma_factor = "gamma_factor"
+
+apply_windows_loss = False
 
 
 models_save_path = os.path.join("models")
