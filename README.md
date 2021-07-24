@@ -1,6 +1,8 @@
 # Unpaired Learning for High Dynamic Range Image Tone Mapping
-![](results/teaser.jpg?raw=true)
-
+<!-- ![](results/teaser.jpg?raw=true) -->
+<p align='center'>  
+  <img src='imgs/results/teaser.jpg' />
+</p>
 ## Installation
 #### Installation via Docker [Recommended]
 #### Installation via Pip/Conda/Virtualenv
