@@ -1,24 +1,24 @@
 import inspect
 import os
+import re
 import sys
-from utils import params
-from models import Discriminator
-import imageio
+
 import numpy as np
 import torch
 import torch.nn as nn
-import utils.hdr_image_util as hdr_image_util
-import utils.data_loader_util as data_loader_util
-import tranforms
-import models.unet_multi_filters.Unet as Generator
-import data_generator.create_dng_npy_data as create_dng_npy_data
-import re
 import torch.nn.functional as F
-import argparse
+
+import data_generator.create_dng_npy_data as create_dng_npy_data
+import models.unet_multi_filters.Unet as Generator
+import tranforms
+import utils.data_loader_util as data_loader_util
+import utils.hdr_image_util as hdr_image_util
+from models import Discriminator
+from utils import params
+
 current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
-import time
 
 
 # ======================================
@@ -97,7 +97,8 @@ def create_D_net(input_dim_, down_dim, device_, is_checkpoint, norm, use_xaviar,
                                                         simpleD_maxpool=simpleD_maxpool, padding=d_padding).to(device_)
     elif d_model == "simpleD":
         new_net = Discriminator.SimpleDiscriminator(params.input_size, input_dim_,
-                                              down_dim, norm, last_activation, simpleD_maxpool, d_padding).to(device_)
+                                                    down_dim, norm, last_activation, simpleD_maxpool, d_padding).to(
+            device_)
     else:
         assert 0, "Unsupported d model request: {}".format(d_model)
     return set_parallel_net(new_net, device_, is_checkpoint, "Discriminator", use_xaviar)
@@ -178,12 +179,13 @@ def run_model_on_path(model_params, device, cur_net_path, input_images_path, out
     names = os.listdir(input_images_path)
     for img_name in names:
         im_path = os.path.join(input_images_path, img_name)
-        if not os.path.exists(os.path.join(output_images_path, "gray_stretch", os.path.splitext(img_name)[0] + "_gray_stretch.png")):
+        if not os.path.exists(
+                os.path.join(output_images_path, "gray_stretch", os.path.splitext(img_name)[0] + "_gray_stretch.png")):
             print("working on ", img_name)
             if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
                     or os.path.splitext(img_name)[1] == ".dng" or os.path.splitext(img_name)[1] == ".npy":
                 fast_run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                          output_images_path, model_params, f_factor_path, final_shape_addition)
+                                               output_images_path, model_params, f_factor_path, final_shape_addition)
                 # run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
                 #                           output_images_path, model_params, f_factor_path, final_shape_addition)
         else:
@@ -194,7 +196,7 @@ def load_g_model(model_params, device, net_path):
     G_net = create_G_net(model_params["model"], device, True, model_params["input_dim"],
                          model_params["last_layer"],
                          model_params["filters"], model_params["con_operator"], model_params["depth"],
-                         model_params["add_frame"], model_params["unet_norm"],  model_params["stretch_g"],
+                         model_params["add_frame"], model_params["unet_norm"], model_params["stretch_g"],
                          "relu", use_xaviar=False, output_dim=1,
                          g_doubleConvTranspose=model_params["g_doubleConvTranspose"],
                          bilinear=model_params["bilinear"],
@@ -236,7 +238,8 @@ def fast_load_inference(im_path, f_factor_path, factor_coeff, device):
     return rgb_img, gray_im, f_factor
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path, final_shape_addition):
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path,
+                              final_shape_addition):
     test_mode_f_factor = model_params["test_mode_f_factor"]
     test_mode_frame = model_params["test_mode_frame"]
     rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
@@ -247,7 +250,8 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
                                                                         use_new_f=model_params["use_new_f"],
                                                                         data_trc=model_params["data_trc"],
                                                                         test_mode=test_mode_f_factor,
-                                                                        use_contrast_ratio_f=model_params["use_contrast_ratio_f"])
+                                                                        use_contrast_ratio_f=model_params[
+                                                                            "use_contrast_ratio_f"])
 
     rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
     rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
@@ -259,7 +263,7 @@ def run_model_on_single_image(G_net, im_path, device, im_name, output_path, mode
             for a in interp_params:
                 file_name = im_name + "_" + str(a)
                 run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                         file_name, model_params["add_frame"], diffY, diffX, additional_channel=a)
+                                             file_name, model_params["add_frame"], diffY, diffX, additional_channel=a)
         elif model_params["d_weight_mul_mode"] == "single":
             file_name = im_name + "_1"
             run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
@@ -295,9 +299,6 @@ def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path,
                                                      im_name + "_fake_clamp_and_stretch")
 
 
-
-
-
 def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
                                  out_dir, file_name, add_frame, diffY, diffX, additional_channel):
     if additional_channel is not None:
@@ -312,7 +313,8 @@ def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
     fake2 = fake.clamp(0.005, 0.995)
     fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
     fake_im_color2 = hdr_image_util.back_to_color_batch_tensor(im_hdr_original, fake_im_gray_stretch)
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2[0], out_dir + "/color_stretch", file_name + "_color_stretch")
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2[0], out_dir + "/color_stretch",
+                                                     file_name + "_color_stretch")
 
 
 def run_trained_model_from_path(model_name):
@@ -325,48 +327,43 @@ def run_trained_model_from_path(model_name):
     input_images_path = os.path.join("/Users/yaelvinker/Documents/university/data/exr1")
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, input_images_path,
-                                      output_images_path, f_factor_path, None, input_images_path)
+                      output_images_path, f_factor_path, None, input_images_path)
 
 
+# ========================
 # ====== GET PARAMS ======
+# ========================
 def get_model_params(model_name, train_settings_path="none"):
-    # print(train_settings_path)
-    # print("------")
     model_params = {"model_name": model_name, "model": params.unet_network,
                     "filters": 32, "depth": 4,
                     "factorised_data": True,
                     "input_loader": None,
-                    "gamma_log": 10, "unet_norm": 'none',"input_dim": 1, "clip": False}
+                    "gamma_log": 10, "unet_norm": 'none', "input_dim": 1, "clip": False}
+
     params_dict = {"add_frame": get_frame,
-                    "last_layer": get_last_layer,
-                    "stretch_g": get_stretch_g,
-                    "con_operator": get_con_operator,
-                    "g_doubleConvTranspose": get_g_doubleConvTranspose,
-                    "factor_coeff": get_factor_coeff,
-                    "use_new_f": get_use_new_f,
-                    "data_trc": get_data_trc,
-                    "d_weight_mul_mode": get_manualD,
-                    "manual_d_training": get_manual_d_training,
-                    "use_contrast_ratio_f": get_use_contrast_ratio_f,
-                    "final_shape_addition": get_use_contrast_ratio_f,
+                   "last_layer": get_last_layer,
+                   "stretch_g": get_stretch_g,
+                   "con_operator": get_con_operator,
+                   "g_doubleConvTranspose": get_g_doubleConvTranspose,
+                   "factor_coeff": get_factor_coeff,
+                   "use_new_f": get_use_new_f,
+                   "data_trc": get_data_trc,
+                   "d_weight_mul_mode": get_manualD,
+                   "manual_d_training": get_manual_d_training,
+                   "use_contrast_ratio_f": get_use_contrast_ratio_f,
+                   "final_shape_addition": get_use_contrast_ratio_f,
                    "bilinear": get_use_contrast_ratio_f,
-                   "padding":get_use_contrast_ratio_f,
-                   "up_mode":get_use_contrast_ratio_f,
-                    "convtranspose_kernel":get_use_contrast_ratio_f}
-    # print(train_settings_path)
+                   "padding": get_use_contrast_ratio_f,
+                   "up_mode": get_use_contrast_ratio_f,
+                   "convtranspose_kernel": get_use_contrast_ratio_f}
+
     if os.path.exists(train_settings_path):
         train_settings = np.load(train_settings_path, allow_pickle=True)[()]
         for param in params_dict.keys():
             model_params[param] = train_settings[param]
-            # print(param,model_params[param])
-    # params_dict["factor_coeff"] = get_factor_coeff(model_name)
-    # else:
-    #     for param in params_dict.keys():
-    #         model_params[param] = params_dict[param](model_name)
 
     if model_params["manual_d_training"]:
         model_params["input_dim"] = 2
-    # print(model_params)
     return model_params
 
 
@@ -382,13 +379,14 @@ def get_f_factor_path(name, data_gamma_log, use_new_f, use_hist_fit):
                     10: "/cs/snapless/raananf/yael_vinker/data/dng_data_fid.npy"}}
     # TODO : update these dirs when apply the new f on the test data
     path_dict_new = {"test_source": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
-                    "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_newf.npy",
-                    "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
-                    "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_fid_newf.npy"}
-    path_dict_hist_fit = {"test_source": "/Users/yaelvinker/Documents/university/lab/lum_hist_re/valid_hist_dict_20_bins.npy",
-                    "open_exr_exr_format": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/exr_hist_dict_20_bins.npy",
-                    "hdr_test": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy",
-                    "npy_pth": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/fix_lum_hist/dng_hist_20_bins_all_fix.npy"}
+                     "open_exr_exr_format": "/cs/snapless/raananf/yael_vinker/data/open_exr_source/exr_newf.npy",
+                     "hdr_test": "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy",
+                     "npy_pth": "/cs/snapless/raananf/yael_vinker/data/dng_fid_newf.npy"}
+    path_dict_hist_fit = {
+        "test_source": "/Users/yaelvinker/Documents/university/lab/lum_hist_re/valid_hist_dict_20_bins.npy",
+        "open_exr_exr_format": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/exr_hist_dict_20_bins.npy",
+        "hdr_test": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/train_valid/valid_hist_dict_20_bins.npy",
+        "npy_pth": "/cs/labs/raananf/yael_vinker/data/new_lum_est_hist/fix_lum_hist/dng_hist_20_bins_all_fix.npy"}
 
     if use_hist_fit:
         return path_dict_hist_fit[name]
@@ -431,8 +429,6 @@ def get_con_operator(model_name):
         return "square"
 
 
-
-
 def get_stretch_g(model_name):
     if "batchMax" in model_name:
         return "batchMax"
@@ -440,19 +436,23 @@ def get_stretch_g(model_name):
         return "instanceMinMax"
     return "none"
 
+
 def get_last_layer(model_name):
     if "msig" in model_name:
         return "msig"
     else:
         return "sigmoid"
 
+
 def get_frame(model_name):
     if "noframe" in model_name:
         return False
     return True
 
+
 def get_clip(model_name):
     return "clip" in model_name
+
 
 def get_factor_coeff(model_name):
     # items = re.findall("DATA_\D*(\d+\.*\d+)", model_name)
@@ -461,9 +461,11 @@ def get_factor_coeff(model_name):
 
     return float(items[0])
 
+
 def get_data_trc(model_name):
     items = re.findall("DATA_(\w*)_\d+\.*\d+", model_name)
     return items[0]
+
 
 def get_manualD(model_name):
     if "manualD_single" in model_name:
@@ -472,25 +474,30 @@ def get_manualD(model_name):
         return "double"
     return "none"
 
+
 def get_manual_d_training(model_name):
     if "manualD" in model_name:
         return True
     return False
+
 
 def get_use_new_f(model_name):
     if "new_f" in model_name:
         return True
     return False
 
+
 def get_use_contrast_ratio_f(model_name):
     if "contrast_ratio_f_" in model_name:
         return True
     return False
 
+
 def get_g_doubleConvTranspose(model_name):
     if "doubleConvT" in model_name:
         return True
     return False
+
 
 def get_models_names():
     models_names = [
