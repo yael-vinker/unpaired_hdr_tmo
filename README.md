@@ -12,8 +12,10 @@ Pytorch implementation of our method for HDR image tome mapping using GAN.
 ## Installation
 #### Installation via Docker [Recommended]
 We provide a docker that contains the code and all the necessary libraries. It's simple to install and run.
-`docker build -t unpaired_tmo .`
-`docker run --name unpaired_tmo -it -p 8888:8888 unpaired_tmo /bin/bash`
+```bash
+docker build -t unpaired_tmo .
+docker run --name unpaired_tmo -it -p 8888:8888 unpaired_tmo /bin/bash
+```
 
 #### Installation via Pip/Conda/Virtualenv
 1.  Clone the repo:
