@@ -50,20 +50,21 @@ def run_trained_model(args):
         os.makedirs(output_images_path)
     device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     run_model_on_path(model_params, device, net_path, args.input_images_path,
-                      output_images_path, args.f_factor_path, model_params["final_shape_addition"])
+                      output_images_path, args.f_factor_path, None, model_params["final_shape_addition"])
     print("tone mapping took [%.2f] seconds" % (time.time() - start))
 
 
 def run_model_on_path(model_params, device, net_path, input_images_path, output_images_path,
-                      f_factor_path, final_shape_addition):
-    net_G = load_g_model(model_params, device, net_path)
+                      f_factor_path, net_G, final_shape_addition):
+    if not net_G:
+        net_G = load_g_model(model_params, device, net_path)
     print("\nModel [%s] was loaded successfully\n" % model_params["model"])
     names = os.listdir(input_images_path)
     for img_name in names:
         im_path = os.path.join(input_images_path, img_name)
         print("processing [%s]" % img_name)
         if os.path.splitext(img_name)[1] in extensions:
-            run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0], output_images_path,
+            model_save_util.run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0], output_images_path,
                                       model_params, f_factor_path, final_shape_addition)
         else:
             raise Exception('invalid hdr file format: %s' % os.path.splitext(img_name)[1])
@@ -105,45 +106,6 @@ def create_G_net(model_params, device_, is_checkpoint, activation, output_dim):
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator")
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
-                              f_factor_path, final_shape_addition):
-    rgb_img, gray_im_log, f_factor = load_inference(im_path, f_factor_path, model_params["factor_coeff"], device)
-    rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
-    gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
-    with torch.no_grad():
-        fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
-    max_p = np.percentile(fake.cpu().numpy(), 99.5)
-    min_p = np.percentile(fake.cpu().numpy(), 0.5)
-    # max_p = np.percentile(fake.cpu().numpy(), 100)
-    # min_p = np.percentile(fake.cpu().numpy(), 0.0001)
-    fake2 = fake.clamp(min_p, max_p)
-    fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
-    fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
-    h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
-    im_max = fake_im_color2.max()
-    fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - diffY, w - diffX),
-                                   mode='bicubic',
-                                   align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path,
-                                                     im_name + "_fake_clamp_and_stretch")
-
-
-def load_inference(im_path, f_factor_path, factor_coeff, device):
-    data = np.load(f_factor_path, allow_pickle=True)[()]
-    f_factor = data[os.path.splitext(os.path.basename(im_path))[0]] * 255 * factor_coeff
-    rgb_img = hdr_image_util.read_hdr_image(im_path)
-    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
-    rgb_img = tranforms.hdr_im_transform(rgb_img).to(device)
-    # shift for exr format
-    if rgb_img.min() < 0:
-        rgb_img = rgb_img - rgb_img.min()
-    gray_im = hdr_image_util.to_gray_tensor(rgb_img).to(device)
-    gray_im = gray_im - gray_im.min()
-    gray_im = torch.log10((gray_im / gray_im.max()) * f_factor + 1)
-    gray_im = gray_im / gray_im.max()
-    return rgb_img, gray_im, f_factor
-
-
 def get_layer_factor(con_operator):
     if con_operator in params.layer_factor_2_operators:
         return 2
@@ -160,21 +122,7 @@ def set_parallel_net(net, device_, is_checkpoint, net_name):
     if (device_.type == 'cuda') and (torch.cuda.device_count() > 1):
         print("Using [%d] GPUs" % torch.cuda.device_count())
         net = nn.DataParallel(net, list(range(torch.cuda.device_count())))
-
-    # Apply the weights_init function to randomly initialize all weights to mean=0, stdev=0.2.
-    if not is_checkpoint:
-        net.apply(weights_init_xavier)
-        print("Weights for " + net_name + " were initialized successfully")
     return net
-
-
-def weights_init_xavier(m):
-    """custom weights initialization called on netG and netD"""
-    classname = m.__class__.__name__
-    if (classname.find('Conv2d') != -1 or classname.find('Linear') != -1) and hasattr(m, 'weight'):
-        torch.nn.init.xavier_normal_(m.weight, gain=np.sqrt(2.0))
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0)
 
 
 default_params = {"model_path": "model_weights",

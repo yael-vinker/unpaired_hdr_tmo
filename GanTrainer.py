@@ -368,7 +368,7 @@ class GanTrainer:
         if not os.path.exists(output_images_path_color_stretch):
             os.mkdir(output_images_path_color_stretch)
         model_save_util.run_model_on_path(model_params, self.device, net_path, input_images_path,
-                                          output_images_path, f_factor_path, None, input_images_path,
+                                          output_images_path, f_factor_path, None,
                                           self.final_shape_addition)
         if data_format == "npy":
             fid_res_color_stretch = fid_score.calculate_fid_given_paths(

@@ -21,7 +21,7 @@ def get_ldr_im(normalization, input_im, max_stretch, min_stretch):
     return input_im
 
 
-def get_f(use_hist_fit, f_dict_path, im_name, factor_coeff, use_contrast_ratio_f, gray_original_im, gamma_factor):
+def get_f(f_dict_path, im_name, factor_coeff):
     # use_hist_fit true by default
     data = np.load(f_dict_path, allow_pickle=True)
     if im_name in data[()]:
@@ -54,11 +54,9 @@ def npy_loader(path, addFrame, hdrMode, normalization, min_stretch,
     if hdrMode:
         gray_original_im = hdr_image_util.to_gray_tensor(color_im)
         gray_original_im_norm = gray_original_im / gray_original_im.max()
-        gamma_factor = data[()]["gamma_factor"]
         # TODO(): fix this part
         im_name = os.path.splitext(os.path.basename(path))[0]
-        brightness_factor = get_f(use_hist_fit, f_dict_path, im_name, factor_coeff, use_contrast_ratio_f,
-                                  gray_original_im, gamma_factor)
+        brightness_factor = get_f(f_dict_path, im_name, factor_coeff)
         gray_original_im = gray_original_im - gray_original_im.min()
         a = torch.log10((gray_original_im / gray_original_im.max()) * brightness_factor + 1)
         input_im = a / a.max()

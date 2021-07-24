@@ -3,6 +3,10 @@ import os
 import re
 import sys
 
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, parent_dir)
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -11,14 +15,8 @@ import torch.nn.functional as F
 import data_generator.create_dng_npy_data as create_dng_npy_data
 import models.unet_multi_filters.Unet as Generator
 import tranforms
-import utils.data_loader_util as data_loader_util
-import utils.hdr_image_util as hdr_image_util
 from models import Discriminator
-from utils import params
-
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
+from utils import params, data_loader_util, hdr_image_util
 
 
 # ======================================
@@ -143,51 +141,19 @@ def get_layer_factor(con_operator):
 # ============ TEST RELATED ============
 # ========= USE TRAINED MODEL ==========
 # ======================================
-def apply_models_from_arch_dir(input_format, device, images_source, arch_dir,
-                               models_names, model_epoch, output_dir_name):
-    input_images_path = get_hdr_source_path(images_source)
-    for i in range(len(models_names)):
-        model_name = models_names[i]
-        model_params = get_model_params(model_name)
-        f_factor_path = get_f_factor_path(images_source, model_params["gamma_log"], use_new_f=False)
-        print("cur model = ", model_name)
-        cur_model_path = os.path.join(arch_dir, model_name)
-        if os.path.exists(cur_model_path):
-            output_path = os.path.join(cur_model_path, input_format + output_dir_name)
-            if not os.path.exists(output_path):
-                os.mkdir(output_path)
-            net_path = os.path.join(cur_model_path, "models")
-            net_name = "net_epoch_" + str(model_epoch) + ".pth"
-            cur_net_path = os.path.join(net_path, net_name)
-            if os.path.exists(cur_net_path):
-                cur_output_path = output_path
-                if not os.path.exists(cur_output_path):
-                    os.mkdir(cur_output_path)
-                run_model_on_path(model_params, device, cur_net_path, input_images_path, cur_output_path,
-                                  f_factor_path, None, input_images_path)
-            else:
-                print("model %s does not exists: " % cur_net_path)
-        else:
-            print("model %s does not exists" % cur_model_path)
-
-
 def run_model_on_path(model_params, device, cur_net_path, input_images_path, output_images_path,
-                      f_factor_path, net_G, names_path, final_shape_addition):
+                      f_factor_path, net_G, final_shape_addition):
+    extensions = [".hdr", ".dng", ".exr", ".npy"]
     if not net_G:
         net_G = load_g_model(model_params, device, cur_net_path)
     print("model " + model_params["model"] + " was loaded successfully")
     names = os.listdir(input_images_path)
     for img_name in names:
         im_path = os.path.join(input_images_path, img_name)
-        if not os.path.exists(
-                os.path.join(output_images_path, "gray_stretch", os.path.splitext(img_name)[0] + "_gray_stretch.png")):
-            print("working on ", img_name)
-            if os.path.splitext(img_name)[1] == ".hdr" or os.path.splitext(img_name)[1] == ".exr" \
-                    or os.path.splitext(img_name)[1] == ".dng" or os.path.splitext(img_name)[1] == ".npy":
-                fast_run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                               output_images_path, model_params, f_factor_path, final_shape_addition)
-                # run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                #                           output_images_path, model_params, f_factor_path, final_shape_addition)
+        print("processing [%s]" % img_name)
+        if os.path.splitext(img_name)[1] in extensions:
+            run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0], output_images_path,
+                                      model_params, f_factor_path, final_shape_addition)
         else:
             print("%s in already exists" % (img_name))
 
@@ -203,10 +169,8 @@ def load_g_model(model_params, device, net_path):
                          padding=model_params["padding"],
                          convtranspose_kernel=model_params["convtranspose_kernel"],
                          up_mode=model_params["up_mode"])
-    # a = time.time()
     checkpoint = torch.load(net_path, map_location=device)
     state_dict = checkpoint['modelG_state_dict']
-    # print("from loaded model ", list(state_dict.keys())[0])
     if "module" in list(state_dict.keys())[0]:
         from collections import OrderedDict
         new_state_dict = OrderedDict()
@@ -218,17 +182,16 @@ def load_g_model(model_params, device, net_path):
     G_net.load_state_dict(new_state_dict)
     G_net.to(device)
     G_net.eval()
-    # print("time took to load weights", time.time() - a)
     return G_net
 
 
-def fast_load_inference(im_path, f_factor_path, factor_coeff, device):
+def load_inference(im_path, f_factor_path, factor_coeff, device):
     data = np.load(f_factor_path, allow_pickle=True)[()]
     f_factor = data[os.path.splitext(os.path.basename(im_path))[0]] * 255 * factor_coeff
     rgb_img = hdr_image_util.read_hdr_image(im_path)
     rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
     rgb_img = tranforms.hdr_im_transform(rgb_img).to(device)
-    # TODO: check what to do with negative exr
+    # shift for exr format
     if rgb_img.min() < 0:
         rgb_img = rgb_img - rgb_img.min()
     gray_im = hdr_image_util.to_gray_tensor(rgb_img).to(device)
@@ -238,54 +201,17 @@ def fast_load_inference(im_path, f_factor_path, factor_coeff, device):
     return rgb_img, gray_im, f_factor
 
 
-def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params, f_factor_path,
-                              final_shape_addition):
-    test_mode_f_factor = model_params["test_mode_f_factor"]
-    test_mode_frame = model_params["test_mode_frame"]
-    rgb_img, gray_im_log, f_factor = create_dng_npy_data.hdr_preprocess(im_path,
-                                                                        factor_coeff=model_params["factor_coeff"],
-                                                                        train_reshape=False,
-                                                                        gamma_log=model_params["gamma_log"],
-                                                                        f_factor_path=f_factor_path,
-                                                                        use_new_f=model_params["use_new_f"],
-                                                                        data_trc=model_params["data_trc"],
-                                                                        test_mode=test_mode_f_factor,
-                                                                        use_contrast_ratio_f=model_params[
-                                                                            "use_contrast_ratio_f"])
-
-    rgb_img, gray_im_log = tranforms.hdr_im_transform(rgb_img), tranforms.hdr_im_transform(gray_im_log)
-    rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
-    gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
-    preprocessed_im_batch = gray_im_log.unsqueeze(0)
-    if model_params["manual_d_training"]:
-        if model_params["d_weight_mul_mode"] == "double":
-            interp_params = [0, 0.2, 0.4, 0.5, 0.8, 1]
-            for a in interp_params:
-                file_name = im_name + "_" + str(a)
-                run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                             file_name, model_params["add_frame"], diffY, diffX, additional_channel=a)
-        elif model_params["d_weight_mul_mode"] == "single":
-            file_name = im_name + "_1"
-            run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                         file_name, model_params["add_frame"], diffY, diffX, additional_channel=1.0)
-    else:
-        file_name = im_name
-        run_model_on_im_and_save_res(preprocessed_im_batch, G_net, rgb_img, output_path,
-                                     file_name, model_params["add_frame"], diffY, diffX, additional_channel=None)
-
-
-def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
-                                   f_factor_path, final_shape_addition):
-    rgb_img, gray_im_log, f_factor = fast_load_inference(im_path, f_factor_path, model_params["factor_coeff"], device)
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
+                              f_factor_path, final_shape_addition):
+    rgb_img, gray_im_log, f_factor = load_inference(im_path, f_factor_path, model_params["factor_coeff"], device)
     rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
     gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
     with torch.no_grad():
-        print("input", gray_im_log.shape, gray_im_log.max(), gray_im_log.min())
         fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
-        print("fake", fake.max(), fake.mean(), fake.min())
     max_p = np.percentile(fake.cpu().numpy(), 99.5)
     min_p = np.percentile(fake.cpu().numpy(), 0.5)
-    # print("percentile", max_p, min_p)
+    # max_p = np.percentile(fake.cpu().numpy(), 100)
+    # min_p = np.percentile(fake.cpu().numpy(), 0.0001)
     fake2 = fake.clamp(min_p, max_p)
     fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
     fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
@@ -294,40 +220,8 @@ def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path,
     fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - diffY, w - diffX),
                                    mode='bicubic',
                                    align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
-
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path + "/color_stretch",
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path,
                                                      im_name + "_fake_clamp_and_stretch")
-
-
-def run_model_on_im_and_save_res(im_log_normalize_tensor, netG, im_hdr_original,
-                                 out_dir, file_name, add_frame, diffY, diffX, additional_channel):
-    if additional_channel is not None:
-        weight_channel = torch.full(im_log_normalize_tensor.shape, additional_channel).type_as(
-            im_log_normalize_tensor)
-        im_log_normalize_tensor = torch.cat([im_log_normalize_tensor, weight_channel], dim=1)
-    with torch.no_grad():
-        fake = netG(im_log_normalize_tensor, apply_crop=add_frame, diffY=diffY, diffX=diffX)
-    im_hdr_original = im_hdr_original.unsqueeze(dim=0)
-    if add_frame:
-        im_hdr_original = data_loader_util.crop_input_hdr_batch(im_hdr_original, diffY=diffY, diffX=diffX)
-    fake2 = fake.clamp(0.005, 0.995)
-    fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
-    fake_im_color2 = hdr_image_util.back_to_color_batch_tensor(im_hdr_original, fake_im_gray_stretch)
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2[0], out_dir + "/color_stretch",
-                                                     file_name + "_color_stretch")
-
-
-def run_trained_model_from_path(model_name):
-    net_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/08_27/models/", model_name,
-                            "net_epoch_320.pth")
-    model_params = get_model_params(model_name)
-    f_factor_path = "none"
-    output_images_path = os.path.join("/Users/yaelvinker/Documents/university/lab/Aug/08_27/models/", model_name,
-                                      "exr_frame")
-    input_images_path = os.path.join("/Users/yaelvinker/Documents/university/data/exr1")
-    device = torch.device("cuda" if (torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
-    run_model_on_path(model_params, device, net_path, input_images_path,
-                      output_images_path, f_factor_path, None, input_images_path)
 
 
 # ========================
@@ -366,7 +260,7 @@ def get_model_params(model_name, train_settings_path="none"):
         model_params["input_dim"] = 2
     return model_params
 
-
+# TODO: change to abs path
 def get_f_factor_path(name, data_gamma_log, use_new_f, use_hist_fit):
     path_dict_prev_f = {
         "test_source": {10: "/Users/yaelvinker/PycharmProjects/lab/utils/test_factors.npy"},
@@ -410,13 +304,6 @@ def get_hdr_source_path(name):
 
 
 def get_con_operator(model_name):
-    # con_op_short = {"original_unet": "ou",
-    #                 "square": "s",
-    #                 "square_root": "sr",
-    #                 "square_and_square_root": "ssr",
-    #                 "gamma": "g",
-    #                 "square_and_square_root_manual_d": "ssrMD"}
-    # return "square_and_square_root"
     if params.con_op_short["square_and_square_root_manual_d"] in model_name:
         return "square_and_square_root_manual_d"
     if params.con_op_short["square_and_square_root"] in model_name:
@@ -455,10 +342,7 @@ def get_clip(model_name):
 
 
 def get_factor_coeff(model_name):
-    # items = re.findall("DATA_\D*(\d+\.*\d+)", model_name)
-
     items = re.findall("min_log_(\d+\.*\d+)", model_name)
-
     return float(items[0])
 
 
@@ -497,12 +381,6 @@ def get_g_doubleConvTranspose(model_name):
     if "doubleConvT" in model_name:
         return True
     return False
-
-
-def get_models_names():
-    models_names = [
-        "add_alpha003_hdr_data_log_10_gamma_ssim_1.0_pyramid_1,2,4std_1.0_eps_0.001_6,8,1_mu_loss_2.0_1,1,1_unet_square_and_square_root_d_model_patchD"]
-    return models_names
 
 
 def get_apply_wind_norm(model_name):
