@@ -115,32 +115,6 @@ def display_with_bf(im, bf):
     plt.close()
 
 
-def save_brightness_factor_for_image(input_dir, output_dir, old_f, isLdr):
-    import skimage
-    # brightness_factors = [29.17062352545879, 125.94695101928836]
-    data = {}
-    output_path = os.path.join(output_dir, 'brightness_factors_exr.npy')
-    for img_name, i in zip(os.listdir(input_dir), range(len(os.listdir(input_dir)))):
-        print(i, img_name)
-        im_path = os.path.join(input_dir, img_name)
-        if isLdr:
-            rgb_img = hdr_image_util.read_ldr_image(im_path)
-        else:
-            rgb_img = hdr_image_util.read_hdr_image(im_path)
-        if np.min(rgb_img) < 0:
-            rgb_img = rgb_img + np.abs(np.min(rgb_img))
-        else:
-            print("not neg")
-        rgb_img = skimage.transform.resize(rgb_img, (int(rgb_img.shape[0] / 2),
-                                                           int(rgb_img.shape[1] / 2)),
-                                                  mode='reflect', preserve_range=False, order=3).astype("float32")
-        brightness_factor = hdr_image_util.get_brightness_factor(rgb_img)
-        print("new f ",brightness_factor)
-        print("old f ", old_f[os.path.splitext(img_name)[0] + ".hdr"])
-        # display_with_bf(rgb_img, brightness_factor)
-        data[img_name] = brightness_factor
-        # np.save(output_path, data)
-    np.save(output_path, data)
 
 
 def save_images_from_existing_path(existing_samples_path, input_path, output_path):
@@ -201,21 +175,6 @@ def apply_preprocess_for_ldr(im_path):
     return rgb_img, gray_im
 
 
-def hdr_sigma_preprocess(im_path, args, reshape=False):
-    rgb_img = hdr_image_util.read_hdr_image(im_path)
-    if reshape:
-        rgb_img = hdr_image_util.reshape_image(rgb_img)
-    gray_im = hdr_image_util.to_gray(rgb_img)
-    if args.use_factorise_data:
-        gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
-        brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255 * args.factor_coeff
-        print(brightness_factor)
-    else:
-        # factor is log_factor 1000
-        brightness_factor = 1000
-    gray_im = (gray_im / np.max(gray_im)) * brightness_factor
-    gray_im_log = np.log(gray_im + 1)
-    return rgb_img, gray_im_log
 
 
 def get_mean_and_factor(gamma_log, use_new_f):
@@ -328,23 +287,6 @@ def hdr_preprocess_crop_data(im_path, factor_coeff, train_reshape, gamma_log, f_
     return rgb_img, gray_im, gamma
 
 
-def hdr_preprocess_change_f(im_path, args, f_new, reshape=True):
-    rgb_img = hdr_image_util.read_hdr_image(im_path)
-    if reshape:
-        rgb_img = hdr_image_util.reshape_image(rgb_img)
-    gray_im = hdr_image_util.to_gray(rgb_img)
-    if args.use_factorise_data:
-        gray_im_temp = hdr_image_util.reshape_im(gray_im, 128, 128)
-        brightness_factor = hdr_image_util.get_brightness_factor(gray_im_temp) * 255 * f_new
-        print(brightness_factor)
-    else:
-        # factor is log_factor 1000
-        brightness_factor = 1000
-    gray_im = (gray_im / np.max(gray_im)) * brightness_factor
-    gray_im_log = np.log(gray_im + 1)
-    return rgb_img, gray_im_log
-
-
 def apply_preprocess_for_hdr(im_path, args):
     if args.crop_data:
         rgb_img, gray_im_log, gamma_factor = hdr_preprocess_crop_data(im_path,
@@ -438,22 +380,6 @@ def add_f_factor_to_data(input_dir, f_factor_path, output_dir, number_of_images)
         test_a = np.load(output_path, allow_pickle=True)[()]
         print(test_a)
 
-
-def save_exr_f_factors(input_images_path, output_path, mean_target, factor):
-    f_factors = {}
-    dirs = os.listdir(input_images_path)
-    for i in range(len(dirs)):
-        img_name = dirs[i]
-        im_path = os.path.join(input_images_path, img_name)
-        rgb_img = hdr_image_util.read_hdr_image(im_path)
-        if np.min(rgb_img) < 0:
-            rgb_img = rgb_img + np.abs(np.min(rgb_img))
-        gray_im = hdr_image_util.to_gray(rgb_img)
-        gray_im = hdr_image_util.reshape_image(gray_im, train_reshape=False)
-        f_factor = hdr_image_util.get_brightness_factor(gray_im, mean_target, factor)
-        f_factors[img_name] = f_factor
-        print("[%d] [%f] %s" % (i, f_factor, img_name))
-        np.save(output_path, f_factors)
 
 
 def dng_to_npy_for_fid():

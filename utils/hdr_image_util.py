@@ -9,7 +9,9 @@ import torch
 from utils import params
 
 
+# ===========================
 # ====== IMAGE PRINTER ======
+# ===========================
 def print_image_details(im, title):
     print(title)
     print("shape : ", im.shape)
@@ -27,7 +29,9 @@ def print_tensor_details(im, title):
     print()
 
 
+# ==========================
 # ====== IMAGE READER ======
+# ==========================
 def read_hdr_image(path):
     path_lib_path = pathlib.Path(path)
     file_extension = os.path.splitext(path)[1]
@@ -60,48 +64,9 @@ def read_ldr_image_original_range(path):
     return im_origin
 
 
-# ====== BRIGHTNESS FACTOR ======
-def get_bump(im):
-    tmp = im
-    tmp[(tmp > 255)] = 255
-    tmp = tmp.astype('uint8')
-    hist, bins = np.histogram(tmp, bins=255)
-    a0 = np.mean(hist[0:65])
-    a1 = np.mean(hist[65:200])
-    return a1 / a0
-
-
-def plot_hist(rgb_img, brightness_factor_b, i):
-    rgb_img = (rgb_img / np.max(rgb_img)) * brightness_factor_b
-    rgb_img[rgb_img > 255] = 255
-    rgb_img = rgb_img.astype('uint8')
-    counts, bins = np.histogram(rgb_img.reshape(np.prod(rgb_img.shape)), range(256))
-    # plot histogram centered on values 0..255
-    plt.bar(bins[:-2], counts[:-1], width=1, edgecolor='none')
-    plt.xlim([-0.5, 300])
-    a0 = np.mean(counts[0:65])
-    a1 = np.mean(counts[65:200])
-    plt.title(str(a1 / a0) + " i " + str(i), fontSize=12)
-
-
-def get_brightness_factor(im_hdr, mean_target, factor):
-    im_hdr = (im_hdr / np.max(im_hdr)) * 255
-    big = 1.1
-    f = 1.0
-
-    for i in range(1500):
-        r = get_bump(im_hdr * f)
-        im_gamma = (((im_hdr / np.max(im_hdr)) ** (1 / (1 + factor * np.log10(f * 255)))) * 255)
-        if r > big and np.mean(im_gamma) > mean_target:
-            print("i[%d]  r[%f]  f[%f] mean[%f]" % (i, r, f, np.mean(im_gamma)))
-            return f
-        else:
-            f = f * 1.01
-    print("i[%d]  r[%f]  f[%f]" % (i, r, f))
-    return f
-
-
+# ==============================
 # ====== IMAGE MANIPULATE ======
+# ==============================
 def to_gray(im):
     return np.dot(im[..., :3], [0.299, 0.587, 0.114]).astype('float32')
 
@@ -231,10 +196,8 @@ def display_tensor(tensor, cmap):
     im = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
     if cmap == "gray":
         im = np.squeeze(im)
-    # im = to_0_1_range(im)
-
     plt.imshow(im, cmap=cmap, vmin=im.min(), vmax=im.max())
-    # plt.show()
+
 
 def closest_power(x, final_shape_addition):
     divider = 0
@@ -244,7 +207,9 @@ def closest_power(x, final_shape_addition):
     return closest_power_
 
 
+# =========================
 # ====== SAVE IMAGES ======
+# =========================
 def save_color_tensor_batch_as_numpy(batch, output_path, batch_num):
     b_size = batch.shape[0]
     for i in range(b_size):
@@ -261,28 +226,10 @@ def save_color_tensor_batch_as_numpy(batch, output_path, batch_num):
 def save_gray_tensor_as_numpy(tensor, output_path, im_name):
     tensor = tensor.clamp(0, 1).clone().permute(1, 2, 0).detach().cpu().numpy()
     tensor_0_1 = np.squeeze(tensor)
-    # gray_im_flat = np.reshape(tensor_0_1, (-1,))
-    # sum_hists, all_bins = np.histogram(gray_im_flat, bins=20, density=True, range=(0, 1))
-    # plt.figure()
-    # plt.subplot(2,2,1)
-    # plt.imshow(tensor_0_1, cmap='gray',vmin=0, vmax=1)
-    # plt.subplot(2,2,2)
-    # plt.bar(all_bins[:-1] + np.diff(all_bins) / 2, sum_hists, np.diff(all_bins))
-
     im = (tensor_0_1 * 255).astype('uint8')
-
     if not os.path.exists(output_path):
         os.mkdir(output_path)
     imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
-    # im = imageio.imread(os.path.join(output_path, im_name + ".png"))
-    # plt.subplot(2, 2, 3)
-    # plt.imshow(im, cmap='gray', vmin=0, vmax=255)
-    # plt.subplot(2, 2, 4)
-    # gray_im_flat = np.reshape(im, (-1,))
-    # sum_hists, all_bins = np.histogram(gray_im_flat, bins=20, density=True, range=(0, 255))
-    # plt.bar(all_bins[:-1] + np.diff(all_bins) / 2, sum_hists, np.diff(all_bins))
-    # plt.show()
-    # plt.close()
 
 
 def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
@@ -294,6 +241,7 @@ def save_gray_tensor_as_numpy_stretch(tensor, output_path, im_name):
         os.mkdir(output_path)
     imageio.imwrite(os.path.join(output_path, im_name + ".png"), im, format='PNG-FI')
     print("result was saved to [%s]" % (os.path.join(output_path, im_name + ".png")))
+
 
 def save_gray_tensor_as_numpy_stretch_entire_range(tensor, output_path, im_name):
     tensor = tensor.clone().permute(1, 2, 0).detach().cpu().numpy()
