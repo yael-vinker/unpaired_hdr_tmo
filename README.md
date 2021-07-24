@@ -1,16 +1,22 @@
 # Unpaired Learning for High Dynamic Range Image Tone Mapping
 
 Pytorch implementation of our method for HDR image tome mapping using GAN.
-### [Project](http://www.vision.huji.ac.il/deepsim) | [Paper](https://arxiv.org/abs/2007.01289)
+### [Project]() | [Paper]()
 <br>
 <br>
 
-![](results/teaser.png?raw=true)
+![](readme_images/teaser.png?raw=true)
 <!-- <p align='center'>  
   <img src='results/teaser.png' />
 </p> -->
 ## Installation
 #### Installation via Docker [Recommended]
+We provide a docker that contains the code and all the necessary libraries. It's simple to install and run.
+```bash
+docker build -t unpaired_tmo .
+docker run --name unpaired_tmo -it -p 8888:8888 unpaired_tmo /bin/bash
+```
+
 #### Installation via Pip/Conda/Virtualenv
 1.  Clone the repo:
 ```bash
@@ -26,6 +32,7 @@ pip install -r requirements.txt
 
 <br>
 <br>
+
 ## Quickstart (Run Demo Locally)
 
 #### Run a model on your own image
