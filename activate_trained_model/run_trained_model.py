@@ -1,23 +1,40 @@
-import inspect
-import os
-import sys
-
-import activate_trained_model.pre_calc_lambdas as pre_calc_lambdas
-
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir)
 import argparse
+import os
 import time
+
 import numpy as np
 import torch
 import torch.nn as nn
-import tranforms
-import models.unet_multi_filters.Unet as Generator
 import torch.nn.functional as F
+
+import activate_trained_model.pre_calc_lambdas as pre_calc_lambdas
+import models.unet_multi_filters.Unet as Generator
+import tranforms
 from utils import model_save_util, hdr_image_util, data_loader_util, params
 
 extensions = [".hdr", ".dng", ".exr", ".npy"]
+
+
+# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+# parent_dir = os.path.dirname(current_dir)
+# sys.path.insert(0, parent_dir)
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description="Parser for gan network")
+    parser.add_argument("--model_name", type=str, default=default_params["model_name"])
+    parser.add_argument("--input_images_path", type=str, default=default_params["input_images_path"])
+    parser.add_argument("--output_path", type=str, default=default_params["output_path"])
+    parser.add_argument("--model_path", type=str, default=default_params["model_path"])
+    parser.add_argument("--f_factor_path", type=str, default=default_params["f_factor_path"])
+
+    # lambda calc params
+    parser.add_argument("--mean_hist_path", type=str, default=default_params["mean_hist_path"])
+    parser.add_argument("--lambda_output_path", type=str, default=default_params["lambda_output_path"])
+    parser.add_argument("--bins", type=str, default=default_params["bins"])
+    args = parser.parse_args()
+    print_args(args)
+    return args
 
 
 def run_trained_model(args):
@@ -45,49 +62,10 @@ def run_model_on_path(model_params, device, net_path, input_images_path, output_
         im_path = os.path.join(input_images_path, img_name)
         print("processing [%s]" % img_name)
         if os.path.splitext(img_name)[1] in extensions:
-            fast_run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0],
-                                           output_images_path, model_params, f_factor_path, final_shape_addition)
-        # else:
-        #     raise Exception('invalid hdr file format: %s' % os.path.splitext(img_name)[1])
-
-
-def fast_run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
-                                   f_factor_path, final_shape_addition):
-    rgb_img, gray_im_log, f_factor = fast_load_inference(im_path, f_factor_path, model_params["factor_coeff"], device)
-    rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
-    gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
-    with torch.no_grad():
-        fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
-    max_p = np.percentile(fake.cpu().numpy(), 99.5)
-    min_p = np.percentile(fake.cpu().numpy(), 0.5)
-    # max_p = np.percentile(fake.cpu().numpy(), 100)
-    # min_p = np.percentile(fake.cpu().numpy(), 0.0001)
-    fake2 = fake.clamp(min_p, max_p)
-    fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
-    fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
-    h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
-    im_max = fake_im_color2.max()
-    fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - diffY, w - diffX),
-                                   mode='bicubic',
-                                   align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
-    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path,
-                                                     im_name + "_fake_clamp_and_stretch")
-
-
-def fast_load_inference(im_path, f_factor_path, factor_coeff, device):
-    data = np.load(f_factor_path, allow_pickle=True)[()]
-    f_factor = data[os.path.splitext(os.path.basename(im_path))[0]] * 255 * factor_coeff
-    rgb_img = hdr_image_util.read_hdr_image(im_path)
-    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
-    rgb_img = tranforms.hdr_im_transform(rgb_img).to(device)
-    # TODO: check what to do with negative exr
-    if rgb_img.min() < 0:
-        rgb_img = rgb_img - rgb_img.min()
-    gray_im = hdr_image_util.to_gray_tensor(rgb_img).to(device)
-    gray_im = gray_im - gray_im.min()
-    gray_im = torch.log10((gray_im / gray_im.max()) * f_factor + 1)
-    gray_im = gray_im / gray_im.max()
-    return rgb_img, gray_im, f_factor
+            run_model_on_single_image(net_G, im_path, device, os.path.splitext(img_name)[0], output_images_path,
+                                      model_params, f_factor_path, final_shape_addition)
+        else:
+            raise Exception('invalid hdr file format: %s' % os.path.splitext(img_name)[1])
 
 
 def load_g_model(model_params, device, net_path):
@@ -124,6 +102,45 @@ def create_G_net(model_params, device_, is_checkpoint, activation, output_dim):
                              convtranspose_kernel=model_params["convtranspose_kernel"],
                              up_mode=model_params["up_mode"]).to(device_)
     return set_parallel_net(new_net, device_, is_checkpoint, "Generator")
+
+
+def run_model_on_single_image(G_net, im_path, device, im_name, output_path, model_params,
+                              f_factor_path, final_shape_addition):
+    rgb_img, gray_im_log, f_factor = load_inference(im_path, f_factor_path, model_params["factor_coeff"], device)
+    rgb_img, diffY, diffX = data_loader_util.resize_im(rgb_img, model_params["add_frame"], final_shape_addition)
+    gray_im_log, diffY, diffX = data_loader_util.resize_im(gray_im_log, model_params["add_frame"], final_shape_addition)
+    with torch.no_grad():
+        fake = G_net(gray_im_log.unsqueeze(0), apply_crop=model_params["add_frame"], diffY=diffY, diffX=diffX)
+    max_p = np.percentile(fake.cpu().numpy(), 99.5)
+    min_p = np.percentile(fake.cpu().numpy(), 0.5)
+    # max_p = np.percentile(fake.cpu().numpy(), 100)
+    # min_p = np.percentile(fake.cpu().numpy(), 0.0001)
+    fake2 = fake.clamp(min_p, max_p)
+    fake_im_gray_stretch = (fake2 - fake2.min()) / (fake2.max() - fake2.min())
+    fake_im_color2 = hdr_image_util.back_to_color_tensor(rgb_img, fake_im_gray_stretch[0], device)
+    h, w = fake_im_color2.shape[1], fake_im_color2.shape[2]
+    im_max = fake_im_color2.max()
+    fake_im_color2 = F.interpolate(fake_im_color2.unsqueeze(dim=0), size=(h - diffY, w - diffX),
+                                   mode='bicubic',
+                                   align_corners=False).squeeze(dim=0).clamp(min=0, max=im_max)
+    hdr_image_util.save_gray_tensor_as_numpy_stretch(fake_im_color2, output_path,
+                                                     im_name + "_fake_clamp_and_stretch")
+
+
+def load_inference(im_path, f_factor_path, factor_coeff, device):
+    data = np.load(f_factor_path, allow_pickle=True)[()]
+    f_factor = data[os.path.splitext(os.path.basename(im_path))[0]] * 255 * factor_coeff
+    rgb_img = hdr_image_util.read_hdr_image(im_path)
+    rgb_img = hdr_image_util.reshape_image(rgb_img, train_reshape=False)
+    rgb_img = tranforms.hdr_im_transform(rgb_img).to(device)
+    # shift for exr format
+    if rgb_img.min() < 0:
+        rgb_img = rgb_img - rgb_img.min()
+    gray_im = hdr_image_util.to_gray_tensor(rgb_img).to(device)
+    gray_im = gray_im - gray_im.min()
+    gray_im = torch.log10((gray_im / gray_im.max()) * f_factor + 1)
+    gray_im = gray_im / gray_im.max()
+    return rgb_img, gray_im, f_factor
 
 
 def get_layer_factor(con_operator):
@@ -180,17 +197,5 @@ def print_args(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Parser for gan network")
-    parser.add_argument("--model_name", type=str, default=default_params["model_name"])
-    parser.add_argument("--input_images_path", type=str, default=default_params["input_images_path"])
-    parser.add_argument("--output_path", type=str, default=default_params["output_path"])
-    parser.add_argument("--model_path", type=str, default=default_params["model_path"])
-    parser.add_argument("--f_factor_path", type=str, default=default_params["f_factor_path"])
-
-    # lambda calc params
-    parser.add_argument("--mean_hist_path", type=str, default=default_params["mean_hist_path"])
-    parser.add_argument("--lambda_output_path", type=str, default=default_params["lambda_output_path"])
-    parser.add_argument("--bins", type=str, default=default_params["bins"])
-    args = parser.parse_args()
-    print_args(args)
-    run_trained_model(args)
+    opt = get_args()
+    run_trained_model(opt)
